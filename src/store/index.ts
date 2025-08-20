@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Drink, Order, OrderItem } from '@/types';
+import { defaultDrinks } from '@/data/defaultDrinks';
 
 interface AppState {
   drinks: Drink[];
@@ -12,7 +13,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  drinks: [],
+  drinks: defaultDrinks,
   orders: [],
   
   addDrink: (drink) => set((state) => ({

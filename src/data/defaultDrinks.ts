@@ -1,0 +1,155 @@
+import { Drink, DrinkOption } from "@/types";
+
+const defaultOptions: Record<string, DrinkOption> = {
+  coffeeSize: {
+    id: "size-1",
+    name: "Size",
+    type: "size",
+    values: ["Small (8oz)", "Medium (12oz)", "Large (16oz)"],
+  },
+  temperature: {
+    id: "temp-1",
+    name: "Temperature",
+    type: "temperature",
+    values: ["Hot", "Iced"],
+  },
+  sugarLevel: {
+    id: "sugar-1",
+    name: "Sugar",
+    type: "sugar",
+    values: ["No Sugar", "Light Sweet", "Regular Sweet", "Extra Sweet"],
+  },
+  milkType: {
+    id: "milk-1",
+    name: "Milk",
+    type: "custom",
+    values: ["No Milk", "Whole Milk", "2% Milk", "Oat Milk", "Almond Milk"],
+  },
+  espressoShots: {
+    id: "shots-1",
+    name: "Espresso Shots",
+    type: "custom",
+    values: ["Single", "Double", "Triple"],
+  },
+  whippedCream: {
+    id: "whip-1",
+    name: "Whipped Cream",
+    type: "custom",
+    values: ["No Whip", "Add Whip"],
+  },
+  syrupFlavor: {
+    id: "syrup-1",
+    name: "Syrup Flavor",
+    type: "custom",
+    values: ["No Syrup", "Vanilla", "Caramel", "Hazelnut", "Chocolate"],
+  },
+};
+
+export const defaultDrinks: Drink[] = [
+  {
+    id: "coffee-1",
+    name: "House Coffee",
+    description: "Our signature blend, rich and smooth",
+    price: 2.50,
+    imageUrl: "/drinks/house-coffee.jpg",
+    availableOptions: [
+      defaultOptions.coffeeSize,
+      defaultOptions.temperature,
+      defaultOptions.sugarLevel,
+      defaultOptions.milkType,
+    ],
+  },
+  {
+    id: "coffee-2",
+    name: "Espresso",
+    description: "Pure and strong Italian-style espresso",
+    price: 2.75,
+    imageUrl: "/drinks/espresso.jpg",
+    availableOptions: [
+      defaultOptions.espressoShots,
+    ],
+  },
+  {
+    id: "coffee-3",
+    name: "Cappuccino",
+    description: "Equal parts espresso, steamed milk, and milk foam",
+    price: 3.75,
+    imageUrl: "/drinks/cappuccino.jpg",
+    availableOptions: [
+      defaultOptions.coffeeSize,
+      defaultOptions.espressoShots,
+      defaultOptions.sugarLevel,
+      defaultOptions.milkType,
+    ],
+  },
+  {
+    id: "coffee-4",
+    name: "Latte",
+    description: "Espresso with steamed milk and a light layer of foam",
+    price: 4.00,
+    imageUrl: "/drinks/latte.jpg",
+    availableOptions: [
+      defaultOptions.coffeeSize,
+      defaultOptions.temperature,
+      defaultOptions.espressoShots,
+      defaultOptions.sugarLevel,
+      defaultOptions.milkType,
+      defaultOptions.syrupFlavor,
+    ],
+  },
+  {
+    id: "coffee-5",
+    name: "Mocha",
+    description: "Espresso with chocolate, steamed milk, and whipped cream",
+    price: 4.25,
+    imageUrl: "/drinks/mocha.jpg",
+    availableOptions: [
+      defaultOptions.coffeeSize,
+      defaultOptions.temperature,
+      defaultOptions.espressoShots,
+      defaultOptions.sugarLevel,
+      defaultOptions.milkType,
+      defaultOptions.whippedCream,
+    ],
+  },
+  {
+    id: "coffee-6",
+    name: "Americano",
+    description: "Espresso diluted with hot water",
+    price: 3.00,
+    imageUrl: "/drinks/americano.jpg",
+    availableOptions: [
+      defaultOptions.coffeeSize,
+      defaultOptions.temperature,
+      defaultOptions.espressoShots,
+      defaultOptions.sugarLevel,
+    ],
+  },
+  {
+    id: "coffee-7",
+    name: "Caramel Macchiato",
+    description: "Vanilla-flavored drink marked with espresso and caramel",
+    price: 4.50,
+    imageUrl: "/drinks/caramel-macchiato.jpg",
+    availableOptions: [
+      defaultOptions.coffeeSize,
+      defaultOptions.temperature,
+      defaultOptions.espressoShots,
+      defaultOptions.sugarLevel,
+      defaultOptions.milkType,
+      defaultOptions.whippedCream,
+    ],
+  },
+  {
+    id: "coffee-8",
+    name: "Cold Brew",
+    description: "Smooth, cold-steeped coffee served over ice",
+    price: 3.75,
+    imageUrl: "/drinks/cold-brew.jpg",
+    availableOptions: [
+      defaultOptions.coffeeSize,
+      defaultOptions.sugarLevel,
+      defaultOptions.milkType,
+    ],
+  },
+];
