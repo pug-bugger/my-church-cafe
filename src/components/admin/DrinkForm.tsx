@@ -49,7 +49,7 @@ export function DrinkForm({ drink }: DrinkFormProps) {
     defaultValues: {
       name: drink?.name || "",
       description: drink?.description || "",
-      price: drink?.price.toString() || "",
+      price: drink?.price || 0,
       imageUrl: drink?.imageUrl || "",
       availableOptions: drink?.availableOptions || [],
     },

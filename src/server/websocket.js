@@ -23,6 +23,30 @@ io.on("connection", (socket) => {
 });
 
 const PORT = 3001;
-httpServer.listen(PORT, () => {
-  console.log(`WebSocket server running on port ${PORT}`);
+const HOST = "0.0.0.0"; // Listen on all network interfaces
+
+httpServer.listen(PORT, HOST, () => {
+  console.log(`WebSocket server running on ${HOST}:${PORT}`);
+
+  // Get local IP addresses
+  const { networkInterfaces } = require("os");
+  const nets = networkInterfaces();
+  const results = {};
+
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+      if (net.family === "IPv4" && !net.internal) {
+        if (!results[name]) {
+          results[name] = [];
+        }
+        results[name].push(net.address);
+      }
+    }
+  }
+
+  console.log("Available on network addresses:");
+  for (const [name, addresses] of Object.entries(results)) {
+    console.log(`  ${name}: ${addresses.join(", ")}`);
+  }
 });

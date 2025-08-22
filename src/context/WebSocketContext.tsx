@@ -5,6 +5,7 @@ import { io, Socket } from "socket.io-client";
 import { useAppStore } from "@/store";
 import { Order } from "@/types";
 import { toast } from "sonner";
+import { getWebSocketUrl } from "@/utils/network";
 
 interface WebSocketContextType {
   socket: Socket | null;
@@ -41,7 +42,7 @@ export const WebSocketProvider = ({
   const updateOrderStatus = useAppStore((state) => state.updateOrderStatus);
 
   useEffect(() => {
-    const newSocket = io("http://localhost:3001", {
+    const newSocket = io(getWebSocketUrl(), {
       transports: ["websocket"],
     });
 
