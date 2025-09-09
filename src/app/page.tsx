@@ -5,8 +5,8 @@ export default function HomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background text-foreground">
       <div className="container px-4 md:px-6">
-        <div className="flex flex-col items-center space-y-4 text-center">
-          <div className="space-y-2">
+        <div className="flex flex-col items-center space-y-10 text-center">
+          <div className="space-y-4">
             <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
               Welcome to Church Cafe
             </h1>

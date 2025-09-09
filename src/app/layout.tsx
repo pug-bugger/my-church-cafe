@@ -11,10 +11,7 @@ export const metadata: Metadata = {
   title: "Church Cafe",
   description: "Church Cafe Order Management System",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "16x16" },
-      { url: "/favicon.ico", type: "image/png" },
-    ],
+    icon: "/favicon.ico",
     apple: "/favicon.ico",
   },
 };
@@ -26,6 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head />
       <body className={inter.className}>
         <WebSocketProvider>
           <div className="min-h-screen bg-background flex flex-col">

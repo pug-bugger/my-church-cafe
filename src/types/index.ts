@@ -8,9 +8,11 @@ export type DrinkOption = {
 export type Drink = {
   id: string;
   name: string;
+  secondaryName?: string;
   description: string;
   price: number;
-  imageUrl: string;
+  imageUrl?: string;
+  iconName?: string;
   availableOptions: DrinkOption[];
 };
 

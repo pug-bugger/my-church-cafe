@@ -17,10 +17,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { DrinkOrderForm } from "./DrinkOrderForm";
+import { DrinkOrderForm } from "@/components/terminal/DrinkOrderForm";
 import { Avatar } from "@/components/ui/avatar";
 import { useState } from "react";
 import { Drink } from "@/types";
+import SvgIcon from "@/components/SvgIcon";
 
 export function DrinkList() {
   const drinks = useAppStore((state) => state.drinks);
@@ -32,9 +33,10 @@ export function DrinkList() {
         <Card key={drink.id} className="flex flex-col">
           <CardHeader>
             <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <img src={drink.imageUrl} alt={drink.name} />
-              </Avatar>
+              {/* <Avatar className="h-16 w-16">
+                <SvgIcon name="coffee" size={64} />
+              </Avatar> */}
+
               <div>
                 <CardTitle>{drink.name}</CardTitle>
                 <CardDescription>${drink.price.toFixed(2)}</CardDescription>
