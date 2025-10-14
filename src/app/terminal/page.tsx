@@ -11,7 +11,7 @@ export default function TerminalPage() {
       <Tabs defaultValue="drinks" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="drinks">Available Drinks</TabsTrigger>
-          <TabsTrigger value="orders">Current Orders</TabsTrigger>
+          <TabsTrigger value="orders">Orders</TabsTrigger>
         </TabsList>
 
         <TabsContent value="drinks">
