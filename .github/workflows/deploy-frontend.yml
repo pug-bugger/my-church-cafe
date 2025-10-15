@@ -26,19 +26,16 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-            
-            # Now your npm and pm2 will work
+
             mkdir -p apps/frontend && cd apps/frontend
-            
-            mkdir -p apps/frontend && cd apps/frontend
-            
+
             if [ -d ".git" ]; then
               git stash
               git pull origin prod
             else
               git clone -b prod https://github.com/pug-bugger/my-church-cafe.git .
             fi
-            
+
             npm install --force
             npm run build
 
