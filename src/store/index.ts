@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Drink, Order, OrderItem } from '@/types';
 import { defaultDrinks } from '@/data/defaultDrinks';
+import { generateId } from '@/lib/utils';
 
 interface AppState {
   drinks: Drink[];
@@ -38,7 +39,7 @@ export const useAppStore = create<AppState>((set) => ({
   
   createOrder: (items) => set((state) => {
     const newOrder: Order = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       items,
       status: 'pending',
       createdAt: new Date(),
@@ -66,7 +67,7 @@ export const useAppStore = create<AppState>((set) => ({
       return {};
     }
     const newOrder: Order = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       items: state.draftItems,
       status: 'pending',
       createdAt: new Date(),
