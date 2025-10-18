@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useAppStore } from "@/store";
 import { Drink } from "@/types";
+import { generateId } from "@/lib/utils";
 
 interface DrinkOrderFormProps {
   drink: Drink;
@@ -57,7 +58,7 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
 
   function onSubmit(values: FormValues) {
     addDraftItem({
-      id: crypto.randomUUID(),
+      id: generateId(),
       drinkId: drink.id,
       quantity: values.quantity,
       selectedOptions: values.options,

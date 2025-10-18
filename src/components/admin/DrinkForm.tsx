@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store";
 import { Drink, DrinkOption } from "@/types";
 import { useState } from "react";
+import { generateId } from "@/lib/utils";
 
 interface DrinkFormProps {
   drink?: Drink | null;
@@ -63,7 +64,7 @@ export function DrinkForm({ drink }: DrinkFormProps) {
       });
     } else {
       addDrink({
-        id: crypto.randomUUID(),
+        id: generateId(),
         ...values,
         price: parseFloat(values.price.toString()),
       });
@@ -72,7 +73,7 @@ export function DrinkForm({ drink }: DrinkFormProps) {
 
   const addOption = () => {
     const newOption: DrinkOption = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: "",
       type: "custom",
       values: [""],
