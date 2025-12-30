@@ -9,6 +9,7 @@ export function Navigation() {
 
   const links = [
     { href: "/terminal", label: "Terminal" },
+    { href: "/orders", label: "Orders" },
     { href: "/barista", label: "Barista" },
     { href: "/admin", label: "Admin" },
   ];

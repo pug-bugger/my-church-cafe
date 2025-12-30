@@ -26,7 +26,7 @@ export default function RootLayout({
       <head />
       <body className={inter.className}>
         <WebSocketProvider>
-          <div className="min-h-screen bg-background flex flex-col">
+          <div className="min-h-screen bg-background flex flex-col overflow-hidden">
             <Navigation />
             <main className="flex-1">{children}</main>
           </div>
