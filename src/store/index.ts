@@ -3,6 +3,19 @@ import { Drink, Order, OrderItem } from '@/types';
 import { defaultDrinks } from '@/data/defaultDrinks';
 import { generateId } from '@/lib/utils';
 
+function areSelectedOptionsEqual(
+  a: OrderItem['selectedOptions'],
+  b: OrderItem['selectedOptions']
+): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
 interface AppState {
   drinks: Drink[];
   orders: Order[];
@@ -50,9 +63,24 @@ export const useAppStore = create<AppState>((set) => ({
     };
   }),
   
-  addDraftItem: (item) => set((state) => ({
-    draftItems: [...state.draftItems, item]
-  })),
+  addDraftItem: (item) => set((state) => {
+    const existingIndex = state.draftItems.findIndex((existing) => {
+      return (
+        existing.drinkId === item.drinkId &&
+        areSelectedOptionsEqual(existing.selectedOptions, item.selectedOptions)
+      );
+    });
+    if (existingIndex !== -1) {
+      const updated = [...state.draftItems];
+      const existing = updated[existingIndex];
+      updated[existingIndex] = {
+        ...existing,
+        quantity: existing.quantity + item.quantity
+      };
+      return { draftItems: updated };
+    }
+    return { draftItems: [...state.draftItems, item] };
+  }),
 
   removeDraftItem: (itemId) => set((state) => ({
     draftItems: state.draftItems.filter((item) => item.id !== itemId)

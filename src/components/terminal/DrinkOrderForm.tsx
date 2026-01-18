@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAppStore } from "@/store";
 import { Drink } from "@/types";
 import { generateId } from "@/lib/utils";
@@ -43,7 +44,19 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
   const defaultOptionValues = useMemo(() => {
     const initial: Record<string, string> = {};
     for (const option of drink.availableOptions) {
-      initial[option.id] = option.values[0] ?? "";
+      if (option.type === "checkbox") {
+        const isChecked =
+          typeof option.defaultValue === "boolean"
+            ? option.defaultValue
+            : false;
+        initial[option.id] = isChecked ? "true" : "false";
+      } else {
+        const defaultVal =
+          (typeof option.defaultValue === "string" && option.defaultValue) ||
+          option.values[0] ||
+          "";
+        initial[option.id] = defaultVal;
+      }
     }
     return initial;
   }, [drink]);
@@ -91,23 +104,34 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{option.name}</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                {option.type === "checkbox" ? (
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={`Select ${option.name}`} />
-                    </SelectTrigger>
+                    <Checkbox
+                      checked={field.value === "true"}
+                      onCheckedChange={(checked: boolean | "indeterminate") =>
+                        field.onChange(checked === true ? "true" : "false")
+                      }
+                    />
                   </FormControl>
-                  <SelectContent>
-                    {option.values.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                ) : (
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={`Select ${option.name}`} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {option.values.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </FormItem>
             )}
           />

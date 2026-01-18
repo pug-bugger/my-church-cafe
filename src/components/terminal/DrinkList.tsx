@@ -49,7 +49,11 @@ export function DrinkList() {
               </CardHeader>
             </Card>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent
+            onOpenAutoFocus={(e) => {
+              e.preventDefault();
+            }}
+          >
             <DialogHeader>
               <DialogTitle>{drink.name}</DialogTitle>
             </DialogHeader>

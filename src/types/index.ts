@@ -1,8 +1,9 @@
 export type DrinkOption = {
   id: string;
   name: string;
-  type: 'sugar' | 'temperature' | 'size' | 'custom';
+  type: 'sugar' | 'temperature' | 'size' | 'custom' | 'checkbox';
   values: string[];
+  defaultValue?: string | boolean;
 };
 
 export type Drink = {
