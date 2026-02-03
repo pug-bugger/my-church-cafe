@@ -14,6 +14,7 @@ export function Navigation() {
     { href: "/orders", label: "Orders", available: true },
     { href: "/barista", label: "Barista", available: true },
     { href: "/admin", label: "Admin", available: false },
+    { href: "/login", label: "Login", available: true },
   ]);
 
   const disabledStyle = ({ available }: { available: boolean }) => {

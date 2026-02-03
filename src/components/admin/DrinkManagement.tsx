@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -34,6 +35,9 @@ export function DrinkManagement() {
               <DialogTitle>
                 {selectedDrink ? "Edit Drink" : "Add New Drink"}
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                Fill out the drink details and save.
+              </DialogDescription>
             </DialogHeader>
             <DrinkForm drink={selectedDrink} />
           </DialogContent>
@@ -86,6 +90,9 @@ export function DrinkManagement() {
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
                       <DialogTitle>Edit Drink</DialogTitle>
+                      <DialogDescription className="sr-only">
+                        Update the drink details and save your changes.
+                      </DialogDescription>
                     </DialogHeader>
                     <DrinkForm drink={drink} />
                   </DialogContent>

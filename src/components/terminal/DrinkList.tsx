@@ -12,6 +12,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -35,6 +36,8 @@ export function DrinkList() {
             <Card
               className="flex flex-col"
               onClick={() => {
+                console.log("clicked", drink.id);
+
                 setOpenId(drink.id);
                 console.log("clicked", drink.id);
               }}
@@ -56,6 +59,9 @@ export function DrinkList() {
           >
             <DialogHeader>
               <DialogTitle>{drink.name}</DialogTitle>
+              <DialogDescription className="sr-only">
+                Customize your drink options and add it to your order.
+              </DialogDescription>
             </DialogHeader>
             <DrinkOrderForm drink={drink} onSuccess={() => setOpenId(null)} />
           </DialogContent>

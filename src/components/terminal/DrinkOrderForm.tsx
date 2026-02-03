@@ -1,6 +1,7 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { ControllerRenderProps, useForm } from "react-hook-form";
 import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -21,10 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useAppStore } from "@/store";
 import { Drink } from "@/types";
 import { generateId } from "@/lib/utils";
+import { MinusIcon, PlusIcon, CheckCircle2 } from "lucide-react";
 
 interface DrinkOrderFormProps {
   drink: Drink;
@@ -40,6 +41,21 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
   const addDraftItem = useAppStore((state) => state.addDraftItem);
+
+  const handleQuantityChange = ({
+    field,
+    type,
+  }: {
+    field: ControllerRenderProps<FormValues, "quantity">;
+    type: "decrement" | "increment";
+  }) => {
+    const current =
+      typeof field.value === "number"
+        ? field.value
+        : parseInt(String(field.value ?? 1), 10) || 1;
+    const next = type === "increment" ? current + 1 : Math.max(1, current - 1);
+    field.onChange(next);
+  };
 
   const defaultOptionValues = useMemo(() => {
     const initial: Record<string, string> = {};
@@ -89,13 +105,34 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Quantity</FormLabel>
-              <FormControl>
-                <Input type="number" min="1" {...field} />
+              <FormControl >
+                <ButtonGroup className="w-full justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      handleQuantityChange({ field, type: "decrement" })
+                    }
+                  >
+                    <MinusIcon className="w-4 h-4" />
+                  </Button>
+                  <Input pattern="[0-9]*" min="1" {...field} className="text-center" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      handleQuantityChange({ field, type: "increment" })
+                    }
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                  </Button>
+                </ButtonGroup>
               </FormControl>
             </FormItem>
           )}
         />
-
         {drink.availableOptions.map((option) => (
           <FormField
             key={option.id}
@@ -103,34 +140,50 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
             name={`options.${option.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{option.name}</FormLabel>
                 {option.type === "checkbox" ? (
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value === "true"}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        field.onChange(checked === true ? "true" : "false")
-                      }
-                    />
-                  </FormControl>
-                ) : (
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <>
+                    <FormLabel className="sr-only">{option.name}</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={`Select ${option.name}`} />
-                      </SelectTrigger>
+                      <Button
+                        type="button"
+                        variant={field.value === "true" ? "default" : "outline"}
+                        size="sm"
+                        className="gap-2 rounded-full"
+                        aria-pressed={field.value === "true"}
+                        onClick={() =>
+                          field.onChange(
+                            field.value === "true" ? "false" : "true"
+                          )
+                        }
+                      >
+                        {field.value === "true" && (
+                          <CheckCircle2 className="h-4 w-4" />
+                        )}
+                        {option.name}
+                      </Button>
                     </FormControl>
-                    <SelectContent>
-                      {option.values.map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {value}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  </>
+                ) : (
+                  <>
+                    <FormLabel>{option.name}</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={`Select ${option.name}`} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {option.values.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
                 )}
               </FormItem>
             )}
