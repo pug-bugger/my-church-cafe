@@ -18,11 +18,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { DrinkOrderForm } from "@/components/terminal/DrinkOrderForm";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function DrinkList() {
   const drinks = useAppStore((state) => state.drinks);
+  const loadDrinks = useAppStore((state) => state.loadDrinks);
   const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadDrinks();
+  }, [loadDrinks]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
