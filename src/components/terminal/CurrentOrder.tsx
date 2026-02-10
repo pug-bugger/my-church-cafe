@@ -18,7 +18,7 @@ export function CurrentOrder() {
   const drinks = useAppStore((state) => state.drinks);
   const removeDraftItem = useAppStore((state) => state.removeDraftItem);
   const clearDraft = useAppStore((state) => state.clearDraft);
-  const [productItems, setProductItems] = useState<
+  const [products, setProducts] = useState<
     { id: number; name: string | null }[]
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,16 +35,16 @@ export function CurrentOrder() {
   useEffect(() => {
     if (!apiUrl) return;
     let isActive = true;
-    const loadProductItems = async () => {
+    const loadProducts = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/products/items`);
+        const response = await fetch(`${apiUrl}/api/products`);
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
-          throw new Error(data?.error || "Failed to load product items");
+          throw new Error(data?.error || "Failed to load products");
         }
         const data = await response.json();
         if (isActive) {
-          setProductItems(
+          setProducts(
             Array.isArray(data)
               ? data.map((item) => ({ id: item.id, name: item.name }))
               : []
@@ -52,26 +52,26 @@ export function CurrentOrder() {
         }
       } catch (_err) {
         if (isActive) {
-          setProductItems([]);
+          setProducts([]);
         }
       }
     };
-    loadProductItems();
+    loadProducts();
     return () => {
       isActive = false;
     };
   }, [apiUrl]);
 
-  const resolveProductItemId = (drinkId: string) => {
+  const resolveProductId = (drinkId: string) => {
     const drink = getDrinkById(drinkId);
     if (!drink) return null;
     const normalized = (value?: string) =>
       (value || "").trim().toLowerCase();
     const byId =
       Number.isFinite(Number(drink.id)) &&
-      productItems.find((item) => item.id === Number(drink.id));
+      products.find((item) => item.id === Number(drink.id));
     if (byId) return byId.id;
-    const byName = productItems.find(
+    const byName = products.find(
       (item) =>
         normalized(item.name ?? "") === normalized(drink.name) ||
         normalized(item.name ?? "") === normalized(drink.secondaryName)
@@ -94,11 +94,11 @@ export function CurrentOrder() {
       return;
     }
 
-    const itemsPayload = draftItems.map((item) => ({
-      product_item_id: resolveProductItemId(item.drinkId),
+    const orderItemsPayload = draftItems.map((item) => ({
       quantity: item.quantity,
+      productId: resolveProductId(item.drinkId),
     }));
-    const missing = itemsPayload.find((item) => !item.product_item_id);
+    const missing = orderItemsPayload.find((item) => !item.productId);
     if (missing) {
       toast.error("Some items could not be matched to backend products.");
       return;
@@ -112,7 +112,11 @@ export function CurrentOrder() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ items: itemsPayload }),
+        body: JSON.stringify({
+          order: {
+            order_items: orderItemsPayload,
+          },
+        }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {

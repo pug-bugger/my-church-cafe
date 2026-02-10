@@ -44,7 +44,6 @@ export function DrinkList() {
                 console.log("clicked", drink.id);
 
                 setOpenId(drink.id);
-                console.log("clicked", drink.id);
               }}
             >
               <CardHeader>

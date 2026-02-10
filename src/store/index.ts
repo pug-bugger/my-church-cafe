@@ -61,6 +61,8 @@ export const useAppStore = create<AppState>((set) => ({
         throw new Error("Failed to load products");
       }
       const data = await response.json();
+      console.log('data', data);
+      
       if (!Array.isArray(data) || data.length === 0) {
         set(() => ({ drinks: defaultDrinks }));
         return;
