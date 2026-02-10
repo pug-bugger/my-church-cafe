@@ -4,11 +4,44 @@ import { useAppStore } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWebSocket } from "@/context/WebSocketContext";
+import { useCallback, useEffect } from "react";
+import { toast } from "sonner";
 
 export function OrderList() {
   const orders = useAppStore((state) => state.orders);
-  const drinks = useAppStore((state) => state.drinks);
-  const { isConnected } = useWebSocket();
+  const setOrders = useAppStore((state) => state.setOrders);
+  const { isConnected, ordersRefreshKey } = useWebSocket();
+
+  const fetchOrders = useCallback(async () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) return;
+    const token =
+      localStorage.getItem("token") ??
+      localStorage.getItem("jwt") ??
+      localStorage.getItem("accessToken");
+    if (!token) return;
+    try {
+      const response = await fetch(`${apiUrl}/api/orders/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error || "Failed to load orders");
+      }
+      const data = await response.json();
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unable to load orders";
+      toast.error(message);
+    }
+  }, [setOrders]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders, ordersRefreshKey]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -25,10 +58,6 @@ export function OrderList() {
     }
   };
 
-  const getDrinkById = (id: string) => {
-    return drinks.find((drink) => drink.id === id);
-  };
-
   return (
     <div className="space-y-4">
       {!isConnected && (
@@ -43,7 +72,7 @@ export function OrderList() {
         <Card key={order.id}>
           <CardHeader>
             <div className="flex justify-between items-center">
-              <CardTitle>Order #{order.id.slice(0, 8)}</CardTitle>
+              <CardTitle>Order #{String(order.id).slice(0, 8)}</CardTitle>
               <span
                 className={`px-3 py-1 rounded-full text-sm ${getStatusColor(
                   order.status
@@ -55,42 +84,27 @@ export function OrderList() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {order.items.map((item) => {
-                const drink = getDrinkById(item.drinkId);
-                if (!drink) return null;
-
-                return (
-                  <li
-                    key={item.id}
-                    className="flex justify-between items-center"
-                  >
-                    <div>
-                      <span className="font-medium">{drink.name}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {" "}
-                        × {item.quantity}
-                      </span>
-                      <ul className="text-sm text-muted-foreground">
-                        {Object.entries(item.selectedOptions).map(
-                          ([optionId, value]) => {
-                            const option = drink.availableOptions.find(
-                              (opt) => opt.id === optionId
-                            );
-                            return option ? (
-                              <li key={optionId}>
-                                {option.name}: {value}
-                              </li>
-                            ) : null;
-                          }
-                        )}
-                      </ul>
-                    </div>
+              {order.items.map((item) => (
+                <li key={item.id} className="flex justify-between items-center">
+                  <div>
                     <span className="font-medium">
-                      ${(drink.price * item.quantity).toFixed(2)}
+                      {item.product_item_name ?? "Item"}
                     </span>
-                  </li>
-                );
-              })}
+                    <span className="text-sm text-muted-foreground">
+                      {" "}
+                      × {item.quantity}
+                    </span>
+                  </div>
+                  {item.price !== null && (
+                    <span className="font-medium">
+                      ${(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  )}
+                </li>
+              ))}
+              {order.items.length === 0 && (
+                <li className="text-sm text-muted-foreground">No items</li>
+              )}
             </ul>
           </CardContent>
         </Card>

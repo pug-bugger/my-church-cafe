@@ -89,3 +89,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .bg-caution-stripes {
+    background-image: repeating-linear-gradient(
+      45deg,
+      #dcdcdc 0px,
+      #dcdcdc 6px,
+      #ffffff 6px,
+      #ffffff 12px
+    );
+    /* background-size: 56px 56px; */
+  }
+}
