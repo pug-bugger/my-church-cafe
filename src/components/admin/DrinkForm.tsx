@@ -24,7 +24,7 @@ interface DrinkFormProps {
 const optionSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Name is required"),
-  type: z.enum(["sugar", "temperature", "size", "custom"]),
+  type: z.enum(["sugar", "temperature", "size", "custom", "checkbox"]),
   values: z.array(z.string()).min(1, "At least one value is required"),
 });
 
