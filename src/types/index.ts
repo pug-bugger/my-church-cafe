@@ -1,8 +1,9 @@
 export type DrinkOption = {
   id: string;
   name: string;
-  type: 'sugar' | 'temperature' | 'size' | 'custom';
+  type: 'sugar' | 'temperature' | 'size' | 'custom' | 'checkbox';
   values: string[];
+  defaultValue?: string | boolean;
 };
 
 export type Drink = {
@@ -25,10 +26,30 @@ export type OrderItem = {
   quantity: number;
 };
 
-export type Order = {
-  id: string;
-  items: OrderItem[];
-  status: 'pending' | 'preparing' | 'ready' | 'completed';
-  createdAt: Date;
-  updatedAt: Date;
+export type OrderStatus =
+  | 'pending'
+  | 'preparing'
+  | 'ready'
+  | 'paid'
+  | 'cancelled'
+  | 'completed';
+
+export type ServerOrderItem = {
+  id: number;
+  order_id: number;
+  product_item_id: number | null;
+  quantity: number;
+  price: number | null;
+  product_item_name: string | null;
+};
+
+export type ServerOrder = {
+  id: number;
+  user_id: number | null;
+  total: number | null;
+  status: OrderStatus;
+  created_at: string;
+  user_name?: string | null;
+  user_email?: string | null;
+  items: ServerOrderItem[];
 };
