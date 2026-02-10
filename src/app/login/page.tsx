@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [hasToken, setHasToken] = useState(false);
 
-  // test
+  // test 2
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
   useEffect(() => {
