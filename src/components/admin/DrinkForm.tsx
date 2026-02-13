@@ -16,9 +16,11 @@ import { useAppStore } from "@/store";
 import { Drink, DrinkOption } from "@/types";
 import { useState } from "react";
 import { generateId } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface DrinkFormProps {
   drink?: Drink | null;
+  onSuccess?: () => void;
 }
 
 const optionSchema = z.object({
@@ -31,16 +33,19 @@ const optionSchema = z.object({
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
-  price: z.string().transform((val) => parseFloat(val)),
-  imageUrl: z.string().url("Must be a valid URL"),
+  price: z.string().min(1, "Price is required"),
+  imageUrl: z
+    .string()
+    .optional()
+    .refine((val) => !val || val === "" || /^https?:\/\/.+/.test(val), "Must be a valid URL"),
   availableOptions: z.array(optionSchema),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function DrinkForm({ drink }: DrinkFormProps) {
-  const addDrink = useAppStore((state) => state.addDrink);
-  const updateDrink = useAppStore((state) => state.updateDrink);
+export function DrinkForm({ drink, onSuccess }: DrinkFormProps) {
+  const createDrinkApi = useAppStore((state) => state.createDrinkApi);
+  const updateDrinkApi = useAppStore((state) => state.updateDrinkApi);
   const [options, setOptions] = useState<DrinkOption[]>(
     drink?.availableOptions || []
   );
@@ -50,24 +55,51 @@ export function DrinkForm({ drink }: DrinkFormProps) {
     defaultValues: {
       name: drink?.name || "",
       description: drink?.description || "",
-      price: drink?.price || 0,
+      price: drink?.price != null ? String(drink.price) : "",
       imageUrl: drink?.imageUrl || "",
       availableOptions: drink?.availableOptions || [],
     },
   });
 
-  function onSubmit(values: FormValues) {
-    if (drink) {
-      updateDrink(drink.id, {
-        ...values,
-        price: parseFloat(values.price.toString()),
-      });
-    } else {
-      addDrink({
-        id: generateId(),
-        ...values,
-        price: parseFloat(values.price.toString()),
-      });
+  async function onSubmit(values: FormValues) {
+    const price = parseFloat(values.price.toString());
+    const payload = {
+      ...values,
+      price,
+      availableOptions: values.availableOptions,
+    };
+    try {
+      if (drink) {
+        await updateDrinkApi(drink.id, {
+          name: payload.name,
+          description: payload.description,
+          price: payload.price,
+          imageUrl: payload.imageUrl?.trim() || undefined,
+          availableOptions: payload.availableOptions.map((o) => ({
+            ...o,
+            id: o.id || generateId(),
+          })),
+        });
+        onSuccess?.();
+        toast.success("Drink updated");
+      } else {
+        await createDrinkApi({
+          name: payload.name,
+          description: payload.description,
+          price: payload.price,
+          imageUrl: payload.imageUrl?.trim() || undefined,
+          availableOptions: payload.availableOptions.map((o) => ({
+            ...o,
+            id: o.id || generateId(),
+          })),
+        });
+        form.reset();
+        onSuccess?.();
+        toast.success("Drink created");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save drink";
+      toast.error(message);
     }
   }
 
@@ -138,7 +170,7 @@ export function DrinkForm({ drink }: DrinkFormProps) {
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Image URL</FormLabel>
+              <FormLabel>Image URL (optional)</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
