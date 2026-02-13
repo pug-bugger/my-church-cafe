@@ -17,17 +17,40 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DrinkOrderForm } from "@/components/terminal/DrinkOrderForm";
 import { useEffect, useState } from "react";
 
+function DrinkListSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card key={i} className="flex flex-col">
+          <CardHeader>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function DrinkList() {
   const drinks = useAppStore((state) => state.drinks);
+  const drinksLoading = useAppStore((state) => state.drinksLoading);
   const loadDrinks = useAppStore((state) => state.loadDrinks);
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     loadDrinks();
   }, [loadDrinks]);
+
+  if (drinksLoading) {
+    return <DrinkListSkeleton />;
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
