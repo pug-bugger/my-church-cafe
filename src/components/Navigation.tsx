@@ -32,10 +32,19 @@ export function Navigation() {
     <nav className="border-b">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-xl font-bold">
-            <img src="/cup.svg" alt="Church Cafe" className="w-8 h-8" />
-            Church Cafe
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2 text-xl font-bold">
+              <img src="/cup.svg" alt="Church Cafe" className="w-8 h-8" />
+              Church Cafe
+            </Link>
+            <span className="ml-2 text-sm font-medium text-muted-foreground">
+              {pathname !== "/" && (
+                <>
+                  / {links.find((l) => l.href === pathname)?.label ?? pathname.replace(/^\//, "").charAt(0).toUpperCase() + pathname.slice(2)}
+                </>
+              )}
+            </span>
+          </div>
 
           <div className="flex gap-4">
             {links.map((link) => (

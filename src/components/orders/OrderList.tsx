@@ -1,7 +1,7 @@
 "use client";
 
 import { useAppStore } from "@/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWebSocket } from "@/context/WebSocketContext";
 import { useCallback, useEffect } from "react";
@@ -65,39 +65,19 @@ export function OrderList() {
   const readyForPickup = orders.filter((o) => o.status === "ready");
 
   const OrderCard = ({ order }: { order: ServerOrder }) => (
-    <Card className="w-full max-w-[220px] min-w-0">
-      <CardHeader className="p-3 pb-1">
-        <div className="flex justify-between items-center gap-2">
-          <CardTitle className="text-sm">
-            Order #{String(order.id).slice(0, 8)}
-          </CardTitle>
-          <span
-            className={`shrink-0 px-2 py-0.5 rounded-full text-xs capitalize ${getStatusColor(
-              order.status
-            )}`}
-          >
-            {order.status}
-          </span>
-        </div>
+    <Card className="relative w-auto shrink-0">
+      <span
+        className={`absolute top-2 right-2 w-3 h-3 rounded-full ${getStatusColor(
+          order.status
+        )}`}
+        title={order.status}
+        aria-label={order.status}
+      />
+      <CardHeader className="py-3 px-6">
+        <CardTitle className="text-8xl">
+          {order.order_number ?? order.id}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 pt-1">
-        <ul className="space-y-1 text-sm">
-          {order.items.map((item) => (
-            <li key={item.id} className="truncate">
-              <span className="font-medium">
-                {item.product_item_name ?? "Item"}
-              </span>
-              <span className="text-muted-foreground">
-                {" "}
-                × {item.quantity}
-              </span>
-            </li>
-          ))}
-          {order.items.length === 0 && (
-            <li className="text-muted-foreground">No items</li>
-          )}
-        </ul>
-      </CardContent>
     </Card>
   );
 
@@ -116,33 +96,33 @@ export function OrderList() {
           No orders yet
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 screen-full">
+          <div className="space-y-3 pb-6 border-b border-border md:border-b-0 md:border-r md:pb-0 md:pr-6">
             <h2 className="text-lg font-semibold">
               Pending & In Progress
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-3 content-start">
+            <div className="flex flex-wrap gap-3 justify-start">
               {pendingAndInProgress.map((order) => (
                 <OrderCard key={order.id} order={order} />
               ))}
               {pendingAndInProgress.length === 0 && (
-                <p className="text-muted-foreground text-center py-6 col-span-full">
+                <p className="text-muted-foreground text-center py-6">
                   No orders pending or in progress
                 </p>
               )}
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 pt-6 md:pt-0 md:pl-6">
             <h2 className="text-lg font-semibold">
               Ready for Pickup
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-3 content-start">
+            <div className="flex flex-wrap gap-3 justify-start">
               {readyForPickup.map((order) => (
                 <OrderCard key={order.id} order={order} />
               ))}
               {readyForPickup.length === 0 && (
-                <p className="text-muted-foreground text-center py-6 col-span-full">
+                <p className="text-muted-foreground text-center py-6">
                   No orders ready for pickup
                 </p>
               )}
