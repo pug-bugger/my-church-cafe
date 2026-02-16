@@ -96,6 +96,7 @@ export function OrderQueue() {
     order: {
       id: number;
       status: OrderStatus;
+      order_number?: number;
       items: {
         id: number;
         product_item_name: string | null;
@@ -105,7 +106,7 @@ export function OrderQueue() {
   }) => (
     <Card key={order.id} className="mb-4">
       <CardHeader>
-        <CardTitle>Order #{String(order.id).slice(0, 8)}</CardTitle>
+        <CardTitle># {order.order_number ?? order.id}</CardTitle>
       </CardHeader>
       <CardContent>
         <ul className="space-y-2 mb-4">
@@ -131,22 +132,38 @@ export function OrderQueue() {
         )}
 
         {order.status === "preparing" && (
-          <Button
-            className="w-full"
-            onClick={() => handleStatusUpdate(order.id, "ready")}
-          >
-            Mark as Ready
-          </Button>
+          <div className="flex flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleStatusUpdate(order.id, "pending")}
+            >
+              Back to Pending
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => handleStatusUpdate(order.id, "ready")}
+            >
+              Mark as Ready
+            </Button>
+          </div>
         )}
 
         {order.status === "ready" && (
-          <Button
-            className="w-full"
-            variant="secondary"
-            onClick={() => handleStatusUpdate(order.id, "completed")}
-          >
-            Complete Order
-          </Button>
+          <div className="flex flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleStatusUpdate(order.id, "preparing")}
+            >
+              Back to Preparing
+            </Button>
+            <Button
+              className="flex-1"
+              variant="secondary"
+              onClick={() => handleStatusUpdate(order.id, "completed")}
+            >
+              Complete Order
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -28,7 +28,7 @@ export default function RootLayout({
         <WebSocketProvider>
           <div className="min-h-screen bg-background flex flex-col overflow-hidden">
             <Navigation />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 overflow-hidden relative">{children}</main>
           </div>
           <Toaster />
         </WebSocketProvider>
