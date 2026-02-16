@@ -4,18 +4,71 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useState, type CSSProperties } from "react";
+import { useState, useEffect, useCallback, type CSSProperties } from "react";
+
+const BASE_LINKS = [
+  { href: "/terminal", label: "Terminal", available: true, adminOnly: false },
+  { href: "/orders", label: "Orders", available: true, adminOnly: false },
+  { href: "/barista", label: "Barista", available: true, adminOnly: false },
+  { href: "/admin", label: "Manage", available: true, adminOnly: true },
+  { href: "/profile", label: "Profile", available: true, adminOnly: false },
+];
 
 export function Navigation() {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [links, setLinks] = useState(BASE_LINKS);
 
-  const [links, setLinks] = useState([
-    { href: "/terminal", label: "Terminal", available: true },
-    { href: "/orders", label: "Orders", available: true },
-    { href: "/barista", label: "Barista", available: true },
-    { href: "/admin", label: "Admin", available: false },
-    { href: "/login", label: "Login", available: true },
-  ]);
+  const fetchUserRole = useCallback(async () => {
+    const token =
+      localStorage.getItem("token") ??
+      localStorage.getItem("jwt") ??
+      localStorage.getItem("accessToken");
+    if (!token) {
+      setIsAdmin(false);
+      return;
+    }
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      try {
+        const user = JSON.parse(stored);
+        setIsAdmin(user?.role === "admin");
+        return;
+      } catch {
+        // fall through to fetch
+      }
+    }
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) {
+      setIsAdmin(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${apiUrl}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setIsAdmin(false);
+        return;
+      }
+      const user = await res.json();
+      localStorage.setItem("user", JSON.stringify(user));
+      setIsAdmin(user?.role === "admin");
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserRole();
+    const onAuth = () => fetchUserRole();
+    window.addEventListener("auth:token", onAuth);
+    return () => window.removeEventListener("auth:token", onAuth);
+  }, [fetchUserRole]);
+
+  const visibleLinks = links.filter(
+    (link) => !link.adminOnly || (link.adminOnly && isAdmin)
+  );
 
   const disabledStyle = ({ available }: { available: boolean }) => {
     const tabClickable: CSSProperties = {};
@@ -47,7 +100,7 @@ export function Navigation() {
           </div>
 
           <div className="flex gap-4">
-            {links.map((link) => (
+            {visibleLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
