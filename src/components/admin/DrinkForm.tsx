@@ -165,7 +165,7 @@ export function DrinkForm({ drink, onSuccess }: DrinkFormProps) {
           )}
         />
 
-        <FormField
+        {/* <FormField
           control={form.control}
           name="imageUrl"
           render={({ field }) => (
@@ -176,96 +176,18 @@ export function DrinkForm({ drink, onSuccess }: DrinkFormProps) {
               </FormControl>
             </FormItem>
           )}
-        />
+        /> */}
 
-        <div className="space-y-4">
+        <div className="space-y-4 opacity-60 pointer-events-none select-none" aria-disabled="true">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-medium">Options</h3>
-            <Button type="button" variant="outline" onClick={addOption}>
+            <Button type="button" variant="outline" disabled>
               Add Option
             </Button>
           </div>
-
-          {options.map((option, index) => (
-            <div key={option.id} className="space-y-2 p-4 border rounded-lg">
-              <div className="flex justify-between items-center">
-                <h4 className="font-medium">Option {index + 1}</h4>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => removeOption(option.id)}
-                >
-                  Remove
-                </Button>
-              </div>
-
-              <FormField
-                control={form.control}
-                name={`availableOptions.${index}.name`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        onChange={(e) =>
-                          updateOption(option.id, "name", e.target.value)
-                        }
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name={`availableOptions.${index}.type`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <FormControl>
-                      <select
-                        className="w-full p-2 border rounded-md"
-                        {...field}
-                        onChange={(e) =>
-                          updateOption(option.id, "type", e.target.value)
-                        }
-                      >
-                        <option value="sugar">Sugar</option>
-                        <option value="temperature">Temperature</option>
-                        <option value="size">Size</option>
-                        <option value="custom">Custom</option>
-                      </select>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name={`availableOptions.${index}.values`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Values (comma-separated)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        value={option.values.join(", ")}
-                        onChange={(e) =>
-                          updateOption(
-                            option.id,
-                            "values",
-                            e.target.value.split(",").map((v) => v.trim())
-                          )
-                        }
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-          ))}
+          <div className="p-4 border rounded-lg text-muted-foreground text-center">
+            Option management will be available soon.
+          </div>
         </div>
 
         <Button type="submit" className="w-full">

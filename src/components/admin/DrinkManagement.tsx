@@ -27,7 +27,8 @@ import { DrinkForm } from "./DrinkForm";
 import { Drink } from "@/types";
 import { Avatar } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import Image from "next/image";
 
 function DrinkManagementSkeleton() {
   return (
@@ -114,83 +115,74 @@ export function DrinkManagement() {
       {drinksLoading ? (
         <DrinkManagementSkeleton />
       ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {drinks.map((drink) => (
-          <Card key={drink.id} className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-start gap-4">
-                <Avatar className="h-16 w-16 shrink-0">
-                  <img src={drink.imageUrl} alt={drink.name} />
-                </Avatar>
-                <div className="min-w-0 flex-1 pr-10">
-                  <CardTitle>{drink.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    ${drink.price.toFixed(2)}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-4 top-4 h-8 w-8 text-muted-foreground hover:text-destructive"
-                  aria-label={`Delete ${drink.name}`}
-                  disabled={deletingId === drink.id}
-                  onClick={() => setDrinkToDelete(drink)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                {drink.description}
-              </p>
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Available Options:</h4>
-                <ul className="text-sm text-muted-foreground">
-                  {drink.availableOptions.map((option) => (
-                    <li key={option.id}>
-                      {option.name}: {option.values.join(", ")}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="flex gap-2 mt-4">
-                <Dialog
-                  open={editingId === drink.id}
-                  onOpenChange={(open) => !open && setEditingId(null)}
-                >
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setEditingId(drink.id)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {drinks.map((drink) => (
+            <Card key={drink.id} className="relative">
+              <CardHeader className="pb-2">
+                <div className="flex items-start gap-4">
+                  <Avatar>
+                    {/* <img src={drink.imageUrl} alt={drink.name} /> */}
+                    <Image src={drink.imageUrl || "/cup.svg"} alt={drink.name} width={32} height={32} />
+                  </Avatar>
+                  <div className="min-w-0 flex-1 pr-20">
+                    <CardTitle>{drink.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      ${drink.price.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="absolute right-4 top-4 flex items-center gap-1">
+                    <Dialog
+                      open={editingId === drink.id}
+                      onOpenChange={(open) => !open && setEditingId(null)}
                     >
-                      Edit
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          aria-label={`Edit ${drink.name}`}
+                          onClick={() => setEditingId(drink.id)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-lg">
+                        <DialogHeader>
+                          <DialogTitle>Edit Drink</DialogTitle>
+                          <DialogDescription className="sr-only">
+                            Update the drink details and save your changes.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DrinkForm
+                          drink={drink}
+                          onSuccess={() => {
+                            setEditingId(null);
+                            setSelectedDrink(null);
+                          }}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      aria-label={`Delete ${drink.name}`}
+                      disabled={deletingId === drink.id}
+                      onClick={() => setDrinkToDelete(drink)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Edit Drink</DialogTitle>
-                      <DialogDescription className="sr-only">
-                        Update the drink details and save your changes.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DrinkForm
-                      drink={drink}
-                      onSuccess={() => {
-                        setEditingId(null);
-                        setSelectedDrink(null);
-                      }}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {drink.description}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
       <AlertDialog

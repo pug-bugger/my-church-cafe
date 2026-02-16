@@ -45,6 +45,7 @@ export type ServerOrderItem = {
 
 export type ServerOrder = {
   id: number;
+  order_number?: number;
   user_id: number | null;
   total: number | null;
   status: OrderStatus;
