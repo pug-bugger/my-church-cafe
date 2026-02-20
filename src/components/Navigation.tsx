@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, type CSSProperties } from "react";
 
 const BASE_LINKS = [
   { href: "/terminal", label: "Terminal", available: true, adminOnly: false },
+  { href: "/menu", label: "Menu", available: true, adminOnly: false },
   { href: "/orders", label: "Orders", available: true, adminOnly: false },
   { href: "/barista", label: "Barista", available: true, adminOnly: false },
   { href: "/admin", label: "Manage", available: true, adminOnly: true },
