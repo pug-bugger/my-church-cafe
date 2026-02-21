@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, type CSSProperties } from "react";
 
 const BASE_LINKS = [
   { href: "/terminal", label: "Terminal", available: true, adminOnly: false },
+  { href: "/menu", label: "Menu", available: true, adminOnly: false },
   { href: "/orders", label: "Orders", available: true, adminOnly: false },
   { href: "/barista", label: "Barista", available: true, adminOnly: false },
   { href: "/admin", label: "Manage", available: true, adminOnly: true },
@@ -18,6 +19,8 @@ export function Navigation() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
   const [links, setLinks] = useState(BASE_LINKS);
+  const [showOnOrders, setShowOnOrders] = useState(false);
+  const isOrdersPage = pathname === "/orders";
 
   const fetchUserRole = useCallback(async () => {
     const token =
@@ -82,7 +85,29 @@ export function Navigation() {
   };
 
   return (
-    <nav className="border-b">
+    <>
+      {isOrdersPage && (
+        <div
+          className="fixed inset-x-0 top-0 z-40 h-4"
+          onMouseEnter={() => setShowOnOrders(true)}
+          onMouseLeave={() => setShowOnOrders(false)}
+          aria-hidden="true"
+        />
+      )}
+      <nav
+        className={cn(
+          "border-b bg-background transition-transform duration-200",
+          isOrdersPage && "fixed inset-x-0 top-0 z-50",
+          isOrdersPage && !showOnOrders && "-translate-y-full",
+          isOrdersPage && showOnOrders && "translate-y-0"
+        )}
+        onMouseEnter={() => {
+          if (isOrdersPage) setShowOnOrders(true);
+        }}
+        onMouseLeave={() => {
+          if (isOrdersPage) setShowOnOrders(false);
+        }}
+      >
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
@@ -139,6 +164,7 @@ export function Navigation() {
           </div>
         </div>
       </div>
-    </nav>
+      </nav>
+    </>
   );
 }
