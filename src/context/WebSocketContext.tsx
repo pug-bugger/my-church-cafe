@@ -5,6 +5,7 @@ import type { Socket } from "socket.io-client";
 import { OrderStatus } from "@/types";
 import { toast } from "sonner";
 import { createSocket } from "@/app/_lib/socket";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
 
 interface WebSocketContextType {
   socket: Socket | null;
@@ -64,6 +65,7 @@ export const WebSocketProvider = ({
   const [isConnected, setIsConnected] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
+  const { playSound } = useNotificationSound();
 
   useEffect(() => {
     const readToken = () =>
@@ -126,9 +128,8 @@ export const WebSocketProvider = ({
 
       switch (payload.status) {
         case "ready":
-          toast.success(message, {
-            duration: Infinity,
-          });
+          playSound();
+          toast.success(message);
           break;
         case "preparing":
           toast.info(message);
