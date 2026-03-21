@@ -65,7 +65,7 @@ export default function ProfilePage() {
     return Boolean(token);
   }, []);
 
-  // test
+  // test 2
   useEffect(() => {
     fetchToken();
   }, [fetchToken]);
