@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Drink, OrderItem, ServerOrder, OrderStatus } from '@/types';
 import { defaultDrinks } from '@/data/defaultDrinks';
+import { mapProductApiToDrinkOptions } from '@/lib/drinkOptions';
 
 function areSelectedOptionsEqual(
   a: OrderItem['selectedOptions'],
@@ -24,22 +25,18 @@ function getAuthToken(): string | null {
   );
 }
 
-/** Map frontend Drink (without id) to backend POST /api/products body. */
+/** Map frontend Drink (without id) to backend POST/PUT /api/products body. */
 function drinkToProductBody(drink: Omit<Drink, "id">) {
-  const options = (drink.availableOptions ?? []).flatMap((opt) =>
-    (opt.values ?? []).map((value) => ({
-      name: opt.name,
-      value,
-      extra_price: 0,
-    }))
-  );
+  const drink_option_definition_ids = (drink.availableOptions ?? [])
+    .map((o) => Number.parseInt(o.id, 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
   return {
     name: drink.name,
     description: drink.description ?? "",
     base_price: drink.price,
     image_url: drink.imageUrl ?? null,
     available: true,
-    options,
+    drink_option_definition_ids,
   };
 }
 
@@ -55,6 +52,7 @@ interface AppState {
   createDrinkApi: (drink: Omit<Drink, "id">) => Promise<Drink>;
   updateDrinkApi: (id: string, drink: Omit<Drink, "id">) => Promise<void>;
   deleteDrinkApi: (id: string) => Promise<void>;
+  uploadProductImage: (productId: string, file: File) => Promise<string>;
   setOrders: (orders: ServerOrder[]) => void;
   updateOrderStatus: (orderId: number, status: OrderStatus) => void;
   addDraftItem: (item: OrderItem) => void;
@@ -149,6 +147,32 @@ export const useAppStore = create<AppState>((set) => ({
     }));
   },
 
+  uploadProductImage: async (productId, file) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
+    const token = getAuthToken();
+    if (!token) throw new Error("Login required to upload images");
+    const formData = new FormData();
+    formData.append("image", file);
+    const response = await fetch(`${apiUrl}/api/products/${productId}/image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error ?? "Failed to upload image");
+    }
+    const imageUrl = typeof data?.image_url === "string" ? data.image_url : "";
+    if (!imageUrl) throw new Error("Server did not return image_url");
+    set((state) => ({
+      drinks: state.drinks.map((d) =>
+        d.id === productId ? { ...d, imageUrl } : d
+      ),
+    }));
+    return imageUrl;
+  },
+
   loadDrinks: async () => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) {
@@ -173,7 +197,7 @@ export const useAppStore = create<AppState>((set) => ({
         description: product.description ?? "",
         price: Number(product.base_price ?? 0),
         imageUrl: product.image_url ?? undefined,
-        availableOptions: [],
+        availableOptions: mapProductApiToDrinkOptions(product.drink_options),
       }));
       set(() => ({ drinks: mapped, drinksLoading: false }));
     } catch (_err) {

@@ -2,6 +2,7 @@ export type DrinkOption = {
   id: string;
   name: string;
   type: 'sugar' | 'temperature' | 'size' | 'custom' | 'checkbox';
+  /** Labels for select-style options; empty for checkbox-only options */
   values: string[];
   defaultValue?: string | boolean;
 };
