@@ -10,45 +10,84 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAppStore } from "@/store";
 import { Drink, DrinkOption } from "@/types";
-import { useState } from "react";
-import { generateId } from "@/lib/utils";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  mapDefinitionToDrinkOption,
+  type DrinkOptionDefinitionApi,
+} from "@/lib/drinkOptions";
+import { resolveMediaUrl } from "@/lib/imageUrl";
 
 interface DrinkFormProps {
   drink?: Drink | null;
   onSuccess?: () => void;
 }
 
-const optionSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, "Name is required"),
-  type: z.enum(["sugar", "temperature", "size", "custom", "checkbox"]),
-  values: z.array(z.string()).min(1, "At least one value is required"),
-});
-
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
   price: z.string().min(1, "Price is required"),
-  imageUrl: z
-    .string()
-    .optional()
-    .refine((val) => !val || val === "" || /^https?:\/\/.+/.test(val), "Must be a valid URL"),
-  availableOptions: z.array(optionSchema),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
+function idsFromDrink(drink: Drink | null | undefined): number[] {
+  if (!drink?.availableOptions?.length) return [];
+  return drink.availableOptions
+    .map((o) => Number.parseInt(o.id, 10))
+    .filter((n) => Number.isFinite(n));
+}
+
 export function DrinkForm({ drink, onSuccess }: DrinkFormProps) {
   const createDrinkApi = useAppStore((state) => state.createDrinkApi);
   const updateDrinkApi = useAppStore((state) => state.updateDrinkApi);
-  const [options, setOptions] = useState<DrinkOption[]>(
-    drink?.availableOptions || []
+  const uploadProductImage = useAppStore((state) => state.uploadProductImage);
+
+  const [catalog, setCatalog] = useState<DrinkOptionDefinitionApi[]>([]);
+  const [selectedDefIds, setSelectedDefIds] = useState<number[]>(() =>
+    idsFromDrink(drink)
   );
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  useEffect(() => {
+    setSelectedDefIds(idsFromDrink(drink));
+  }, [drink]);
+
+  useEffect(() => {
+    if (!apiUrl) return;
+    fetch(`${apiUrl}/api/drink-options`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) =>
+        setCatalog(Array.isArray(data) ? data : [])
+      )
+      .catch(() => setCatalog([]));
+  }, [apiUrl]);
+
+  useEffect(() => {
+    if (!catalog.length) return;
+    setSelectedDefIds((prev) =>
+      prev.filter((id) => catalog.some((c) => c.id === id))
+    );
+  }, [catalog]);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -56,76 +95,107 @@ export function DrinkForm({ drink, onSuccess }: DrinkFormProps) {
       name: drink?.name || "",
       description: drink?.description || "",
       price: drink?.price != null ? String(drink.price) : "",
-      imageUrl: drink?.imageUrl || "",
-      availableOptions: drink?.availableOptions || [],
     },
   });
 
+  const displayImageSrc = useMemo(() => {
+    if (previewUrl) return previewUrl;
+    return resolveMediaUrl(drink?.imageUrl);
+  }, [previewUrl, drink?.imageUrl]);
+
+  function toggleDefId(id: number) {
+    setSelectedDefIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function buildAvailableOptions(): DrinkOption[] {
+    const order = new Map(selectedDefIds.map((id, i) => [id, i]));
+    return catalog
+      .filter((d) => selectedDefIds.includes(d.id))
+      .sort(
+        (a, b) =>
+          (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)
+      )
+      .map(mapDefinitionToDrinkOption);
+  }
+
   async function onSubmit(values: FormValues) {
     const price = parseFloat(values.price.toString());
-    const payload = {
-      ...values,
-      price,
-      availableOptions: values.availableOptions,
-    };
+    if (Number.isNaN(price)) {
+      toast.error("Invalid price");
+      return;
+    }
+    const availableOptions = buildAvailableOptions();
     try {
       if (drink) {
         await updateDrinkApi(drink.id, {
-          name: payload.name,
-          description: payload.description,
-          price: payload.price,
-          imageUrl: payload.imageUrl?.trim() || undefined,
-          availableOptions: payload.availableOptions.map((o) => ({
-            ...o,
-            id: o.id || generateId(),
-          })),
+          name: values.name,
+          description: values.description,
+          price,
+          imageUrl: drink.imageUrl,
+          availableOptions,
         });
+        if (imageFile) {
+          await uploadProductImage(drink.id, imageFile);
+          setImageFile(null);
+        }
         onSuccess?.();
         toast.success("Drink updated");
       } else {
-        await createDrinkApi({
-          name: payload.name,
-          description: payload.description,
-          price: payload.price,
-          imageUrl: payload.imageUrl?.trim() || undefined,
-          availableOptions: payload.availableOptions.map((o) => ({
-            ...o,
-            id: o.id || generateId(),
-          })),
+        const created = await createDrinkApi({
+          name: values.name,
+          description: values.description,
+          price,
+          availableOptions,
         });
+        if (imageFile) {
+          await uploadProductImage(created.id, imageFile);
+          setImageFile(null);
+        }
         form.reset();
+        setSelectedDefIds([]);
         onSuccess?.();
         toast.success("Drink created");
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save drink";
+      const message =
+        err instanceof Error ? err.message : "Failed to save drink";
       toast.error(message);
     }
   }
 
-  const addOption = () => {
-    const newOption: DrinkOption = {
-      id: generateId(),
-      name: "",
-      type: "custom",
-      values: [""],
-    };
-    setOptions([...options, newOption]);
-  };
-
-  const removeOption = (id: string) => {
-    setOptions(options.filter((opt) => opt.id !== id));
-  };
-
-  const updateOption = (id: string, field: keyof DrinkOption, value: any) => {
-    setOptions(
-      options.map((opt) => (opt.id === id ? { ...opt, [field]: value } : opt))
-    );
-  };
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex gap-4 items-start">
+          <div className="relative h-24 w-24 rounded-md border bg-muted overflow-hidden shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={displayImageSrc}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="space-y-2 flex-1 min-w-0">
+            <FormLabel htmlFor="drink-image">Photo</FormLabel>
+            <Input
+              id="drink-image"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                setImageFile(f ?? null);
+                e.target.value = "";
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              JPEG, PNG, GIF, or Webp · max 5 MB. Saved after you submit the
+              form.
+            </p>
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="name"
@@ -165,29 +235,53 @@ export function DrinkForm({ drink, onSuccess }: DrinkFormProps) {
           )}
         />
 
-        {/* <FormField
-          control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Image URL (optional)</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-            </FormItem>
+        <div className="space-y-3">
+          <div>
+            <FormLabel>Options for this drink</FormLabel>
+            <FormDescription className="text-xs">
+              Create reusable options in the catalog above, then tick the ones
+              this drink should offer.
+            </FormDescription>
+          </div>
+          {!apiUrl ? (
+            <p className="text-sm text-muted-foreground">
+              API URL not configured; options cannot be loaded.
+            </p>
+          ) : catalog.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No catalog options yet. Add some in &quot;Reusable drink
+              options&quot; first.
+            </p>
+          ) : (
+            <div className="space-y-2 rounded-lg border p-3">
+              {catalog.map((def) => (
+                <div
+                  key={def.id}
+                  className="flex items-center space-x-2"
+                >
+                  <Checkbox
+                    id={`def-${def.id}`}
+                    checked={selectedDefIds.includes(def.id)}
+                    onCheckedChange={() => toggleDefId(def.id)}
+                  />
+                  <label
+                    htmlFor={`def-${def.id}`}
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    {def.name}
+                    <span className="text-muted-foreground font-normal">
+                      {" "}
+                      ({def.type === "checkbox" ? "checkbox" : "picklist"}
+                      {def.type === "select" && def.values.length
+                        ? ` · ${def.values.length} choices`
+                        : ""}
+                      )
+                    </span>
+                  </label>
+                </div>
+              ))}
+            </div>
           )}
-        /> */}
-
-        <div className="space-y-4 opacity-60 pointer-events-none select-none" aria-disabled="true">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">Options</h3>
-            <Button type="button" variant="outline" disabled>
-              Add Option
-            </Button>
-          </div>
-          <div className="p-4 border rounded-lg text-muted-foreground text-center">
-            Option management will be available soon.
-          </div>
         </div>
 
         <Button type="submit" className="w-full">

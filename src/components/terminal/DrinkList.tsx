@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { DrinkOrderForm } from "@/components/terminal/DrinkOrderForm";
 import { useEffect, useState } from "react";
+import { resolveMediaUrl } from "@/lib/imageUrl";
 
 function DrinkListSkeleton() {
   return (
@@ -71,8 +72,16 @@ export function DrinkList() {
             >
               <CardHeader>
                 <div className="flex items-center gap-4">
-                  <div>
-                    <CardTitle>{drink.name}</CardTitle>
+                  <div className="h-14 w-14 rounded-lg border bg-muted overflow-hidden shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={resolveMediaUrl(drink.imageUrl)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <CardTitle className="line-clamp-2">{drink.name}</CardTitle>
                     <CardDescription>${drink.price.toFixed(2)}</CardDescription>
                   </div>
                 </div>
