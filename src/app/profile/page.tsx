@@ -95,12 +95,6 @@ export default function ProfilePage() {
       fetchMyOrders()
     } else {
       setOrders([])
-      setUser(null);
-      localStorage.removeItem("token");
-      localStorage.removeItem("jwt");
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
-      window.dispatchEvent(new Event("auth:token"));
     }
   }, [hasToken, fetchMyOrders]);
 
