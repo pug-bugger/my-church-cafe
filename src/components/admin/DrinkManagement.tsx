@@ -24,11 +24,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DrinkForm } from "./DrinkForm";
+import { DrinkOptionManagement } from "./DrinkOptionManagement";
 import { Drink } from "@/types";
-import { Avatar } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
-import Image from "next/image";
+import { resolveMediaUrl } from "@/lib/imageUrl";
 
 function DrinkManagementSkeleton() {
   return (
@@ -37,7 +37,7 @@ function DrinkManagementSkeleton() {
         <Card key={i}>
           <CardHeader>
             <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-full shrink-0" />
+              <Skeleton className="h-16 w-16 rounded-md shrink-0" />
               <div className="space-y-2 flex-1">
                 <Skeleton className="h-5 w-24" />
                 <Skeleton className="h-4 w-12" />
@@ -72,6 +72,7 @@ export function DrinkManagement() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [drinkToDelete, setDrinkToDelete] = useState<Drink | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     loadDrinks();
@@ -93,10 +94,17 @@ export function DrinkManagement() {
 
   return (
     <div>
+      <DrinkOptionManagement />
+
       <div className="flex justify-end mb-6">
-        <Dialog>
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setSelectedDrink(null)}>
+            <Button
+              onClick={() => {
+                setSelectedDrink(null);
+                setAddOpen(true);
+              }}
+            >
               Add New Drink
             </Button>
           </DialogTrigger>
@@ -107,7 +115,13 @@ export function DrinkManagement() {
                 Fill out the drink details and save.
               </DialogDescription>
             </DialogHeader>
-            <DrinkForm drink={selectedDrink} />
+            <DrinkForm
+              drink={selectedDrink}
+              onSuccess={() => {
+                loadDrinks();
+                setAddOpen(false);
+              }}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -120,10 +134,14 @@ export function DrinkManagement() {
             <Card key={drink.id} className="relative">
               <CardHeader className="pb-2">
                 <div className="flex items-start gap-4">
-                  <Avatar>
-                    {/* <img src={drink.imageUrl} alt={drink.name} /> */}
-                    <Image src={drink.imageUrl || "/cup.svg"} alt={drink.name} width={32} height={32} />
-                  </Avatar>
+                  <div className="h-16 w-16 rounded-md border bg-muted overflow-hidden shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={resolveMediaUrl(drink.imageUrl)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                   <div className="min-w-0 flex-1 pr-20">
                     <CardTitle>{drink.name}</CardTitle>
                     <p className="text-sm text-muted-foreground">
@@ -158,6 +176,7 @@ export function DrinkManagement() {
                           onSuccess={() => {
                             setEditingId(null);
                             setSelectedDrink(null);
+                            loadDrinks();
                           }}
                         />
                       </DialogContent>
