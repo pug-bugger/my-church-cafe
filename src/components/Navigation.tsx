@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
+import { ModeToggle } from "@/components/mode-toggle";
 
 const BASE_LINKS = [
   { href: "/terminal", label: "Terminal", available: true, adminOnly: false },
@@ -20,7 +21,7 @@ export function Navigation() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [links, setLinks] = useState(BASE_LINKS);
   const [showOnOrders, setShowOnOrders] = useState(false);
-  const isOrdersPage = pathname === "/orders";
+  const isOrdersPage = false;//pathname === "/orders";
 
   const fetchUserRole = useCallback(async () => {
     const token =
@@ -108,62 +109,63 @@ export function Navigation() {
           if (isOrdersPage) setShowOnOrders(false);
         }}
       >
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-2 text-xl font-bold">
-              <img src="/cup.svg" alt="Church Cafe" className="w-8 h-8" />
-              Church Cafe
-            </Link>
-            <span className="ml-2 text-sm font-medium text-muted-foreground">
-              {pathname !== "/" && (
-                <>
-                  / {links.find((l) => l.href === pathname)?.label ?? pathname.replace(/^\//, "").charAt(0).toUpperCase() + pathname.slice(2)}
-                </>
-              )}
-            </span>
-          </div>
-
-          <div className="flex gap-4">
-            {visibleLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "text-sm font-medium transition-colors hover:text-primary rounded-md px-2 py-1",
-                  pathname === link.href
-                    ? "text-primary"
-                    : "text-muted-foreground",
-                  link.available ? "" : "bg-caution-stripes"
-                )}
-                style={disabledStyle(link)}
-                aria-disabled={!link.available}
-                onClick={(e) => {
-                  if (!link.available) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toast.info("This feature is not available yet.");
-                  }
-                }}
-                onDoubleClick={(e) => {
-                  if (!link.available) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setLinks((prev) =>
-                      prev.map((l) =>
-                        l.href === link.href ? { ...l, available: true } : l
-                      )
-                    );
-                    toast.success(`${link.label} unlocked`);
-                  }
-                }}
-              >
-                {link.label}
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2 text-xl font-bold">
+                <img src="/cup.svg" alt="Church Cafe" className="w-8 h-8" />
+                Church Cafe
               </Link>
-            ))}
+              <span className="ml-2 text-sm font-medium text-muted-foreground">
+                {pathname !== "/" && (
+                  <>
+                    / {links.find((l) => l.href === pathname)?.label ?? pathname.replace(/^\//, "").charAt(0).toUpperCase() + pathname.slice(2)}
+                  </>
+                )}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {visibleLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "text-sm font-medium transition-colors hover:text-primary rounded-md px-2 py-1",
+                    pathname === link.href
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                    link.available ? "" : "bg-caution-stripes"
+                  )}
+                  style={disabledStyle(link)}
+                  aria-disabled={!link.available}
+                  onClick={(e) => {
+                    if (!link.available) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toast.info("This feature is not available yet.");
+                    }
+                  }}
+                  onDoubleClick={(e) => {
+                    if (!link.available) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setLinks((prev) =>
+                        prev.map((l) =>
+                          l.href === link.href ? { ...l, available: true } : l
+                        )
+                      );
+                      toast.success(`${link.label} unlocked`);
+                    }
+                  }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <ModeToggle />
+            </div>
           </div>
         </div>
-      </div>
       </nav>
     </>
   );

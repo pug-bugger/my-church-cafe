@@ -91,8 +91,17 @@ export default function ProfilePage() {
   }, [apiUrl, hasToken]);
 
   useEffect(() => {
-    if (hasToken) fetchMyOrders();
-    else setOrders([]);
+    if (hasToken) {
+      fetchMyOrders()
+    } else {
+      setOrders([])
+      setUser(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("jwt");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+      window.dispatchEvent(new Event("auth:token"));
+    }
   }, [hasToken, fetchMyOrders]);
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {

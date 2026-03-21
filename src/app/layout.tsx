@@ -4,6 +4,7 @@ import "./globals.css";
 import { WebSocketProvider } from "@/context/WebSocketContext";
 import { Toaster } from "@/components/ui/sonner";
 import { Navigation } from "@/components/Navigation";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,16 +23,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head />
       <body className={inter.className}>
-        <WebSocketProvider>
-          <div className="min-h-screen bg-background flex flex-col overflow-hidden">
-            <Navigation />
-            <main className="flex-1 overflow-hidden relative">{children}</main>
-          </div>
-          <Toaster />
-        </WebSocketProvider>
+        <ThemeProvider>
+          <WebSocketProvider>
+            <div className="min-h-screen bg-background flex flex-col overflow-hidden">
+              <Navigation />
+              <main className="flex-1 overflow-hidden relative">{children}</main>
+            </div>
+            <Toaster />
+          </WebSocketProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -45,26 +45,26 @@ export function OrderList() {
   }, [fetchOrders, ordersRefreshKey]);
 
   const readyForPickup = orders.filter((o) => o.status === "ready");
-
-  const OrderNumberCup = ({ order }: { order: ServerOrder }) => (
-    <div className="relative flex items-center justify-center w-[300px] h-[300px] shrink-0">
-      <div
-        className="absolute inset-0 z-0 bg-contain bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/cup.svg')" }}
-      />
-      <div className="relative z-10 flex flex-col items-center justify-center pt-4 -mt-[50px] mr-[60px]">
-        <span className="text-8xl font-black tracking-tighter text-foreground">
-          {order.order_number ?? order.id}
-        </span>
-      </div>
-    </div>
-  );
+  const preparingOrders = orders.filter((o) => o.status !== "ready" && o.status !== "completed" && o.status !== "cancelled");
+  // const OrderNumberCup = ({ order }: { order: ServerOrder }) => (
+  //   <div className="relative flex items-center justify-center w-[300px] h-[300px] shrink-0">
+  //     <div
+  //       className="absolute inset-0 z-0 bg-contain bg-center bg-no-repeat"
+  //       style={{ backgroundImage: "url('/cup.svg')" }}
+  //     />
+  //     <div className="relative z-10 flex flex-col items-center justify-center pt-4 -mt-[50px] mr-[60px]">
+  //       <span className="text-8xl font-black tracking-tighter text-foreground">
+  //         {order.order_number ?? order.id}
+  //       </span>
+  //     </div>
+  //   </div>
+  // );
 
   return (
     <div className="space-y-4">
       {!isConnected && (
         <div className="text-center text-muted-foreground py-8">
-          ⚠️
+          ⚠️ Problem with connection to the server
         </div>
       )}
 
@@ -73,14 +73,43 @@ export function OrderList() {
           No orders yet
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 screen-full">
+        <div className="grid grid-cols-2 gap-6 screen-full">
           <div className="space-y-3 pt-6 md:pt-0 md:pl-6">
-            <h2 className="text-6xl font-semibold font-serif text-center pb-4">
-              👇 Ready to pick up 👇
+            <h2 className="text-4xl font-semibold  text-center pb-4 tracking-tight">
+              Preparing
             </h2>
-            <div className="flex flex-wrap gap-3 justify-center">
+            <div className="flex flex-wrap gap-5 justify-center">
+              {preparingOrders.map((order) => (
+                // <OrderNumberCup key={order.id} order={order} />
+                <Card key={order.id} className="h-full p-10">
+                  <CardHeader className="flex items-center justify-center p-6">
+                    <CardTitle className="text-8xl font-black tracking-tighter text-foreground">
+                      {order.order_number ?? order.id}
+                    </CardTitle>{" "}
+                  </CardHeader>
+                </Card>
+              ))}
+              {preparingOrders.length === 0 && (
+                <p className="text-muted-foreground text-center py-6">
+                  No orders ready for pickup
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-3 pt-6 md:pt-0 md:pl-6">
+            <h2 className="text-4xl font-semibold  text-center pb-4 tracking-tight">
+              Ready to pick up
+            </h2>
+            <div className="flex flex-wrap gap-5 justify-center">
               {readyForPickup.map((order) => (
-                <OrderNumberCup key={order.id} order={order} />
+                // <OrderNumberCup key={order.id} order={order} />
+                <Card key={order.id} className="h-full p-10">
+                  <CardHeader className="flex items-center justify-center p-6">
+                    <CardTitle className="text-8xl font-black tracking-tighter text-foreground">
+                      {order.order_number ?? order.id}
+                    </CardTitle>{" "}
+                  </CardHeader>
+                </Card>
               ))}
               {readyForPickup.length === 0 && (
                 <p className="text-muted-foreground text-center py-6">
