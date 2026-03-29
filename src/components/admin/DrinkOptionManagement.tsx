@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,7 +30,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { DrinkOptionDefinitionApi } from "@/lib/drinkOptions";
 import { toast } from "sonner";
-import { PlusIcon, Trash2 } from "lucide-react";
+import { ChevronDown, PlusIcon, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -46,8 +53,12 @@ export function DrinkOptionManagement() {
   const [valueRows, setValueRows] = useState<NewValueRow[]>([
     { label: "", extra_price: "0" },
   ]);
-  const [deleteTarget, setDeleteTarget] = useState<DrinkOptionDefinitionApi | null>(null);
-  const [newValueByDef, setNewValueByDef] = useState<Record<number, NewValueRow>>({});
+  const [deleteTarget, setDeleteTarget] =
+    useState<DrinkOptionDefinitionApi | null>(null);
+  const [newValueByDef, setNewValueByDef] = useState<
+    Record<number, NewValueRow>
+  >({});
+  const [expanded, setExpanded] = useState(true);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -89,9 +100,7 @@ export function DrinkOptionManagement() {
       return;
     }
     if (type === "select") {
-      const labels = valueRows
-        .map((r) => r.label.trim())
-        .filter(Boolean);
+      const labels = valueRows.map((r) => r.label.trim()).filter(Boolean);
       if (!labels.length) {
         toast.error("Add at least one choice for a picklist option");
         return;
@@ -146,7 +155,7 @@ export function DrinkOptionManagement() {
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -172,20 +181,17 @@ export function DrinkOptionManagement() {
       return;
     }
     try {
-      const res = await fetch(
-        `${apiUrl}/api/drink-options/${def.id}/values`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            label: row.label.trim(),
-            extra_price: Number(row.extra_price) || 0,
-          }),
-        }
-      );
+      const res = await fetch(`${apiUrl}/api/drink-options/${def.id}/values`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          label: row.label.trim(),
+          extra_price: Number(row.extra_price) || 0,
+        }),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? "Failed to add value");
       toast.success("Choice added");
@@ -206,10 +212,10 @@ export function DrinkOptionManagement() {
       return;
     }
     try {
-      const res = await fetch(
-        `${apiUrl}/api/drink-options/values/${valueId}`,
-        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch(`${apiUrl}/api/drink-options/values/${valueId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error ?? "Failed to delete");
@@ -224,12 +230,50 @@ export function DrinkOptionManagement() {
   if (!apiUrl) {
     return (
       <Card className="mb-8 border-dashed">
-        <CardHeader>
-          <CardTitle>Reusable drink options</CardTitle>
-          <CardDescription>
-            Set NEXT_PUBLIC_API_URL to manage catalog options.
-          </CardDescription>
+        <CardHeader className="space-y-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <CardTitle>Reusable drink options</CardTitle>
+              <CardDescription>
+                Set NEXT_PUBLIC_API_URL to manage catalog options.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              aria-expanded={expanded}
+              aria-label={expanded ? "Collapse section" : "Expand section"}
+              onClick={() => setExpanded((e) => !e)}
+            >
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform duration-300 ease-in-out motion-reduce:transition-none",
+                  expanded && "rotate-180",
+                )}
+              />
+            </Button>
+          </div>
         </CardHeader>
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none",
+            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          )}
+        >
+          <div
+            className={cn(
+              "min-h-0 overflow-hidden",
+              !expanded && "pointer-events-none",
+            )}
+            aria-hidden={!expanded}
+          >
+            <CardContent className="pt-0 text-sm text-muted-foreground">
+              Configure your API URL to enable this panel.
+            </CardContent>
+          </div>
+        </div>
       </Card>
     );
   }
@@ -237,225 +281,277 @@ export function DrinkOptionManagement() {
   return (
     <>
       <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Reusable drink options</CardTitle>
-          <CardDescription>
-            Create options here first (e.g. &quot;Take away&quot; checkbox or
-            &quot;Milk&quot; picklist), then attach them to drinks when editing a
-            product.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <form onSubmit={handleCreate} className="space-y-4 max-w-xl">
-            <div className="space-y-2">
-              <Label htmlFor="opt-name">Option label</Label>
-              <Input
-                id="opt-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Take away, Milk"
+        <CardHeader className="space-y-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <CardTitle>Reusable drink options</CardTitle>
+              <CardDescription>
+                Create options here first (e.g. &quot;Take away&quot; checkbox
+                or &quot;Milk&quot; picklist), then attach them to drinks when
+                editing a product.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              aria-expanded={expanded}
+              aria-controls="drink-option-management-content"
+              aria-label={expanded ? "Collapse section" : "Expand section"}
+              onClick={() => setExpanded((e) => !e)}
+            >
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform duration-300 ease-in-out motion-reduce:transition-none",
+                  expanded && "rotate-180",
+                )}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select
-                value={type}
-                onValueChange={(v) => setType(v as "checkbox" | "select")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="checkbox">Checkbox (on / off)</SelectItem>
-                  <SelectItem value="select">Picklist</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {type === "checkbox" && (
-              <div className="space-y-2">
-                <Label htmlFor="opt-chk-extra">Extra price when checked</Label>
-                <Input
-                  id="opt-chk-extra"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={checkboxExtra}
-                  onChange={(e) => setCheckboxExtra(e.target.value)}
-                />
-              </div>
+            </Button>
+          </div>
+        </CardHeader>
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none",
+            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          )}
+        >
+          <div
+            className={cn(
+              "min-h-0 overflow-hidden",
+              !expanded && "pointer-events-none",
             )}
-            {type === "select" && (
-              <div className="space-y-2">
-                <Label>Choices</Label>
-                {valueRows.map((row, i) => (
-                  <div key={i} className="flex gap-2 items-end">
+            aria-hidden={!expanded}
+          >
+            <CardContent
+              id="drink-option-management-content"
+              className="space-y-6"
+            >
+              <form onSubmit={handleCreate} className="space-y-4 max-w-xl">
+                <div className="space-y-2">
+                  <Label htmlFor="opt-name">Option label</Label>
+                  <Input
+                    id="opt-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Take away, Milk"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select
+                    value={type}
+                    onValueChange={(v) => setType(v as "checkbox" | "select")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="checkbox">
+                        Checkbox (on / off)
+                      </SelectItem>
+                      <SelectItem value="select">Picklist</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {type === "checkbox" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="opt-chk-extra">
+                      Extra price when checked
+                    </Label>
                     <Input
-                      placeholder="Label (e.g. Oat milk)"
-                      value={row.label}
-                      onChange={(e) => {
-                        const next = [...valueRows];
-                        next[i] = { ...next[i], label: e.target.value };
-                        setValueRows(next);
-                      }}
-                    />
-                    <Input
-                      className="w-28"
+                      id="opt-chk-extra"
                       type="number"
                       step="0.01"
-                      placeholder="Extra $"
-                      value={row.extra_price}
-                      onChange={(e) => {
-                        const next = [...valueRows];
-                        next[i] = { ...next[i], extra_price: e.target.value };
-                        setValueRows(next);
-                      }}
+                      min="0"
+                      value={checkboxExtra}
+                      onChange={(e) => setCheckboxExtra(e.target.value)}
                     />
-                    {valueRows.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          setValueRows(valueRows.filter((_, j) => j !== i))
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
                   </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  onClick={() =>
-                    setValueRows([...valueRows, { label: "", extra_price: "0" }])
-                  }
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Add choice
-                </Button>
-              </div>
-            )}
-            <Button type="submit">Create option</Button>
-          </form>
-
-          <div className="border-t pt-6">
-            <h3 className="text-sm font-medium mb-3">Catalog</h3>
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : list.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No options yet. Create one above.
-              </p>
-            ) : (
-              <ul className="space-y-4">
-                {list.map((def) => (
-                  <li
-                    key={def.id}
-                    className="rounded-lg border p-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-                  >
-                    <div>
-                      <p className="font-medium">{def.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {def.option_key} · {def.type}
-                        {def.type === "checkbox" &&
-                          def.checkbox_extra_price > 0 && (
-                            <span>
-                              {" "}
-                              · +${def.checkbox_extra_price.toFixed(2)} when on
-                            </span>
-                          )}
-                      </p>
-                      {def.type === "select" && def.values.length > 0 && (
-                        <ul className="mt-2 text-sm list-disc list-inside">
-                          {def.values.map((v) => (
-                            <li
-                              key={v.id}
-                              className="flex items-center gap-2 flex-wrap"
-                            >
-                              <span>
-                                {v.label}
-                                {v.extra_price > 0 && (
-                                  <span className="text-muted-foreground">
-                                    {" "}
-                                    (+${v.extra_price.toFixed(2)})
-                                  </span>
-                                )}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-destructive"
-                                onClick={() => removeValue(v.id)}
-                              >
-                                Remove
-                              </Button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {def.type === "select" && (
-                        <div className="mt-3 flex flex-wrap gap-2 items-end">
-                          <Input
-                            placeholder="New choice label"
-                            className="max-w-xs"
-                            value={newValueByDef[def.id]?.label ?? ""}
-                            onChange={(e) =>
-                              setNewValueByDef((prev) => ({
-                                ...prev,
-                                [def.id]: {
-                                  extra_price:
-                                    prev[def.id]?.extra_price ?? "0",
-                                  label: e.target.value,
-                                },
-                              }))
-                            }
-                          />
-                          <Input
-                            className="w-24"
-                            type="number"
-                            step="0.01"
-                            placeholder="Extra"
-                            value={newValueByDef[def.id]?.extra_price ?? "0"}
-                            onChange={(e) =>
-                              setNewValueByDef((prev) => ({
-                                ...prev,
-                                [def.id]: {
-                                  label: prev[def.id]?.label ?? "",
-                                  extra_price: e.target.value,
-                                },
-                              }))
-                            }
-                          />
+                )}
+                {type === "select" && (
+                  <div className="space-y-2">
+                    <Label>Choices</Label>
+                    {valueRows.map((row, i) => (
+                      <div key={i} className="flex gap-2 items-end">
+                        <Input
+                          placeholder="Label (e.g. Oat milk)"
+                          value={row.label}
+                          onChange={(e) => {
+                            const next = [...valueRows];
+                            next[i] = { ...next[i], label: e.target.value };
+                            setValueRows(next);
+                          }}
+                        />
+                        <Input
+                          className="w-28"
+                          type="number"
+                          step="0.01"
+                          placeholder="Extra $"
+                          value={row.extra_price}
+                          onChange={(e) => {
+                            const next = [...valueRows];
+                            next[i] = {
+                              ...next[i],
+                              extra_price: e.target.value,
+                            };
+                            setValueRows(next);
+                          }}
+                        />
+                        {valueRows.length > 1 && (
                           <Button
                             type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => addValueToDefinition(def)}
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setValueRows(valueRows.filter((_, j) => j !== i))
+                            }
                           >
-                            Add choice
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    ))}
                     <Button
                       type="button"
                       variant="outline"
-                      size="icon"
-                      className="text-destructive shrink-0"
-                      onClick={() => setDeleteTarget(def)}
+                      size="sm"
+                      className="gap-1"
+                      onClick={() =>
+                        setValueRows([
+                          ...valueRows,
+                          { label: "", extra_price: "0" },
+                        ])
+                      }
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <PlusIcon className="h-4 w-4" />
+                      Add choice
                     </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  </div>
+                )}
+                <Button type="submit">Create option</Button>
+              </form>
+
+              <div className="border-t pt-6">
+                <h3 className="text-sm font-medium mb-3">Catalog</h3>
+                {loading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : list.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No options yet. Create one above.
+                  </p>
+                ) : (
+                  <ul className="space-y-4">
+                    {list.map((def) => (
+                      <li
+                        key={def.id}
+                        className="rounded-lg border p-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                      >
+                        <div>
+                          <p className="font-medium">{def.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {def.option_key} · {def.type}
+                            {def.type === "checkbox" &&
+                              def.checkbox_extra_price > 0 && (
+                                <span>
+                                  {" "}
+                                  · +${def.checkbox_extra_price.toFixed(2)} when
+                                  on
+                                </span>
+                              )}
+                          </p>
+                          {def.type === "select" && def.values.length > 0 && (
+                            <ul className="mt-2 text-sm list-disc list-inside">
+                              {def.values.map((v) => (
+                                <li
+                                  key={v.id}
+                                  className="flex items-center gap-2 flex-wrap"
+                                >
+                                  <span>
+                                    {v.label}
+                                    {v.extra_price > 0 && (
+                                      <span className="text-muted-foreground">
+                                        {" "}
+                                        (+${v.extra_price.toFixed(2)})
+                                      </span>
+                                    )}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-destructive"
+                                    onClick={() => removeValue(v.id)}
+                                  >
+                                    Remove
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {def.type === "select" && (
+                            <div className="mt-3 flex flex-wrap gap-2 items-end">
+                              <Input
+                                placeholder="New choice label"
+                                className="max-w-xs"
+                                value={newValueByDef[def.id]?.label ?? ""}
+                                onChange={(e) =>
+                                  setNewValueByDef((prev) => ({
+                                    ...prev,
+                                    [def.id]: {
+                                      extra_price:
+                                        prev[def.id]?.extra_price ?? "0",
+                                      label: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                              <Input
+                                className="w-24"
+                                type="number"
+                                step="0.01"
+                                placeholder="Extra"
+                                value={
+                                  newValueByDef[def.id]?.extra_price ?? "0"
+                                }
+                                onChange={(e) =>
+                                  setNewValueByDef((prev) => ({
+                                    ...prev,
+                                    [def.id]: {
+                                      label: prev[def.id]?.label ?? "",
+                                      extra_price: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => addValueToDefinition(def)}
+                              >
+                                Add choice
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="text-destructive shrink-0"
+                          onClick={() => setDeleteTarget(def)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </CardContent>
           </div>
-        </CardContent>
+        </div>
       </Card>
 
       <AlertDialog

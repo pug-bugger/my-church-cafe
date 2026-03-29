@@ -97,6 +97,7 @@ export function CurrentOrder() {
     const orderItemsPayload = draftItems.map((item) => ({
       quantity: item.quantity,
       productId: resolveProductId(item.drinkId),
+      selectedOptions: item.selectedOptions,
     }));
     const missing = orderItemsPayload.find((item) => !item.productId);
     if (missing) {
