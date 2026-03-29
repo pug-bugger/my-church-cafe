@@ -35,6 +35,13 @@ export type OrderStatus =
   | 'cancelled'
   | 'completed';
 
+/** One saved drink option on a line item (from API: order_item_options). */
+export type ServerOrderItemOption = {
+  id: number;
+  option_definition_name: string | null;
+  option_value_name: string | null;
+};
+
 export type ServerOrderItem = {
   id: number;
   order_id: number;
@@ -42,6 +49,7 @@ export type ServerOrderItem = {
   quantity: number;
   price: number | null;
   product_item_name: string | null;
+  product_item_options?: ServerOrderItemOption[];
 };
 
 export type ServerOrder = {
