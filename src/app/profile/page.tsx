@@ -11,6 +11,8 @@ import {
   Bar,
   BarChart,
   Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -40,6 +42,53 @@ function formatDate(dateStr: string) {
     month: "short",
     day: "numeric",
   });
+}
+
+type TopProductRow = { name: string; total: number };
+
+const CHART_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
+function TopProductsPieChart({ data }: { data: TopProductRow[] }) {
+  const slice = data.slice(0, 8);
+  return (
+    <div className="h-[320px] w-full min-h-[280px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+          <Tooltip
+            formatter={(value, name) => [`×${value ?? 0}`, name]}
+            contentStyle={{ borderRadius: "var(--radius)" }}
+          />
+          <Pie
+            data={slice}
+            dataKey="total"
+            nameKey="name" 
+            cx="50%"
+            cy="50%"
+            innerRadius={48}
+            outerRadius={100}
+            paddingAngle={2}
+            stroke="var(--border)"
+            strokeWidth={1}
+            label={({ name, value }) => `${name}: ×${value ?? 0}`}
+            labelLine={{ stroke: "var(--muted-foreground)" }}
+          >
+            {slice.map((_, i) => (
+              <Cell
+                key={i}
+                fill={CHART_COLORS[i % CHART_COLORS.length]}
+              />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }
 
 export default function ProfilePage() {
@@ -162,6 +211,38 @@ export default function ProfilePage() {
       .sort((a, b) => b.total - a.total);
   }, [orders]);
 
+  const { previousMonthLabel, topProductsLastMonth } = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+    const label = start.toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+    const byName = new Map<string, number>();
+    for (const order of orders) {
+      const t = new Date(order.created_at);
+      if (t < start || t > end) continue;
+      for (const item of order.items) {
+        const name = item.product_item_name ?? "Unknown";
+        byName.set(name, (byName.get(name) ?? 0) + item.quantity);
+      }
+    }
+    const list = Array.from(byName.entries())
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total);
+    return { previousMonthLabel: label, topProductsLastMonth: list };
+  }, [orders]);
+
   const ordersByDate = useMemo(() => {
     const byDate = new Map<string, { count: number; date: string }>();
     for (const order of orders) {
@@ -205,14 +286,6 @@ export default function ProfilePage() {
       totalSpent: Number(totalSpent),
     };
   }, [orders]);
-
-  const chartColors = [
-    "hsl(var(--chart-1))",
-    "hsl(var(--chart-2))",
-    "hsl(var(--chart-3))",
-    "hsl(var(--chart-4))",
-    "hsl(var(--chart-5))",
-  ];
 
   return (
     <div className="container mx-auto py-10 max-w-2xl space-y-8 md:max-w-4xl">
@@ -330,52 +403,42 @@ export default function ProfilePage() {
                 </Card>
               </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Most ordered products</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Your top items by quantity ordered
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  {topProducts.length === 0 ? (
-                    <p className="text-muted-foreground text-sm py-8 text-center">
-                      No orders yet. Order from the Terminal to see your top products here.
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Most ordered products</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Your top items by quantity ordered (all time)
                     </p>
-                  ) : (
-                    <div className="h-[280px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={topProducts.slice(0, 8)}
-                          layout="vertical"
-                          margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
-                        >
-                          <XAxis type="number" tickLine={false} />
-                          <YAxis
-                            type="category"
-                            dataKey="name"
-                            width={100}
-                            tick={{ fontSize: 12 }}
-                            tickLine={false}
-                          />
-                          <Tooltip
-                            formatter={(value) => [`×${value ?? 0}`, "Quantity"]}
-                            contentStyle={{ borderRadius: "var(--radius)" }}
-                          />
-                          <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={24}>
-                            {topProducts.slice(0, 8).map((_, i) => (
-                              <Cell
-                                key={i}
-                                fill={chartColors[i % chartColors.length]}
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent>
+                    {topProducts.length === 0 ? (
+                      <p className="text-muted-foreground text-sm py-8 text-center">
+                        No orders yet. Order from the Terminal to see your top products here.
+                      </p>
+                    ) : (
+                      <TopProductsPieChart data={topProducts} />
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Last month</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Top products in {previousMonthLabel}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {topProductsLastMonth.length === 0 ? (
+                      <p className="text-muted-foreground text-sm py-8 text-center">
+                        No orders in {previousMonthLabel}.
+                      </p>
+                    ) : (
+                      <TopProductsPieChart data={topProductsLastMonth} />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
               <Card>
                 <CardHeader>
@@ -413,7 +476,7 @@ export default function ProfilePage() {
                           />
                           <Bar
                             dataKey="count"
-                            fill="hsl(var(--primary))"
+                            fill="var(--primary)"
                             radius={[4, 4, 0, 0]}
                             maxBarSize={32}
                           />

@@ -5,7 +5,7 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { OrderStatus } from "@/types";
+import type { OrderStatus, ServerOrder } from "@/types";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -90,20 +90,7 @@ export function OrderQueue() {
     }
   };
 
-  const OrderCard = ({
-    order,
-  }: {
-    order: {
-      id: number;
-      status: OrderStatus;
-      order_number?: number;
-      items: {
-        id: number;
-        product_item_name: string | null;
-        quantity: number;
-      }[];
-    };
-  }) => (
+  const OrderCard = ({ order }: { order: ServerOrder }) => (
     <Card key={order.id} className="mb-4">
       <CardHeader>
         <CardTitle># {order.order_number ?? order.id}</CardTitle>
@@ -115,6 +102,21 @@ export function OrderQueue() {
               <div className="font-medium">
                 {item.product_item_name ?? "Item"} × {item.quantity}
               </div>
+              {(item.product_item_options?.length ?? 0) > 0 && (
+                <ul className="mt-1.5 text-sm text-muted-foreground space-y-0.5 list-none pl-0">
+                  {(item.product_item_options ?? []).map((option) => (
+                    <li key={option.id} className="flex flex-wrap gap-x-1">
+                      <span className="font-medium text-foreground/80">
+                        {option.option_definition_name ?? "Option"}
+                      </span>
+                      {option.option_value_name != null &&
+                        String(option.option_value_name).length > 0 && (
+                          <span>: {option.option_value_name}</span>
+                        )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
           {order.items.length === 0 && (
