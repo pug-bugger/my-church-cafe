@@ -134,7 +134,7 @@ export function DrinkManagement() {
             <Card key={drink.id} className="relative">
               <CardHeader className="pb-2">
                 <div className="flex items-start gap-4">
-                  <div className="h-16 w-16 rounded-md border bg-muted overflow-hidden shrink-0">
+                  <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={resolveMediaUrl(drink.imageUrl)}
