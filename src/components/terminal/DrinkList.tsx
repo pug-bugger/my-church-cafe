@@ -72,7 +72,7 @@ export function DrinkList() {
             >
               <CardHeader>
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-lg border bg-muted overflow-hidden shrink-0">
+                  <div className="h-14 w-14 rounded-lg border overflow-hidden shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={resolveMediaUrl(drink.imageUrl)}
