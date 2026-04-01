@@ -19,6 +19,7 @@ import {
   YAxis,
 } from "recharts";
 import type { ServerOrder } from "@/types";
+import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 
 type LoginResponse = {
   token?: string;
@@ -486,6 +487,14 @@ export default function ProfilePage() {
                   )}
                 </CardContent>
               </Card>
+
+              <OrdersDataTable
+                orders={orders}
+                loading={ordersLoading}
+                showUserColumns={false}
+                title="Your orders data"
+                description="Line items from your orders. Default range is the last 30 days; change dates, sort, group, and export."
+              />
             </>
           )}
         </div>

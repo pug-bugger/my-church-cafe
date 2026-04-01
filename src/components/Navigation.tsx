@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
+import SvgIcon from "./SvgIcon";
 
 const BASE_LINKS = [
   { href: "/terminal", label: "Terminal", available: true, adminOnly: false },

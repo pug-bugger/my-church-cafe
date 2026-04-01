@@ -58,7 +58,7 @@ export function DrinkOptionManagement() {
   const [newValueByDef, setNewValueByDef] = useState<
     Record<number, NewValueRow>
   >({});
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
