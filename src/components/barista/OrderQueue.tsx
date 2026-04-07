@@ -176,7 +176,7 @@ export function OrderQueue() {
       {!isConnected && (
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>
-            Not connected to server. Order updates may not sync in real-time.
+            Login required to update order status.
           </AlertDescription>
         </Alert>
       )}
