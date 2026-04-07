@@ -68,7 +68,7 @@ function TopProductsPieChart({ data }: { data: TopProductRow[] }) {
           <Pie
             data={slice}
             dataKey="total"
-            nameKey="name" 
+            nameKey="name"
             cx="50%"
             cy="50%"
             innerRadius={48}
@@ -115,10 +115,20 @@ export default function ProfilePage() {
     return Boolean(token);
   }, []);
 
-  // test 2
   useEffect(() => {
     fetchToken();
   }, [fetchToken]);
+
+  const clearAuthSession = useCallback(() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("jwt");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+    window.dispatchEvent(new Event("auth:token"));
+    setHasToken(false);
+    setUser(null);
+    setOrders([]);
+  }, []);
 
   const fetchMyOrders = useCallback(async () => {
     if (!apiUrl || !hasToken) return;
@@ -136,6 +146,7 @@ export default function ProfilePage() {
       setOrders(Array.isArray(data) ? data : []);
     } catch {
       setOrders([]);
+      clearAuthSession();
     } finally {
       setOrdersLoading(false);
     }
@@ -189,13 +200,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("jwt");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    window.dispatchEvent(new Event("auth:token"));
-    setHasToken(false);
-    setOrders([]);
+    clearAuthSession();
     toast.success("Logged out");
   };
 
