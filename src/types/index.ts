@@ -52,6 +52,16 @@ export type ServerOrderItem = {
   product_item_options?: ServerOrderItemOption[];
 };
 
+/** User row from `/api/users` or `/api/users/me` */
+export type ServerUser = {
+  id: number;
+  name: string;
+  email: string;
+  picture_url: string | null;
+  role: string | null;
+  created_at?: string;
+};
+
 export type ServerOrder = {
   id: number;
   order_number?: number;
