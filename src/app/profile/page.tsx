@@ -18,10 +18,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ServerOrder } from "@/types";
+import type { ServerOrder, ServerUser } from "@/types";
 import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
+import { cn } from "@/lib/utils";
 
 type SessionUser = {
   id: number;
@@ -110,6 +111,8 @@ export default function ProfilePage() {
   const [hasToken, setHasToken] = useState(false);
   const [orders, setOrders] = useState<ServerOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [directoryUsers, setDirectoryUsers] = useState<ServerUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
 
@@ -186,6 +189,7 @@ export default function ProfilePage() {
     setHasToken(false);
     setUser(null);
     setOrders([]);
+    setDirectoryUsers([]);
   }, []);
 
   const showStaffOrderDashboard = useMemo(
@@ -193,35 +197,107 @@ export default function ProfilePage() {
     [user?.role]
   );
 
-  const fetchMyOrders = useCallback(async () => {
+  const isAdminDashboard = user?.role === "admin";
+
+  const readStoredRole = useCallback((): string | null => {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    try {
+      const r = JSON.parse(raw) as { role?: string };
+      return r.role ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const fetchDashboardOrders = useCallback(async () => {
     if (!apiUrl || !hasToken) return;
+    const adminView = readStoredRole() === "admin";
     setOrdersLoading(true);
     try {
       const token =
         localStorage.getItem("token") ??
         localStorage.getItem("jwt") ??
         localStorage.getItem("accessToken");
-      const response = await fetch(`${apiUrl}/api/orders/me`, {
+      const path = adminView ? "/api/orders" : "/api/orders/me";
+      const response = await fetch(`${apiUrl}${path}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error("Failed to load orders");
+      if (response.status === 401) {
+        clearAuthSession();
+        return;
+      }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(
+          typeof data?.error === "string" ? data.error : "Failed to load orders"
+        );
+      }
       const data = await response.json();
       setOrders(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
       setOrders([]);
-      clearAuthSession();
+      toast.error(
+        err instanceof Error ? err.message : "Unable to load orders"
+      );
     } finally {
       setOrdersLoading(false);
+    }
+  }, [apiUrl, hasToken, readStoredRole, clearAuthSession]);
+
+  const fetchDirectoryUsers = useCallback(async () => {
+    if (!apiUrl || !hasToken) return;
+    setUsersLoading(true);
+    try {
+      const token =
+        localStorage.getItem("token") ??
+        localStorage.getItem("jwt") ??
+        localStorage.getItem("accessToken");
+      const response = await fetch(`${apiUrl}/api/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.status === 401) {
+        clearAuthSession();
+        return;
+      }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(
+          typeof data?.error === "string" ? data.error : "Failed to load users"
+        );
+      }
+      const data = await response.json();
+      setDirectoryUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setDirectoryUsers([]);
+      toast.error(
+        err instanceof Error ? err.message : "Unable to load user directory"
+      );
+    } finally {
+      setUsersLoading(false);
     }
   }, [apiUrl, hasToken, clearAuthSession]);
 
   useEffect(() => {
-    if (!hasToken || !showStaffOrderDashboard) {
+    if (!hasToken || !showStaffOrderDashboard || !user) {
       setOrders([]);
+      setDirectoryUsers([]);
       return;
     }
-    void fetchMyOrders();
-  }, [hasToken, showStaffOrderDashboard, fetchMyOrders]);
+    void fetchDashboardOrders();
+    if (user.role === "admin") {
+      void fetchDirectoryUsers();
+    } else {
+      setDirectoryUsers([]);
+    }
+  }, [
+    hasToken,
+    showStaffOrderDashboard,
+    user?.id,
+    user?.role,
+    fetchDashboardOrders,
+    fetchDirectoryUsers,
+  ]);
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -259,12 +335,6 @@ export default function ProfilePage() {
       }
       setHasToken(true);
       toast.success("Logged in");
-      if (
-        loggedIn &&
-        (loggedIn.role === "admin" || loggedIn.role === "personal")
-      ) {
-        void fetchMyOrders();
-      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to login. Try again."
@@ -440,7 +510,12 @@ export default function ProfilePage() {
   }, [orders]);
 
   return (
-    <div className="container mx-auto py-10 max-w-2xl space-y-8 md:max-w-4xl">
+    <div
+      className={cn(
+        "container mx-auto py-10 max-w-2xl space-y-8 md:max-w-4xl",
+        isAdminDashboard && "xl:max-w-6xl"
+      )}
+    >
       <Card>
         <CardHeader>
           <CardTitle>Profile <span className="text-muted-foreground text-sm">{user?.role ? `(${user.role})` : ''}</span></CardTitle>
@@ -548,17 +623,33 @@ export default function ProfilePage() {
 
       {hasToken && showStaffOrderDashboard && (
         <div className="space-y-6">
-          <h2 className="text-xl font-semibold">Your dashboard</h2>
+          <div>
+            <h2 className="text-xl font-semibold">
+              {isAdminDashboard ? "Admin dashboard" : "Your dashboard"}
+            </h2>
+            {isAdminDashboard && (
+              <p className="text-sm text-muted-foreground mt-1">
+                All orders, revenue, and user accounts across the cafe.
+              </p>
+            )}
+          </div>
 
-          {ordersLoading ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
+          {ordersLoading && !orders.length ? (
+            <p className="text-muted-foreground text-sm">Loading orders…</p>
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div
+                className={cn(
+                  "grid gap-4",
+                  isAdminDashboard
+                    ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
+                    : "grid-cols-2 md:grid-cols-4"
+                )}
+              >
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total orders
+                      {isAdminDashboard ? "Orders (all users)" : "Total orders"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -568,7 +659,7 @@ export default function ProfilePage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total items
+                      {isAdminDashboard ? "Items sold (all)" : "Total items"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -588,7 +679,7 @@ export default function ProfilePage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Total spent
+                      {isAdminDashboard ? "Revenue (all orders)" : "Total spent"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -597,20 +688,85 @@ export default function ProfilePage() {
                     </p>
                   </CardContent>
                 </Card>
+                {isAdminDashboard && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Registered users
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold tabular-nums">
+                        {usersLoading ? "…" : directoryUsers.length}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
+
+              {isAdminDashboard && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>User directory</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Everyone with an account (name, email, role).
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {usersLoading && directoryUsers.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">Loading users…</p>
+                    ) : directoryUsers.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No users found.</p>
+                    ) : (
+                      <div className="rounded-md border overflow-x-auto max-h-[320px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b bg-muted/50 text-left">
+                              <th className="p-3 font-medium">Name</th>
+                              <th className="p-3 font-medium">Email</th>
+                              <th className="p-3 font-medium">Role</th>
+                              <th className="p-3 font-medium hidden sm:table-cell">
+                                Joined
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {directoryUsers.map((u) => (
+                              <tr key={u.id} className="border-b last:border-0">
+                                <td className="p-3 font-medium">{u.name}</td>
+                                <td className="p-3 text-muted-foreground">{u.email}</td>
+                                <td className="p-3 capitalize">{u.role ?? "—"}</td>
+                                <td className="p-3 text-muted-foreground hidden sm:table-cell">
+                                  {u.created_at
+                                    ? new Date(u.created_at).toLocaleDateString()
+                                    : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardHeader>
                     <CardTitle>Most ordered products</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Your top items by quantity ordered (all time)
+                      {isAdminDashboard
+                        ? "Top items by quantity across all orders (all time)"
+                        : "Your top items by quantity ordered (all time)"}
                     </p>
                   </CardHeader>
                   <CardContent>
                     {topProducts.length === 0 ? (
                       <p className="text-muted-foreground text-sm py-8 text-center">
-                        No orders yet. Order from the Terminal to see your top products here.
+                        {isAdminDashboard
+                          ? "No orders yet."
+                          : "No orders yet. Order from the Terminal to see your top products here."}
                       </p>
                     ) : (
                       <TopProductsPieChart data={topProducts} />
@@ -621,7 +777,9 @@ export default function ProfilePage() {
                   <CardHeader>
                     <CardTitle>Last month</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Top products in {previousMonthLabel}
+                      {isAdminDashboard
+                        ? `Top products in ${previousMonthLabel} (all orders)`
+                        : `Top products in ${previousMonthLabel}`}
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -640,7 +798,9 @@ export default function ProfilePage() {
                 <CardHeader>
                   <CardTitle>Orders by date</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Last 14 days
+                    {isAdminDashboard
+                      ? "Last 14 days — count of all orders per day"
+                      : "Last 14 days"}
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -686,9 +846,15 @@ export default function ProfilePage() {
               <OrdersDataTable
                 orders={orders}
                 loading={ordersLoading}
-                showUserColumns={false}
-                title="Your orders data"
-                description="Line items from your orders. Default range is the last 30 days; change dates, sort, group, and export."
+                showUserColumns={isAdminDashboard}
+                title={
+                  isAdminDashboard ? "All orders — line items" : "Your orders data"
+                }
+                description={
+                  isAdminDashboard
+                    ? "Every customer’s line items. Default range is the last 30 days; filter, sort, group, and export."
+                    : "Line items from your orders. Default range is the last 30 days; change dates, sort, group, and export."
+                }
               />
             </>
           )}
