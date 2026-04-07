@@ -7,6 +7,7 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import type { ServerOrder } from "@/types";
+import { Spinner } from "../ui/spinner";
 
 export function OrderList() {
   const orders = useAppStore((state) => state.orders);
@@ -64,7 +65,7 @@ export function OrderList() {
     <div className="space-y-4">
       {!isConnected && (
         <div className="text-center text-muted-foreground py-8">
-          ⚠️ Problem with connection to the server
+          <Spinner className="mx-auto" />
         </div>
       )}
 

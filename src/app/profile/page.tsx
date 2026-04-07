@@ -20,12 +20,22 @@ import {
 } from "recharts";
 import type { ServerOrder } from "@/types";
 import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolveMediaUrl } from "@/lib/imageUrl";
+
+type SessionUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  picture_url?: string | null;
+};
 
 type LoginResponse = {
   token?: string;
   accessToken?: string;
   data?: { token?: string; accessToken?: string };
-  user?: { id: number; name: string; email: string; role: string };
+  user?: SessionUser;
 };
 
 const getTokenFromResponse = (data: LoginResponse): string | undefined =>
@@ -100,7 +110,8 @@ export default function ProfilePage() {
   const [hasToken, setHasToken] = useState(false);
   const [orders, setOrders] = useState<ServerOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [user, setUser] = useState<{ id: number; name: string; email: string; role: string } | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
@@ -110,14 +121,61 @@ export default function ProfilePage() {
       localStorage.getItem("jwt") ??
       localStorage.getItem("accessToken");
     setHasToken(Boolean(token));
-    const user = localStorage.getItem("user");
-    if (user) setUser(JSON.parse(user));
+    const raw = localStorage.getItem("user");
+    if (raw) {
+      try {
+        setUser(JSON.parse(raw) as SessionUser);
+      } catch {
+        setUser(null);
+      }
+    } else setUser(null);
     return Boolean(token);
   }, []);
+
+  const persistUser = useCallback((next: SessionUser) => {
+    setUser(next);
+    localStorage.setItem("user", JSON.stringify(next));
+    window.dispatchEvent(new Event("auth:token"));
+  }, []);
+
+  const syncProfileFromApi = useCallback(async () => {
+    if (!apiUrl || !hasToken) return;
+    const token =
+      localStorage.getItem("token") ??
+      localStorage.getItem("jwt") ??
+      localStorage.getItem("accessToken");
+    if (!token) return;
+    try {
+      const response = await fetch(`${apiUrl}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const me = (await response.json()) as {
+        id: number;
+        name: string;
+        email: string;
+        role: string | null;
+        picture_url?: string | null;
+      };
+      persistUser({
+        id: me.id,
+        name: me.name,
+        email: me.email,
+        role: me.role || "parishioner",
+        picture_url: me.picture_url ?? null,
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [apiUrl, hasToken, persistUser]);
 
   useEffect(() => {
     fetchToken();
   }, [fetchToken]);
+
+  useEffect(() => {
+    if (hasToken) syncProfileFromApi();
+  }, [hasToken, syncProfileFromApi]);
 
   const clearAuthSession = useCallback(() => {
     localStorage.removeItem("token");
@@ -129,6 +187,11 @@ export default function ProfilePage() {
     setUser(null);
     setOrders([]);
   }, []);
+
+  const showStaffOrderDashboard = useMemo(
+    () => user?.role === "admin" || user?.role === "personal",
+    [user?.role]
+  );
 
   const fetchMyOrders = useCallback(async () => {
     if (!apiUrl || !hasToken) return;
@@ -150,15 +213,15 @@ export default function ProfilePage() {
     } finally {
       setOrdersLoading(false);
     }
-  }, [apiUrl, hasToken]);
+  }, [apiUrl, hasToken, clearAuthSession]);
 
   useEffect(() => {
-    if (hasToken) {
-      fetchMyOrders()
-    } else {
-      setOrders([])
+    if (!hasToken || !showStaffOrderDashboard) {
+      setOrders([]);
+      return;
     }
-  }, [hasToken, fetchMyOrders]);
+    void fetchMyOrders();
+  }, [hasToken, showStaffOrderDashboard, fetchMyOrders]);
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -182,14 +245,26 @@ export default function ProfilePage() {
         );
       }
       const token = getTokenFromResponse(data);
-      const user = data.user;
+      const loggedIn = data.user;
       if (!token) throw new Error("Login succeeded but no token was returned.");
       localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-      window.dispatchEvent(new Event("auth:token"));
+      if (loggedIn) {
+        persistUser({
+          ...loggedIn,
+          picture_url: loggedIn.picture_url ?? null,
+        });
+      } else {
+        setUser(null);
+        window.dispatchEvent(new Event("auth:token"));
+      }
       setHasToken(true);
       toast.success("Logged in");
-      fetchMyOrders();
+      if (
+        loggedIn &&
+        (loggedIn.role === "admin" || loggedIn.role === "personal")
+      ) {
+        void fetchMyOrders();
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to login. Try again."
@@ -203,6 +278,77 @@ export default function ProfilePage() {
     clearAuthSession();
     toast.success("Logged out");
   };
+
+  function profileInitials(name: string) {
+    return name
+      .split(/\s+/)
+      .map((p) => p[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
+  }
+
+  async function handleProfilePhoto(file: File) {
+    if (!apiUrl || !user) return;
+    const token =
+      localStorage.getItem("token") ??
+      localStorage.getItem("jwt") ??
+      localStorage.getItem("accessToken");
+    if (!token) return;
+    setPhotoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const response = await fetch(`${apiUrl}/api/users/me/image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = (await response.json()) as { picture_url?: string; error?: string };
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Upload failed");
+      }
+      const url = data.picture_url;
+      if (typeof url === "string") {
+        persistUser({ ...user, picture_url: url });
+        toast.success("Profile photo updated");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  async function handleRemoveProfilePhoto() {
+    if (!apiUrl || !user) return;
+    const token =
+      localStorage.getItem("token") ??
+      localStorage.getItem("jwt") ??
+      localStorage.getItem("accessToken");
+    if (!token) return;
+    setPhotoUploading(true);
+    try {
+      const response = await fetch(`${apiUrl}/api/users/me`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ picture_url: null }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Could not remove photo");
+      }
+      persistUser({ ...user, picture_url: null });
+      toast.success("Profile photo removed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not remove photo");
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
 
   const topProducts = useMemo(() => {
     const byName = new Map<string, number>();
@@ -297,7 +443,7 @@ export default function ProfilePage() {
     <div className="container mx-auto py-10 max-w-2xl space-y-8 md:max-w-4xl">
       <Card>
         <CardHeader>
-          <CardTitle>Profile <span className="text-muted-foreground text-sm">({user?.role})</span></CardTitle>
+          <CardTitle>Profile <span className="text-muted-foreground text-sm">{user?.role ? `(${user.role})` : ''}</span></CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!apiUrl && (
@@ -341,22 +487,66 @@ export default function ProfilePage() {
               </Button>
             </form>
           ) : (
-            <div className="space-y-4">
-              <p className="text-muted-foreground text-sm">
-                <span className="font-medium">Name:</span> {user?.name}
-              </p>
-              <p className="text-muted-foreground text-sm">
-                <span className="font-medium">Email:</span> {user?.email}
-              </p>
-              <Button variant="secondary" onClick={handleLogout}>
-                Log out
-              </Button>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+                <div className="flex flex-col items-center sm:items-start gap-3">
+                  <Avatar className="h-24 w-24 border-2 border-border">
+                    {user?.picture_url && <>
+                      <AvatarImage
+                        src={resolveMediaUrl(user?.picture_url ?? undefined)}
+                        alt=""
+                      />
+                    </>}
+                    <AvatarFallback className="text-lg">
+                      {user?.name ? profileInitials(user.name) : "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col gap-2 w-full max-w-xs">
+                    <Label htmlFor="profile-photo" className="sr-only">
+                      Profile photo
+                    </Label>
+                    <Input
+                      id="profile-photo"
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      disabled={photoUploading}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (f) void handleProfilePhoto(f);
+                      }}
+                    />
+                    {user?.picture_url ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={photoUploading}
+                        onClick={() => void handleRemoveProfilePhoto()}
+                      >
+                        Remove photo
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="space-y-4 flex-1">
+                  <p className="text-muted-foreground text-sm">
+                    <span className="font-medium">Name:</span> {user?.name}
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    <span className="font-medium">Email:</span> {user?.email}
+                  </p>
+                  <Button variant="secondary" onClick={handleLogout}>
+                    Log out
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {hasToken && (
+      {hasToken && showStaffOrderDashboard && (
         <div className="space-y-6">
           <h2 className="text-xl font-semibold">Your dashboard</h2>
 

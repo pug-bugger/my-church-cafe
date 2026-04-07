@@ -6,21 +6,64 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
-import SvgIcon from "./SvgIcon";
+
+/** Who sees this nav item (guest = not signed in → same as parishioner). */
+type NavVisibility = "public" | "staff" | "admin";
 
 const BASE_LINKS = [
-  { href: "/terminal", label: "Terminal", available: true, adminOnly: false },
-  { href: "/menu", label: "Menu", available: true, adminOnly: false },
-  { href: "/orders", label: "Orders", available: true, adminOnly: false },
-  { href: "/barista", label: "Barista", available: true, adminOnly: false },
-  { href: "/admin", label: "Manage", available: true, adminOnly: true },
-  { href: "/profile", label: "Profile", available: true, adminOnly: false },
-];
+  {
+    href: "/terminal",
+    label: "Terminal",
+    available: true,
+    visibility: "staff" satisfies NavVisibility,
+  },
+  {
+    href: "/menu",
+    label: "Menu",
+    available: true,
+    visibility: "public" satisfies NavVisibility,
+  },
+  {
+    href: "/orders",
+    label: "Orders",
+    available: true,
+    visibility: "public" satisfies NavVisibility,
+  },
+  {
+    href: "/barista",
+    label: "Barista",
+    available: true,
+    visibility: "staff" satisfies NavVisibility,
+  },
+  {
+    href: "/admin",
+    label: "Manage",
+    available: true,
+    visibility: "admin" satisfies NavVisibility,
+  },
+  {
+    href: "/profile",
+    label: "Profile",
+    available: true,
+    visibility: "public" satisfies NavVisibility,
+  },
+] as const;
+
+function navLinkVisible(
+  visibility: NavVisibility,
+  role: string | null
+): boolean {
+  if (visibility === "public") return true;
+  if (visibility === "staff")
+    return role === "admin" || role === "personal";
+  return role === "admin";
+}
 
 export function Navigation() {
   const pathname = usePathname();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [links, setLinks] = useState(BASE_LINKS);
+  /** Role from session; null when not signed in (nav treats like parishioner). */
+  const [navRole, setNavRole] = useState<string | null>(null);
+  const [links, setLinks] = useState([...BASE_LINKS]);
   const [showOnOrders, setShowOnOrders] = useState(false);
   const isOrdersPage = false;//pathname === "/orders";
 
@@ -30,14 +73,14 @@ export function Navigation() {
       localStorage.getItem("jwt") ??
       localStorage.getItem("accessToken");
     if (!token) {
-      setIsAdmin(false);
+      setNavRole(null);
       return;
     }
     const stored = localStorage.getItem("user");
     if (stored) {
       try {
-        const user = JSON.parse(stored);
-        setIsAdmin(user?.role === "admin");
+        const user = JSON.parse(stored) as { role?: string };
+        setNavRole(user?.role ?? null);
         return;
       } catch {
         // fall through to fetch
@@ -45,7 +88,7 @@ export function Navigation() {
     }
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) {
-      setIsAdmin(false);
+      setNavRole(null);
       return;
     }
     try {
@@ -53,14 +96,14 @@ export function Navigation() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        setIsAdmin(false);
+        setNavRole(null);
         return;
       }
       const user = await res.json();
       localStorage.setItem("user", JSON.stringify(user));
-      setIsAdmin(user?.role === "admin");
+      setNavRole(user?.role ?? null);
     } catch {
-      setIsAdmin(false);
+      setNavRole(null);
     }
   }, []);
 
@@ -71,8 +114,8 @@ export function Navigation() {
     return () => window.removeEventListener("auth:token", onAuth);
   }, [fetchUserRole]);
 
-  const visibleLinks = links.filter(
-    (link) => !link.adminOnly || (link.adminOnly && isAdmin)
+  const visibleLinks = links.filter((link) =>
+    navLinkVisible(link.visibility, navRole)
   );
 
   const disabledStyle = ({ available }: { available: boolean }) => {
