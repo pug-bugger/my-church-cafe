@@ -23,7 +23,7 @@ export function OrderList() {
       localStorage.getItem("accessToken");
     if (!token) return;
     try {
-      const response = await fetch(`${apiUrl}/api/orders/me`, {
+      const response = await fetch(`${apiUrl}/api/orders`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
