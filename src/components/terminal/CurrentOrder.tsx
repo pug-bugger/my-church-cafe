@@ -1,6 +1,6 @@
 "use client";
 
-import { useAppStore } from "@/store";
+import { getOrderableProducts, useAppStore } from "@/store";
 import {
   Card,
   CardContent,
@@ -16,6 +16,11 @@ import { toast } from "sonner";
 export function CurrentOrder() {
   const draftItems = useAppStore((state) => state.draftItems);
   const drinks = useAppStore((state) => state.drinks);
+  const desserts = useAppStore((state) => state.desserts);
+  const orderableProducts = useMemo(
+    () => getOrderableProducts({ drinks, desserts }),
+    [drinks, desserts]
+  );
   const removeDraftItem = useAppStore((state) => state.removeDraftItem);
   const clearDraft = useAppStore((state) => state.clearDraft);
   const [products, setProducts] = useState<
@@ -25,11 +30,12 @@ export function CurrentOrder() {
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
-  const getDrinkById = (id: string) => drinks.find((d) => d.id === id);
+  const getProductById = (id: string) =>
+    orderableProducts.find((d) => d.id === id);
 
   const total = draftItems.reduce((sum, item) => {
-    const drink = getDrinkById(item.drinkId);
-    return sum + (drink ? drink.price * item.quantity : 0);
+    const product = getProductById(item.drinkId);
+    return sum + (product ? product.price * item.quantity : 0);
   }, 0);
 
   useEffect(() => {
@@ -63,7 +69,7 @@ export function CurrentOrder() {
   }, [apiUrl]);
 
   const resolveProductId = (drinkId: string) => {
-    const drink = getDrinkById(drinkId);
+    const drink = getProductById(drinkId);
     if (!drink) return null;
     const normalized = (value?: string) =>
       (value || "").trim().toLowerCase();
@@ -143,13 +149,13 @@ export function CurrentOrder() {
         {draftItems.length === 0 ? (
           <Alert>
             <AlertDescription>
-              No items added yet. Select a drink to begin.
+              No items added yet. Select a drink or dessert to begin.
             </AlertDescription>
           </Alert>
         ) : (
           <ul className="space-y-3">
             {draftItems.map((item) => {
-              const drink = getDrinkById(item.drinkId);
+              const drink = getProductById(item.drinkId);
               if (!drink) return null;
               return (
                 <li key={item.id} className="flex items-start justify-between">

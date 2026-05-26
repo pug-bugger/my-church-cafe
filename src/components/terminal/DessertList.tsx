@@ -3,9 +3,7 @@
 import { useAppStore } from "@/store";
 import {
   Card,
-  CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -25,16 +23,14 @@ import {
   resolveProductImageUrl,
 } from "@/lib/imageUrl";
 
-function DrinkListSkeleton() {
+function DessertListSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i} className="flex flex-col">
           <CardHeader>
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-16" />
-            </div>
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-16" />
           </CardHeader>
         </Card>
       ))}
@@ -42,48 +38,58 @@ function DrinkListSkeleton() {
   );
 }
 
-export function DrinkList() {
-  const drinks = useAppStore((state) => state.drinks);
-  const drinksLoading = useAppStore((state) => state.drinksLoading);
-  const loadDrinks = useAppStore((state) => state.loadDrinks);
+export function DessertList() {
+  const desserts = useAppStore((state) => state.desserts);
+  const dessertsLoading = useAppStore((state) => state.dessertsLoading);
+  const loadDesserts = useAppStore((state) => state.loadDesserts);
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDrinks();
-  }, [loadDrinks]);
+    loadDesserts();
+  }, [loadDesserts]);
 
-  if (drinksLoading) {
-    return <DrinkListSkeleton />;
+  if (dessertsLoading) {
+    return <DessertListSkeleton />;
+  }
+
+  if (desserts.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4">
+        No desserts are available right now.
+      </p>
+    );
   }
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {drinks.map((drink) => (
+      {desserts.map((dessert) => (
         <Dialog
-          key={drink.id}
-          open={openId === drink.id}
-          onOpenChange={(open) => setOpenId(open ? drink.id : null)}
+          key={dessert.id}
+          open={openId === dessert.id}
+          onOpenChange={(open) => setOpenId(open ? dessert.id : null)}
         >
           <DialogTrigger asChild>
             <Card
               className="flex flex-col cursor-pointer"
-              onClick={() => setOpenId(drink.id)}
+              onClick={() => setOpenId(dessert.id)}
             >
               <CardHeader>
                 <div className="flex items-center gap-4">
                   <div className="h-14 w-14 rounded-lg border overflow-hidden shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={resolveProductImageUrl(drink.imageUrl)}
+                      src={resolveProductImageUrl(dessert.imageUrl)}
                       alt=""
                       className={productImageClassName(
-                        resolveProductImageUrl(drink.imageUrl)
+                        resolveProductImageUrl(dessert.imageUrl)
                       )}
                     />
                   </div>
                   <div className="min-w-0">
-                    <CardTitle className="line-clamp-2">{drink.name}</CardTitle>
-                    <CardDescription>${drink.price.toFixed(2)}</CardDescription>
+                    <CardTitle className="line-clamp-2">{dessert.name}</CardTitle>
+                    <CardDescription>
+                      ${dessert.price.toFixed(2)}
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -95,12 +101,15 @@ export function DrinkList() {
             }}
           >
             <DialogHeader>
-              <DialogTitle>{drink.name}</DialogTitle>
+              <DialogTitle>{dessert.name}</DialogTitle>
               <DialogDescription className="sr-only">
-                Customize your drink options and add it to your order.
+                Choose quantity and add this dessert to your order.
               </DialogDescription>
             </DialogHeader>
-            <DrinkOrderForm drink={drink} onSuccess={() => setOpenId(null)} />
+            <DrinkOrderForm
+              drink={dessert}
+              onSuccess={() => setOpenId(null)}
+            />
           </DialogContent>
         </Dialog>
       ))}

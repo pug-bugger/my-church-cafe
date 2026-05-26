@@ -11,6 +11,7 @@ export type Drink = {
   id: string;
   name: string;
   secondaryName?: string;
+  categoryName?: string;
   description: string;
   price: number;
   imageUrl?: string;

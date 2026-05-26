@@ -24,7 +24,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ProductForm } from "./ProductForm";
-import { DrinkOptionManagement } from "./DrinkOptionManagement";
 import { Drink } from "@/types";
 import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
@@ -33,10 +32,10 @@ import {
   resolveProductImageUrl,
 } from "@/lib/imageUrl";
 
-function DrinkManagementSkeleton() {
+function DessertManagementSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
+      {Array.from({ length: 3 }).map((_, i) => (
         <Card key={i}>
           <CardHeader>
             <div className="flex items-center gap-4">
@@ -48,17 +47,7 @@ function DrinkManagementSkeleton() {
             </div>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-4 w-full mb-2" />
-            <Skeleton className="h-4 w-[85%] mb-4" />
-            <div className="space-y-2 mb-4">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-            <div className="flex gap-2">
-              <Skeleton className="h-9 flex-1" />
-              <Skeleton className="h-9 flex-1" />
-            </div>
+            <Skeleton className="h-4 w-full" />
           </CardContent>
         </Card>
       ))}
@@ -66,27 +55,28 @@ function DrinkManagementSkeleton() {
   );
 }
 
-export function DrinkManagement() {
-  const drinks = useAppStore((state) => state.drinks);
-  const drinksLoading = useAppStore((state) => state.drinksLoading);
-  const loadDrinks = useAppStore((state) => state.loadDrinks);
-  const deleteDrinkApi = useAppStore((state) => state.deleteDrinkApi);
+export function DessertManagement() {
+  const desserts = useAppStore((state) => state.desserts);
+  const dessertsLoading = useAppStore((state) => state.dessertsLoading);
+  const loadDesserts = useAppStore((state) => state.loadDesserts);
+  const deleteDessertApi = useAppStore((state) => state.deleteDessertApi);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [drinkToDelete, setDrinkToDelete] = useState<Drink | null>(null);
+  const [dessertToDelete, setDessertToDelete] = useState<Drink | null>(null);
 
   useEffect(() => {
-    loadDrinks();
-  }, [loadDrinks]);
+    loadDesserts();
+  }, [loadDesserts]);
 
-  async function handleDelete(drink: Drink) {
-    setDeletingId(drink.id);
+  async function handleDelete(dessert: Drink) {
+    setDeletingId(dessert.id);
     try {
-      await deleteDrinkApi(drink.id);
-      toast.success(`"${drink.name}" deleted`);
-      setDrinkToDelete(null);
+      await deleteDessertApi(dessert.id);
+      toast.success(`"${dessert.name}" deleted`);
+      setDessertToDelete(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete drink";
+      const message =
+        err instanceof Error ? err.message : "Failed to delete dessert";
       toast.error(message);
     } finally {
       setDeletingId(null);
@@ -96,40 +86,39 @@ export function DrinkManagement() {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Drinks</h2>
+        <h2 className="text-xl font-semibold">Desserts</h2>
         <p className="text-sm text-muted-foreground">
-          Manage drink menu items and reusable drink options.
+          Manage dessert menu items (category: Dessert).
         </p>
       </div>
-      <DrinkOptionManagement />
 
-      {drinksLoading ? (
-        <DrinkManagementSkeleton />
+      {dessertsLoading ? (
+        <DessertManagementSkeleton />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {drinks.map((drink) => (
-            <Card key={drink.id} className="relative">
+          {desserts.map((dessert) => (
+            <Card key={dessert.id} className="relative">
               <CardHeader className="pb-2">
                 <div className="flex items-start gap-4">
                   <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={resolveProductImageUrl(drink.imageUrl)}
+                      src={resolveProductImageUrl(dessert.imageUrl)}
                       alt=""
                       className={productImageClassName(
-                        resolveProductImageUrl(drink.imageUrl)
+                        resolveProductImageUrl(dessert.imageUrl)
                       )}
                     />
                   </div>
                   <div className="min-w-0 flex-1 pr-20">
-                    <CardTitle>{drink.name}</CardTitle>
+                    <CardTitle>{dessert.name}</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      ${drink.price.toFixed(2)}
+                      ${dessert.price.toFixed(2)}
                     </p>
                   </div>
                   <div className="absolute right-4 top-4 flex items-center gap-1">
                     <Dialog
-                      open={editingId === drink.id}
+                      open={editingId === dessert.id}
                       onOpenChange={(open) => !open && setEditingId(null)}
                     >
                       <DialogTrigger asChild>
@@ -137,24 +126,24 @@ export function DrinkManagement() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          aria-label={`Edit ${drink.name}`}
-                          onClick={() => setEditingId(drink.id)}
+                          aria-label={`Edit ${dessert.name}`}
+                          onClick={() => setEditingId(dessert.id)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-lg">
                         <DialogHeader>
-                          <DialogTitle>Edit drink</DialogTitle>
+                          <DialogTitle>Edit dessert</DialogTitle>
                           <DialogDescription className="sr-only">
-                            Update the drink details and save your changes.
+                            Update the dessert details and save your changes.
                           </DialogDescription>
                         </DialogHeader>
                         <ProductForm
-                          product={drink}
+                          product={dessert}
                           onSuccess={() => {
                             setEditingId(null);
-                            loadDrinks();
+                            loadDesserts();
                           }}
                         />
                       </DialogContent>
@@ -163,9 +152,9 @@ export function DrinkManagement() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      aria-label={`Delete ${drink.name}`}
-                      disabled={deletingId === drink.id}
-                      onClick={() => setDrinkToDelete(drink)}
+                      aria-label={`Delete ${dessert.name}`}
+                      disabled={deletingId === dessert.id}
+                      onClick={() => setDessertToDelete(dessert)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -173,8 +162,8 @@ export function DrinkManagement() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {drink.description}
+                <p className="text-sm text-muted-foreground">
+                  {dessert.description}
                 </p>
               </CardContent>
             </Card>
@@ -183,25 +172,25 @@ export function DrinkManagement() {
       )}
 
       <AlertDialog
-        open={!!drinkToDelete}
-        onOpenChange={(open) => !open && setDrinkToDelete(null)}
+        open={!!dessertToDelete}
+        onOpenChange={(open) => !open && setDessertToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete drink</AlertDialogTitle>
+            <AlertDialogTitle>Delete dessert</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{drinkToDelete?.name}&quot;?
-              This action cannot be undone.
+              Are you sure you want to delete &quot;{dessertToDelete?.name}
+              &quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={!!deletingId && drinkToDelete?.id === deletingId}
-              onClick={() => drinkToDelete && handleDelete(drinkToDelete)}
+              disabled={!!deletingId && dessertToDelete?.id === deletingId}
+              onClick={() => dessertToDelete && handleDelete(dessertToDelete)}
             >
-              {deletingId && drinkToDelete?.id === deletingId
+              {deletingId && dessertToDelete?.id === deletingId
                 ? "Deleting…"
                 : "Delete"}
             </AlertDialogAction>
@@ -209,9 +198,9 @@ export function DrinkManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {!drinksLoading && drinks.length === 0 && (
-        <div className="text-center text-muted-foreground py-8">
-          No drinks available. Add your first drink to get started.
+      {!dessertsLoading && desserts.length === 0 && (
+        <div className="text-center text-muted-foreground py-8 rounded-lg border border-dashed">
+          No desserts yet. Add your first dessert to get started.
         </div>
       )}
     </section>
