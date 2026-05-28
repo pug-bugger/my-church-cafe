@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DrinkSubtypeSections } from "@/components/drinks/DrinkSubtypeSections";
 import { defaultDrinks } from "@/data/defaultDrinks";
+import {
+  groupByDrinkSubtype,
+  menuProductSubtypeLabel,
+} from "@/lib/drinkSubtypeGroups";
+import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
 import {
   isProductCategory,
   PRODUCT_CATEGORY,
@@ -16,8 +22,13 @@ type Product = {
   description?: string | null;
   base_price?: number | string | null;
   category_name?: string | null;
+  parent_category_name?: string | null;
   available?: boolean | number | null;
 };
+
+function productTypeName(product: Product): string | null {
+  return product.parent_category_name ?? product.category_name ?? null;
+}
 
 const MENU_SECTIONS: { title: string; category: ProductCategoryName }[] = [
   { title: "Drinks", category: PRODUCT_CATEGORY.DRINK },
@@ -61,9 +72,6 @@ function ProductGrid({ products }: { products: Product[] }) {
             <p className="text-xl font-semibold">
               ${Number(product.base_price ?? 0).toFixed(2)}
             </p>
-            {/* <p className="text-sm text-muted-foreground">
-              {product.description?.trim() || "No description available."}
-            </p> */}
           </CardContent>
         </Card>
       ))}
@@ -75,6 +83,7 @@ export function MenuList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const subtypeOrder = useDrinkSubtypeOrder();
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -85,9 +94,10 @@ export function MenuList() {
           name: drink.name,
           description: drink.description,
           base_price: drink.price,
-          category_name: PRODUCT_CATEGORY.DRINK,
+          category_name: drink.subtypeName ?? PRODUCT_CATEGORY.DRINK,
+          parent_category_name: PRODUCT_CATEGORY.DRINK,
           available: true,
-        })),
+        }))
       );
       setLoading(false);
       return;
@@ -121,30 +131,41 @@ export function MenuList() {
 
   const availableProducts = useMemo(
     () => products.filter((product) => isAvailable(product.available)),
-    [products],
+    [products]
   );
 
-  const sections = useMemo(() => {
-    const grouped = MENU_SECTIONS.map(({ title, category }) => ({
-      title,
-      items: availableProducts.filter((p) =>
-        isProductCategory(p.category_name, category)
-      ),
-    }));
-    const uncategorized = availableProducts.filter(
-      (p) =>
-        !p.category_name ||
-        !MENU_SECTIONS.some(({ category }) =>
-          isProductCategory(p.category_name, category)
-        )
+  const drinkSubtypeSections = useMemo(() => {
+    const drinkItems = availableProducts.filter((p) =>
+      isProductCategory(productTypeName(p), PRODUCT_CATEGORY.DRINK)
     );
-    if (uncategorized.length) {
-      grouped.unshift({
-        title: "Other",
-        items: uncategorized,
-      });
-    }
-    return grouped.filter((s) => s.items.length > 0);
+    return groupByDrinkSubtype(
+      drinkItems,
+      menuProductSubtypeLabel,
+      subtypeOrder
+    );
+  }, [availableProducts, subtypeOrder]);
+
+  const nonDrinkSections = useMemo(() => {
+    return MENU_SECTIONS.filter(
+      ({ category }) => category !== PRODUCT_CATEGORY.DRINK
+    )
+      .map(({ title, category }) => ({
+        title,
+        items: availableProducts.filter((p) =>
+          isProductCategory(productTypeName(p), category)
+        ),
+      }))
+      .filter((s) => s.items.length > 0);
+  }, [availableProducts]);
+
+  const uncategorized = useMemo(() => {
+    return availableProducts.filter((p) => {
+      const type = productTypeName(p);
+      if (!type) return true;
+      return !MENU_SECTIONS.some(({ category }) =>
+        isProductCategory(type, category)
+      );
+    });
   }, [availableProducts]);
 
   if (loading) return <MenuListSkeleton />;
@@ -167,12 +188,31 @@ export function MenuList() {
 
   return (
     <div className="space-y-10">
-      {sections.map((section) => (
+      {drinkSubtypeSections.length > 0 ? (
+        <section className="space-y-6">
+          <h2 className="text-lg font-semibold">Drinks</h2>
+          <DrinkSubtypeSections
+            variant="nested"
+            sections={drinkSubtypeSections}
+            className="space-y-8 pl-0 sm:pl-1"
+            renderItems={(items) => <ProductGrid products={items} />}
+          />
+        </section>
+      ) : null}
+
+      {nonDrinkSections.map((section) => (
         <section key={section.title} className="space-y-4">
           <h2 className="text-lg font-semibold">{section.title}</h2>
           <ProductGrid products={section.items} />
         </section>
       ))}
+
+      {uncategorized.length > 0 ? (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Other</h2>
+          <ProductGrid products={uncategorized} />
+        </section>
+      ) : null}
     </div>
   );
 }

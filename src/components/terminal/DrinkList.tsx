@@ -1,11 +1,10 @@
 "use client";
 
 import { useAppStore } from "@/store";
+import type { Drink } from "@/types";
 import {
   Card,
-  CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -19,55 +18,61 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DrinkOrderForm } from "@/components/terminal/DrinkOrderForm";
-import { useEffect, useState } from "react";
+import { DrinkSubtypeSections } from "@/components/drinks/DrinkSubtypeSections";
+import { useEffect, useMemo, useState } from "react";
 import {
   productImageClassName,
   resolveProductImageUrl,
 } from "@/lib/imageUrl";
+import {
+  drinkSubtypeLabel,
+  groupByDrinkSubtype,
+} from "@/lib/drinkSubtypeGroups";
+import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
 
 function DrinkListSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Card key={i} className="flex flex-col">
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-16" />
-            </div>
-          </CardHeader>
-        </Card>
+    <div className="space-y-8">
+      {Array.from({ length: 2 }).map((_, section) => (
+        <div key={section} className="space-y-4">
+          <Skeleton className="h-6 w-28" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="flex flex-col">
+                <CardHeader>
+                  <Skeleton className="h-14 w-14 rounded-lg" />
+                  <Skeleton className="h-5 w-24 mt-2" />
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
 }
 
-export function DrinkList() {
-  const drinks = useAppStore((state) => state.drinks);
-  const drinksLoading = useAppStore((state) => state.drinksLoading);
-  const loadDrinks = useAppStore((state) => state.loadDrinks);
-  const [openId, setOpenId] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadDrinks();
-  }, [loadDrinks]);
-
-  if (drinksLoading) {
-    return <DrinkListSkeleton />;
-  }
-
+function DrinkCardGrid({
+  drinks,
+  openId,
+  onOpen,
+}: {
+  drinks: Drink[];
+  openId: string | null;
+  onOpen: (id: string | null) => void;
+}) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {drinks.map((drink) => (
         <Dialog
           key={drink.id}
           open={openId === drink.id}
-          onOpenChange={(open) => setOpenId(open ? drink.id : null)}
+          onOpenChange={(open) => onOpen(open ? drink.id : null)}
         >
           <DialogTrigger asChild>
             <Card
               className="flex flex-col cursor-pointer"
-              onClick={() => setOpenId(drink.id)}
+              onClick={() => onOpen(drink.id)}
             >
               <CardHeader>
                 <div className="flex items-center gap-4">
@@ -100,10 +105,52 @@ export function DrinkList() {
                 Customize your drink options and add it to your order.
               </DialogDescription>
             </DialogHeader>
-            <DrinkOrderForm drink={drink} onSuccess={() => setOpenId(null)} />
+            <DrinkOrderForm drink={drink} onSuccess={() => onOpen(null)} />
           </DialogContent>
         </Dialog>
       ))}
     </div>
+  );
+}
+
+export function DrinkList() {
+  const drinks = useAppStore((state) => state.drinks);
+  const drinksLoading = useAppStore((state) => state.drinksLoading);
+  const loadDrinks = useAppStore((state) => state.loadDrinks);
+  const subtypeOrder = useDrinkSubtypeOrder();
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const drinkSections = useMemo(
+    () => groupByDrinkSubtype(drinks, drinkSubtypeLabel, subtypeOrder),
+    [drinks, subtypeOrder]
+  );
+
+  useEffect(() => {
+    loadDrinks();
+  }, [loadDrinks]);
+
+  if (drinksLoading) {
+    return <DrinkListSkeleton />;
+  }
+
+  if (drinks.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-8">
+        No drinks available.
+      </p>
+    );
+  }
+
+  return (
+    <DrinkSubtypeSections
+      sections={drinkSections}
+      renderItems={(sectionDrinks) => (
+        <DrinkCardGrid
+          drinks={sectionDrinks}
+          openId={openId}
+          onOpen={setOpenId}
+        />
+      )}
+    />
   );
 }

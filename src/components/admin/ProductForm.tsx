@@ -36,8 +36,11 @@ import {
 } from "@/lib/imageUrl";
 import {
   ADMIN_CREATABLE_CATEGORIES,
+  fetchCategories,
+  getDrinkSubtypes,
   isProductCategory,
   PRODUCT_CATEGORY,
+  type CategoryRow,
   type ProductCategoryName,
 } from "@/lib/productCategories";
 
@@ -50,6 +53,7 @@ interface ProductFormProps {
 
 const formSchema = z.object({
   category: z.string().min(1, "Category is required"),
+  subtype: z.string().optional(),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   price: z.string().min(1, "Price is required"),
@@ -77,6 +81,26 @@ function resolveInitialCategory(
   return defaultCategory ?? PRODUCT_CATEGORY.DRINK;
 }
 
+function resolveInitialSubtype(
+  product: Drink | null | undefined,
+  subtypes: CategoryRow[]
+): string {
+  if (product?.subtypeName) {
+    const match = subtypes.find(
+      (s) =>
+        s.name.trim().toLowerCase() ===
+        product.subtypeName!.trim().toLowerCase()
+    );
+    if (match) return String(match.id);
+  }
+  if (product?.categoryId != null) {
+    const byId = subtypes.find((s) => s.id === product.categoryId);
+    if (byId) return String(byId.id);
+  }
+  if (subtypes.length) return String(subtypes[0].id);
+  return "";
+}
+
 export function ProductForm({
   product,
   defaultCategory,
@@ -92,6 +116,7 @@ export function ProductForm({
   const initialCategory = resolveInitialCategory(product, defaultCategory);
 
   const [catalog, setCatalog] = useState<DrinkOptionDefinitionApi[]>([]);
+  const [drinkSubtypes, setDrinkSubtypes] = useState<CategoryRow[]>([]);
   const [selectedDefIds, setSelectedDefIds] = useState<number[]>(() =>
     idsFromProduct(product)
   );
@@ -104,6 +129,7 @@ export function ProductForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       category: initialCategory,
+      subtype: "",
       name: product?.name || "",
       description: product?.description || "",
       price: product?.price != null ? String(product.price) : "",
@@ -117,12 +143,31 @@ export function ProductForm({
     setSelectedDefIds(idsFromProduct(product));
     form.reset({
       category: resolveInitialCategory(product, defaultCategory),
+      subtype: resolveInitialSubtype(product, drinkSubtypes),
       name: product?.name || "",
       description: product?.description || "",
       price: product?.price != null ? String(product.price) : "",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when product identity changes
-  }, [product?.id, defaultCategory]);
+  }, [product?.id, defaultCategory, drinkSubtypes]);
+
+  useEffect(() => {
+    if (!apiUrl) return;
+    fetchCategories(apiUrl)
+      .then((rows) => setDrinkSubtypes(getDrinkSubtypes(rows)))
+      .catch(() => setDrinkSubtypes([]));
+  }, [apiUrl]);
+
+  useEffect(() => {
+    if (!isDrink || drinkSubtypes.length === 0) return;
+    const current = form.getValues("subtype");
+    if (!current) {
+      form.setValue(
+        "subtype",
+        resolveInitialSubtype(product, drinkSubtypes)
+      );
+    }
+  }, [isDrink, drinkSubtypes, product, form]);
 
   useEffect(() => {
     if (!apiUrl) return;
@@ -176,12 +221,19 @@ export function ProductForm({
     }
 
     const selectedCategory = values.category as ProductCategoryName;
-    const availableOptions = isProductCategory(
+    const isDrinkCategory = isProductCategory(
       selectedCategory,
       PRODUCT_CATEGORY.DRINK
-    )
-      ? buildAvailableOptions()
-      : [];
+    );
+    if (isDrinkCategory && !values.subtype) {
+      toast.error("Select a drink subtype");
+      return;
+    }
+    const subtypeId = values.subtype
+      ? Number.parseInt(values.subtype, 10)
+      : NaN;
+    const subtypeRow = drinkSubtypes.find((s) => s.id === subtypeId);
+    const availableOptions = isDrinkCategory ? buildAvailableOptions() : [];
 
     const payload: Omit<Drink, "id"> = {
       name: values.name,
@@ -190,6 +242,8 @@ export function ProductForm({
       imageUrl: product?.imageUrl ?? DEFAULT_PRODUCT_IMAGE,
       availableOptions,
       categoryName: selectedCategory,
+      subtypeName: subtypeRow?.name,
+      categoryId: subtypeRow?.id,
     };
 
     try {
@@ -220,6 +274,8 @@ export function ProductForm({
         }
         form.reset({
           category: selectedCategory,
+          subtype:
+            drinkSubtypes.length > 0 ? String(drinkSubtypes[0].id) : "",
           name: "",
           description: "",
           price: "",
@@ -362,6 +418,45 @@ export function ProductForm({
             </FormItem>
           )}
         />
+
+        {isDrink ? (
+          <FormField
+            control={form.control}
+            name="subtype"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Drink subtype</FormLabel>
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={drinkSubtypes.length === 0}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          drinkSubtypes.length
+                            ? "Select subtype"
+                            : "No subtypes — run DB migration"
+                        }
+                      />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {drinkSubtypes.map((st) => (
+                      <SelectItem key={st.id} value={String(st.id)}>
+                        {st.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription className="text-xs">
+                  e.g. Coffee, Other drinks, Season drinks
+                </FormDescription>
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         {isDrink ? (
           <div className="space-y-3">

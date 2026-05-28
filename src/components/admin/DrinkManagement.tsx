@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ProductForm } from "./ProductForm";
 import { DrinkOptionManagement } from "./DrinkOptionManagement";
+import { DrinkSubtypeSections } from "@/components/drinks/DrinkSubtypeSections";
 import { Drink } from "@/types";
 import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
@@ -32,33 +33,123 @@ import {
   productImageClassName,
   resolveProductImageUrl,
 } from "@/lib/imageUrl";
+import {
+  drinkSubtypeLabel,
+  groupByDrinkSubtype,
+} from "@/lib/drinkSubtypeGroups";
+import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
 
 function DrinkManagementSkeleton() {
   return (
+    <div className="space-y-8">
+      {Array.from({ length: 2 }).map((_, section) => (
+        <div key={section} className="space-y-4">
+          <Skeleton className="h-6 w-32" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-16 w-16 rounded-md shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-4 w-12" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-4 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DrinkCardGrid({
+  drinks,
+  editingId,
+  deletingId,
+  onEdit,
+  onDelete,
+}: {
+  drinks: Drink[];
+  editingId: string | null;
+  deletingId: string | null;
+  onEdit: (id: string) => void;
+  onDelete: (drink: Drink) => void;
+}) {
+  return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-md shrink-0" />
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="h-4 w-12" />
+      {drinks.map((drink) => (
+        <Card key={drink.id} className="relative">
+          <CardHeader className="pb-2">
+            <div className="flex items-start gap-4">
+              <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={resolveProductImageUrl(drink.imageUrl)}
+                  alt=""
+                  className={productImageClassName(
+                    resolveProductImageUrl(drink.imageUrl)
+                  )}
+                />
+              </div>
+              <div className="min-w-0 flex-1 pr-20">
+                <CardTitle>{drink.name}</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  ${drink.price.toFixed(2)}
+                </p>
+              </div>
+              <div className="absolute right-4 top-4 flex items-center gap-1">
+                <Dialog
+                  open={editingId === drink.id}
+                  onOpenChange={(open) => !open && onEdit("")}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      aria-label={`Edit ${drink.name}`}
+                      onClick={() => onEdit(drink.id)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Edit drink</DialogTitle>
+                      <DialogDescription className="sr-only">
+                        Update the drink details and save your changes.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ProductForm
+                      product={drink}
+                      onSuccess={() => onEdit("")}
+                    />
+                  </DialogContent>
+                </Dialog>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  aria-label={`Delete ${drink.name}`}
+                  disabled={deletingId === drink.id}
+                  onClick={() => onDelete(drink)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-4 w-full mb-2" />
-            <Skeleton className="h-4 w-[85%] mb-4" />
-            <div className="space-y-2 mb-4">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-            <div className="flex gap-2">
-              <Skeleton className="h-9 flex-1" />
-              <Skeleton className="h-9 flex-1" />
-            </div>
+            <p className="text-sm text-muted-foreground">
+              {drink.description}
+            </p>
           </CardContent>
         </Card>
       ))}
@@ -71,9 +162,15 @@ export function DrinkManagement() {
   const drinksLoading = useAppStore((state) => state.drinksLoading);
   const loadDrinks = useAppStore((state) => state.loadDrinks);
   const deleteDrinkApi = useAppStore((state) => state.deleteDrinkApi);
+  const subtypeOrder = useDrinkSubtypeOrder();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [drinkToDelete, setDrinkToDelete] = useState<Drink | null>(null);
+
+  const drinkSections = useMemo(
+    () => groupByDrinkSubtype(drinks, drinkSubtypeLabel, subtypeOrder),
+    [drinks, subtypeOrder]
+  );
 
   useEffect(() => {
     loadDrinks();
@@ -86,11 +183,17 @@ export function DrinkManagement() {
       toast.success(`"${drink.name}" deleted`);
       setDrinkToDelete(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete drink";
+      const message =
+        err instanceof Error ? err.message : "Failed to delete drink";
       toast.error(message);
     } finally {
       setDeletingId(null);
     }
+  }
+
+  function handleEditClose(id: string) {
+    setEditingId(id || null);
+    if (!id) loadDrinks();
   }
 
   return (
@@ -105,81 +208,23 @@ export function DrinkManagement() {
 
       {drinksLoading ? (
         <DrinkManagementSkeleton />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {drinks.map((drink) => (
-            <Card key={drink.id} className="relative">
-              <CardHeader className="pb-2">
-                <div className="flex items-start gap-4">
-                  <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={resolveProductImageUrl(drink.imageUrl)}
-                      alt=""
-                      className={productImageClassName(
-                        resolveProductImageUrl(drink.imageUrl)
-                      )}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1 pr-20">
-                    <CardTitle>{drink.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      ${drink.price.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="absolute right-4 top-4 flex items-center gap-1">
-                    <Dialog
-                      open={editingId === drink.id}
-                      onOpenChange={(open) => !open && setEditingId(null)}
-                    >
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          aria-label={`Edit ${drink.name}`}
-                          onClick={() => setEditingId(drink.id)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-lg">
-                        <DialogHeader>
-                          <DialogTitle>Edit drink</DialogTitle>
-                          <DialogDescription className="sr-only">
-                            Update the drink details and save your changes.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <ProductForm
-                          product={drink}
-                          onSuccess={() => {
-                            setEditingId(null);
-                            loadDrinks();
-                          }}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      aria-label={`Delete ${drink.name}`}
-                      disabled={deletingId === drink.id}
-                      onClick={() => setDrinkToDelete(drink)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {drink.description}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+      ) : drinks.length === 0 ? (
+        <div className="text-center text-muted-foreground py-8">
+          No drinks available. Add your first drink to get started.
         </div>
+      ) : (
+        <DrinkSubtypeSections
+          sections={drinkSections}
+          renderItems={(sectionDrinks) => (
+            <DrinkCardGrid
+              drinks={sectionDrinks}
+              editingId={editingId}
+              deletingId={deletingId}
+              onEdit={handleEditClose}
+              onDelete={setDrinkToDelete}
+            />
+          )}
+        />
       )}
 
       <AlertDialog
@@ -208,12 +253,6 @@ export function DrinkManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {!drinksLoading && drinks.length === 0 && (
-        <div className="text-center text-muted-foreground py-8">
-          No drinks available. Add your first drink to get started.
-        </div>
-      )}
     </section>
   );
 }

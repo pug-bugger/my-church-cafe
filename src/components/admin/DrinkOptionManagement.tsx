@@ -465,7 +465,7 @@ export function DrinkOptionManagement() {
                               {def.values.map((v) => (
                                 <li
                                   key={v.id}
-                                  className="flex items-center gap-2 flex-wrap"
+                                  className="flex items-center gap-2 flex-wrap mb-2"
                                 >
                                   <span>
                                     {v.label}
@@ -478,12 +478,13 @@ export function DrinkOptionManagement() {
                                   </span>
                                   <Button
                                     type="button"
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
-                                    className="h-7 text-destructive"
+                                    className="h-5 w-5 rounded-full p-0 text-destructive"
+                                    aria-label={`Remove ${v.label}`}
                                     onClick={() => removeValue(v.id)}
                                   >
-                                    Remove
+                                    -
                                   </Button>
                                 </li>
                               ))}

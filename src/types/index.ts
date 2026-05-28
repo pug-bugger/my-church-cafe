@@ -11,7 +11,12 @@ export type Drink = {
   id: string;
   name: string;
   secondaryName?: string;
+  /** Top-level type: Drink, Dessert, Meal */
   categoryName?: string;
+  /** Drink subtype when category is Drink (e.g. Coffee, Season drinks) */
+  subtypeName?: string;
+  /** categories.id used for API create/update */
+  categoryId?: number;
   description: string;
   price: number;
   imageUrl?: string;

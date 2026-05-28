@@ -15,7 +15,7 @@ export default function AdminPage() {
           <div>
             <h1 className="text-2xl font-semibold">Menu</h1>
             <p className="text-sm text-muted-foreground">
-              Add drinks, desserts, or meals from one form.
+              Manage drinks, desserts, or meals.
             </p>
           </div>
           <AddProductDialog />

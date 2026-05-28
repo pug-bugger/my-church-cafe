@@ -3,8 +3,11 @@ import { Drink, OrderItem, ServerOrder, OrderStatus } from '@/types';
 import { defaultDrinks } from '@/data/defaultDrinks';
 import { mapProductApiToDrinkOptions } from '@/lib/drinkOptions';
 import {
-  fetchCategoryIds,
+  fetchCategories,
+  findSubtypeByName,
   getCategoryId,
+  getDrinkParentCategory,
+  isProductCategory,
   PRODUCT_CATEGORY,
 } from '@/lib/productCategories';
 
@@ -31,15 +34,29 @@ function getAuthToken(): string | null {
 }
 
 function mapApiProductToDrink(product: Record<string, unknown>): Drink {
+  const categoryName = product.category_name
+    ? String(product.category_name)
+    : undefined;
+  const parentCategoryName = product.parent_category_name
+    ? String(product.parent_category_name)
+    : undefined;
+  const categoryId =
+    product.category_id != null ? Number(product.category_id) : undefined;
+  const isDrinkSubtype =
+    parentCategoryName &&
+    isProductCategory(parentCategoryName, PRODUCT_CATEGORY.DRINK);
+  const topLevel = isDrinkSubtype
+    ? parentCategoryName
+    : categoryName;
+  const subtypeName = isDrinkSubtype ? categoryName : undefined;
+
   return {
     id: String(product.id),
     name: String(product.name ?? "Unnamed"),
-    secondaryName: product.category_name
-      ? String(product.category_name)
-      : undefined,
-    categoryName: product.category_name
-      ? String(product.category_name)
-      : undefined,
+    secondaryName: subtypeName ?? categoryName,
+    categoryName: topLevel,
+    subtypeName,
+    categoryId: Number.isFinite(categoryId) ? categoryId : undefined,
     description: String(product.description ?? ""),
     price: Number(product.base_price ?? 0),
     imageUrl: product.image_url ? String(product.image_url) : undefined,
@@ -47,6 +64,21 @@ function mapApiProductToDrink(product: Record<string, unknown>): Drink {
       product.drink_options as Parameters<typeof mapProductApiToDrinkOptions>[0]
     ),
   };
+}
+
+async function resolveDrinkCategoryId(
+  apiUrl: string,
+  drink: Omit<Drink, "id">
+): Promise<number | undefined> {
+  const categories = await fetchCategories(apiUrl);
+  if (drink.categoryId != null) {
+    const match = categories.find((c) => c.id === drink.categoryId);
+    if (match) return match.id;
+  }
+  const fromSubtype = findSubtypeByName(categories, drink.subtypeName);
+  if (fromSubtype) return fromSubtype.id;
+  const drinkParent = getDrinkParentCategory(categories);
+  return drinkParent?.id;
 }
 
 /** Map frontend product (without id) to backend POST/PUT /api/products body. */
@@ -124,10 +156,10 @@ export const useAppStore = create<AppState>((set) => ({
     }
     set(() => ({ drinksLoading: true }));
     try {
-      const categoryIds = await fetchCategoryIds(apiUrl);
-      const drinkCategoryId = getCategoryId(categoryIds, PRODUCT_CATEGORY.DRINK);
-      const url = drinkCategoryId
-        ? `${apiUrl}/api/products?category_id=${drinkCategoryId}`
+      const categories = await fetchCategories(apiUrl);
+      const drinkParent = getDrinkParentCategory(categories);
+      const url = drinkParent
+        ? `${apiUrl}/api/products?parent_category_id=${drinkParent.id}`
         : `${apiUrl}/api/products`;
       const response = await fetch(url);
       if (!response.ok) {
@@ -153,7 +185,13 @@ export const useAppStore = create<AppState>((set) => ({
     }
     set(() => ({ dessertsLoading: true }));
     try {
-      const categoryIds = await fetchCategoryIds(apiUrl);
+      const categoryIds = await fetchCategories(apiUrl).then((rows) => {
+        const map = new Map<string, number>();
+        for (const row of rows) {
+          map.set(row.name.trim().toLowerCase(), row.id);
+        }
+        return map;
+      });
       const dessertCategoryId = getCategoryId(
         categoryIds,
         PRODUCT_CATEGORY.DESSERT
@@ -183,8 +221,12 @@ export const useAppStore = create<AppState>((set) => ({
     if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
     const token = getAuthToken();
     if (!token) throw new Error("Login required to create drinks");
-    const categoryIds = await fetchCategoryIds(apiUrl);
-    const categoryId = getCategoryId(categoryIds, PRODUCT_CATEGORY.DRINK);
+    const categoryId = await resolveDrinkCategoryId(apiUrl, drink);
+    if (!categoryId) {
+      throw new Error(
+        "Drink category is missing. Run migration_drink_subtypes.sql and assign a subtype."
+      );
+    }
     const body = productToApiBody(drink, categoryId);
     const response = await fetch(`${apiUrl}/api/products`, {
       method: "POST",
@@ -200,10 +242,14 @@ export const useAppStore = create<AppState>((set) => ({
     }
     const id = String(data?.id ?? "");
     if (!id) throw new Error("Server did not return product id");
+    const categories = await fetchCategories(apiUrl);
+    const subtypeRow = categories.find((c) => c.id === categoryId);
     const created: Drink = {
       ...drink,
       id,
       categoryName: PRODUCT_CATEGORY.DRINK,
+      subtypeName: subtypeRow?.name ?? drink.subtypeName,
+      categoryId,
     };
     set((state) => ({ drinks: [...state.drinks, created] }));
     return created;
@@ -214,8 +260,10 @@ export const useAppStore = create<AppState>((set) => ({
     if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
     const token = getAuthToken();
     if (!token) throw new Error("Login required to update drinks");
-    const categoryIds = await fetchCategoryIds(apiUrl);
-    const categoryId = getCategoryId(categoryIds, PRODUCT_CATEGORY.DRINK);
+    const categoryId = await resolveDrinkCategoryId(apiUrl, drink);
+    if (!categoryId) {
+      throw new Error("Could not resolve drink subtype category.");
+    }
     const body = productToApiBody(drink, categoryId);
     const response = await fetch(`${apiUrl}/api/products/${id}`, {
       method: "PUT",
@@ -229,10 +277,14 @@ export const useAppStore = create<AppState>((set) => ({
     if (!response.ok) {
       throw new Error(data?.error ?? "Failed to update drink");
     }
+    const categories = await fetchCategories(apiUrl);
+    const subtypeRow = categories.find((c) => c.id === categoryId);
     const updated: Drink = {
       ...drink,
       id,
       categoryName: PRODUCT_CATEGORY.DRINK,
+      subtypeName: subtypeRow?.name ?? drink.subtypeName,
+      categoryId,
     };
     set((state) => ({
       drinks: state.drinks.map((d) => (d.id === id ? updated : d)),
@@ -262,8 +314,11 @@ export const useAppStore = create<AppState>((set) => ({
     if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
     const token = getAuthToken();
     if (!token) throw new Error("Login required to create desserts");
-    const categoryIds = await fetchCategoryIds(apiUrl);
-    const categoryId = getCategoryId(categoryIds, PRODUCT_CATEGORY.DESSERT);
+    const categories = await fetchCategories(apiUrl);
+    const map = new Map(
+      categories.map((c) => [c.name.trim().toLowerCase(), c.id])
+    );
+    const categoryId = getCategoryId(map, PRODUCT_CATEGORY.DESSERT);
     if (!categoryId) {
       throw new Error(
         "Dessert category is missing in the database. Run the dessert category migration."
@@ -302,8 +357,11 @@ export const useAppStore = create<AppState>((set) => ({
     if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
     const token = getAuthToken();
     if (!token) throw new Error("Login required to update desserts");
-    const categoryIds = await fetchCategoryIds(apiUrl);
-    const categoryId = getCategoryId(categoryIds, PRODUCT_CATEGORY.DESSERT);
+    const categories = await fetchCategories(apiUrl);
+    const map = new Map(
+      categories.map((c) => [c.name.trim().toLowerCase(), c.id])
+    );
+    const categoryId = getCategoryId(map, PRODUCT_CATEGORY.DESSERT);
     const body = productToApiBody(
       { ...dessert, availableOptions: [] },
       categoryId
