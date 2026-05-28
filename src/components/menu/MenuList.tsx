@@ -53,6 +53,7 @@ function MenuListSkeleton() {
           </CardHeader>
           <CardContent className="space-y-2">
             <Skeleton className="h-4 w-24" />
+            {/* <Skeleton className="h-4 w-full" /> */}
           </CardContent>
         </Card>
       ))}
