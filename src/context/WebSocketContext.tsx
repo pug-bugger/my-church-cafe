@@ -120,6 +120,14 @@ export const WebSocketProvider = ({
       setOrdersRefreshKey((prev) => prev + 1);
     });
 
+    newSocket.on("order:updated", () => {
+      setOrdersRefreshKey((prev) => prev + 1);
+    });
+
+    newSocket.on("order:deleted", () => {
+      setOrdersRefreshKey((prev) => prev + 1);
+    });
+
     newSocket.on("order:statusUpdated", (payload: OrderStatusUpdatedPayload) => {
       if (!isOrderStatus(payload.status)) return;
       setOrdersRefreshKey((prev) => prev + 1);

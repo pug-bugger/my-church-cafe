@@ -121,6 +121,8 @@ interface AppState {
   uploadProductImage: (productId: string, file: File) => Promise<string>;
   setOrders: (orders: ServerOrder[]) => void;
   updateOrderStatus: (orderId: number, status: OrderStatus) => void;
+  removeOrderItem: (orderId: number, itemId: number) => void;
+  removeOrder: (orderId: number) => void;
   addDraftItem: (item: OrderItem) => void;
   removeDraftItem: (itemId: string) => void;
   clearDraft: () => void;
@@ -471,7 +473,28 @@ export const useAppStore = create<AppState>((set) => ({
     orders: state.orders.map((order) =>
       order.id === orderId ? { ...order, status } : order
     )
-  }))
+  })),
+
+  removeOrderItem: (orderId, itemId) => set((state) => ({
+    orders: state.orders.map((order) => {
+      if (order.id !== orderId) return order;
+      const items = order.items.filter((i) => i.id !== itemId);
+      const total = items.reduce(
+        (sum, i) => sum + (Number(i.price) ?? 0) * (i.quantity ?? 1),
+        0
+      );
+      return {
+        ...order,
+        items,
+        total,
+        status: items.length === 0 ? "cancelled" : order.status,
+      };
+    }),
+  })),
+
+  removeOrder: (orderId) => set((state) => ({
+    orders: state.orders.filter((order) => order.id !== orderId),
+  })),
 }));
 
 /** Drinks and desserts available for terminal ordering. */
