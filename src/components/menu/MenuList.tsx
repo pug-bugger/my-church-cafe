@@ -47,12 +47,13 @@ function MenuListSkeleton() {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <Card key={i}>
-          <CardHeader>
+          <CardHeader className="space-y-2">
             <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-full" />
           </CardHeader>
           <CardContent className="space-y-2">
             <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-full" />
+            {/* <Skeleton className="h-4 w-full" /> */}
           </CardContent>
         </Card>
       ))}
@@ -67,6 +68,11 @@ function ProductGrid({ products }: { products: Product[] }) {
         <Card key={String(product.id)} className="h-full">
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg">{product.name}</CardTitle>
+            {product.description?.trim() ? (
+              <p className="text-sm text-muted-foreground leading-snug">
+                {product.description.trim()}
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-xl font-semibold">
