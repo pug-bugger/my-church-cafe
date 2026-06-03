@@ -26,7 +26,7 @@ function hasAuthToken(): boolean {
       localStorage.getItem("accessToken")
   );
 }
-
+console.log("test");
 const STAFF_ROLES: AppRole[] = ["admin", "personal"];
 const ADMIN_ONLY: AppRole[] = ["admin"];
 
