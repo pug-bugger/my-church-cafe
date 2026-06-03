@@ -36,7 +36,7 @@ function DrinkListSkeleton() {
       {Array.from({ length: 2 }).map((_, section) => (
         <div key={section} className="space-y-4">
           <Skeleton className="h-6 w-28" />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="flex flex-col">
                 <CardHeader>
@@ -62,7 +62,7 @@ function DrinkCardGrid({
   onOpen: (id: string | null) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       {drinks.map((drink) => (
         <Dialog
           key={drink.id}

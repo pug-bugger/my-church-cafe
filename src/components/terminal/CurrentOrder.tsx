@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Trash2, X } from "lucide-react";
 
 export function CurrentOrder() {
   const draftItems = useAppStore((state) => state.draftItems);
@@ -141,11 +142,11 @@ export function CurrentOrder() {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="flex max-h-[calc(100dvh-4rem-3rem)] flex-col">
+      <CardHeader className="shrink-0">
         <CardTitle>Current Order</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-h-0 flex-1 overflow-y-auto scrollbar-hide">
         {draftItems.length === 0 ? (
           <Alert>
             <AlertDescription>
@@ -158,9 +159,12 @@ export function CurrentOrder() {
               const drink = getProductById(item.drinkId);
               if (!drink) return null;
               return (
-                <li key={item.id} className="flex items-start justify-between">
-                  <div>
-                    <div className="font-medium">
+                <li
+                  key={item.id}
+                  className="flex items-start justify-between gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-base">
                       {drink.name}
                       <span className="text-sm text-muted-foreground">
                         {" "}
@@ -182,16 +186,18 @@ export function CurrentOrder() {
                       )}
                     </ul>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="whitespace-nowrap font-medium text-base">
                       ${(drink.price * item.quantity).toFixed(2)}
                     </span>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      type="button"
+                      variant="outline"
+                      className="h-14 w-14 shrink-0 rounded-full p-0 text-destructive hover:bg-destructive/10 hover:text-destructive [&_svg]:size-7"
+                      aria-label={`Remove ${drink.name}`}
                       onClick={() => removeDraftItem(item.id)}
                     >
-                      Remove
+                      <X />
                     </Button>
                   </div>
                 </li>
@@ -200,21 +206,28 @@ export function CurrentOrder() {
           </ul>
         )}
       </CardContent>
-      <CardFooter className="flex items-center justify-between">
-        <div className="font-semibold">Total: ${total.toFixed(2)}</div>
-        <div className="flex gap-2">
+      <CardFooter className="flex shrink-0 flex-col items-start gap-3">
+        <div className="w-full whitespace-nowrap text-left font-semibold">
+          Total: ${total.toFixed(2)}
+        </div>
+        <div className="flex w-full min-w-0 gap-3">
           <Button
             variant="outline"
+            size="lg"
+            className="h-14 w-14 shrink-0 rounded-full p-0 [&_svg]:size-6"
+            aria-label="Clear order"
             onClick={clearDraft}
             disabled={draftItems.length === 0}
           >
-            Clear
+            <Trash2 />
           </Button>
           <Button
+            size="lg"
+            className="min-w-0 flex-1 text-base"
             onClick={handleConfirmOrder}
             disabled={draftItems.length === 0 || isSubmitting}
           >
-            {isSubmitting ? "Submitting..." : "Confirm Order"}
+            {isSubmitting ? "Loading..." : "Confirm"}
           </Button>
         </div>
       </CardFooter>

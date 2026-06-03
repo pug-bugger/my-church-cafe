@@ -1,6 +1,5 @@
 "use client";
 
-import { ButtonGroup } from "@/components/ui/button-group";
 import { ControllerRenderProps, useForm } from "react-hook-form";
 import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -98,37 +97,48 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-6 [&_label]:text-base"
+      >
         <FormField
           control={form.control}
           name="quantity"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Quantity</FormLabel>
-              <FormControl >
-                <ButtonGroup className="w-full justify-center">
+            <FormItem className="flex flex-col items-center">
+              <FormLabel className="w-full text-center">Quantity</FormLabel>
+              <FormControl>
+                <div className="flex w-full items-center justify-center gap-3">
                   <Button
                     type="button"
                     variant="outline"
-                    size="icon"
+                    className="h-14 w-14 shrink-0 rounded-full p-0 [&_svg]:size-7"
+                    aria-label="Decrease quantity"
                     onClick={() =>
                       handleQuantityChange({ field, type: "decrement" })
                     }
                   >
-                    <MinusIcon className="w-4 h-4" />
+                    <MinusIcon />
                   </Button>
-                  <Input pattern="[0-9]*" min="1" {...field} className="text-center" />
+                  <Input
+                    readOnly
+                    tabIndex={-1}
+                    aria-readonly
+                    {...field}
+                    className="pointer-events-none h-14 w-16 shrink-0 select-none rounded-md text-center text-xl font-semibold"
+                  />
                   <Button
                     type="button"
                     variant="outline"
-                    size="icon"
+                    className="h-14 w-14 shrink-0 rounded-full p-0 [&_svg]:size-7"
+                    aria-label="Increase quantity"
                     onClick={() =>
                       handleQuantityChange({ field, type: "increment" })
                     }
                   >
-                    <PlusIcon className="w-4 h-4" />
+                    <PlusIcon />
                   </Button>
-                </ButtonGroup>
+                </div>
               </FormControl>
             </FormItem>
           )}
@@ -147,8 +157,7 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
                       <Button
                         type="button"
                         variant={field.value === "true" ? "default" : "outline"}
-                        size="sm"
-                        className="gap-2 rounded-full"
+                        className="h-12 gap-2 rounded-full px-6 text-base [&_svg]:size-5"
                         aria-pressed={field.value === "true"}
                         onClick={() =>
                           field.onChange(
@@ -157,7 +166,7 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
                         }
                       >
                         {field.value === "true" && (
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 />
                         )}
                         {option.name}
                       </Button>
@@ -171,13 +180,17 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-12 text-base [&_svg]:size-5">
                           <SelectValue placeholder={`Select ${option.name}`} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {option.values.map((value) => (
-                          <SelectItem key={value} value={value}>
+                          <SelectItem
+                            key={value}
+                            value={value}
+                            className="py-3 text-base"
+                          >
                             {value}
                           </SelectItem>
                         ))}
@@ -190,7 +203,7 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
           />
         ))}
 
-        <Button type="submit" className="w-full">
+        <Button type="submit" size="lg" className="w-full text-lg">
           Add to Order
         </Button>
       </form>
