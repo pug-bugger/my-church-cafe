@@ -13,11 +13,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DrinkOrderForm } from "@/components/terminal/DrinkOrderForm";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   productImageClassName,
   resolveProductImageUrl,
@@ -44,6 +43,11 @@ export function DessertList() {
   const loadDesserts = useAppStore((state) => state.loadDesserts);
   const [openId, setOpenId] = useState<string | null>(null);
 
+  const selectedDessert = useMemo(
+    () => (openId ? (desserts.find((d) => d.id === openId) ?? null) : null),
+    [desserts, openId]
+  );
+
   useEffect(() => {
     loadDesserts();
   }, [loadDesserts]);
@@ -61,58 +65,62 @@ export function DessertList() {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {desserts.map((dessert) => (
-        <Dialog
-          key={dessert.id}
-          open={openId === dessert.id}
-          onOpenChange={(open) => setOpenId(open ? dessert.id : null)}
-        >
-          <DialogTrigger asChild>
-            <Card
-              className="flex flex-col cursor-pointer"
-              onClick={() => setOpenId(dessert.id)}
-            >
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-lg border overflow-hidden shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={resolveProductImageUrl(dessert.imageUrl)}
-                      alt=""
-                      className={productImageClassName(
-                        resolveProductImageUrl(dessert.imageUrl)
-                      )}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <CardTitle className="line-clamp-2">{dessert.name}</CardTitle>
-                    <CardDescription>
-                      ${dessert.price.toFixed(2)}
-                    </CardDescription>
-                  </div>
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {desserts.map((dessert) => (
+          <Card
+            key={dessert.id}
+            className="flex cursor-pointer flex-col"
+            onClick={() => setOpenId(dessert.id)}
+          >
+            <CardHeader>
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resolveProductImageUrl(dessert.imageUrl)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className={productImageClassName(
+                      resolveProductImageUrl(dessert.imageUrl)
+                    )}
+                  />
                 </div>
-              </CardHeader>
-            </Card>
-          </DialogTrigger>
+                <div className="min-w-0">
+                  <CardTitle className="line-clamp-2">{dessert.name}</CardTitle>
+                  <CardDescription>
+                    ${dessert.price.toFixed(2)}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+      <Dialog
+        open={selectedDessert != null}
+        onOpenChange={(open) => !open && setOpenId(null)}
+      >
+        {selectedDessert ? (
           <DialogContent
             onOpenAutoFocus={(e) => {
               e.preventDefault();
             }}
           >
             <DialogHeader>
-              <DialogTitle>{dessert.name}</DialogTitle>
+              <DialogTitle>{selectedDessert.name}</DialogTitle>
               <DialogDescription className="sr-only">
                 Choose quantity and add this dessert to your order.
               </DialogDescription>
             </DialogHeader>
             <DrinkOrderForm
-              drink={dessert}
+              drink={selectedDessert}
               onSuccess={() => setOpenId(null)}
             />
           </DialogContent>
-        </Dialog>
-      ))}
-    </div>
+        ) : null}
+      </Dialog>
+    </>
   );
 }

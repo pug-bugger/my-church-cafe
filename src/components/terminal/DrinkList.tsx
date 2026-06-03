@@ -14,7 +14,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DrinkOrderForm } from "@/components/terminal/DrinkOrderForm";
@@ -54,60 +53,40 @@ function DrinkListSkeleton() {
 
 function DrinkCardGrid({
   drinks,
-  openId,
-  onOpen,
+  onSelect,
 }: {
   drinks: Drink[];
-  openId: string | null;
-  onOpen: (id: string | null) => void;
+  onSelect: (id: string) => void;
 }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       {drinks.map((drink) => (
-        <Dialog
+        <Card
           key={drink.id}
-          open={openId === drink.id}
-          onOpenChange={(open) => onOpen(open ? drink.id : null)}
+          className="flex cursor-pointer flex-col"
+          onClick={() => onSelect(drink.id)}
         >
-          <DialogTrigger asChild>
-            <Card
-              className="flex flex-col cursor-pointer"
-              onClick={() => onOpen(drink.id)}
-            >
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-lg border overflow-hidden shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={resolveProductImageUrl(drink.imageUrl)}
-                      alt=""
-                      className={productImageClassName(
-                        resolveProductImageUrl(drink.imageUrl)
-                      )}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <CardTitle className="line-clamp-2">{drink.name}</CardTitle>
-                    <CardDescription>${drink.price.toFixed(2)}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </DialogTrigger>
-          <DialogContent
-            onOpenAutoFocus={(e) => {
-              e.preventDefault();
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>{drink.name}</DialogTitle>
-              <DialogDescription className="sr-only">
-                Customize your drink options and add it to your order.
-              </DialogDescription>
-            </DialogHeader>
-            <DrinkOrderForm drink={drink} onSuccess={() => onOpen(null)} />
-          </DialogContent>
-        </Dialog>
+          <CardHeader>
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={resolveProductImageUrl(drink.imageUrl)}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className={productImageClassName(
+                    resolveProductImageUrl(drink.imageUrl)
+                  )}
+                />
+              </div>
+              <div className="min-w-0">
+                <CardTitle className="line-clamp-2">{drink.name}</CardTitle>
+                <CardDescription>${drink.price.toFixed(2)}</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
       ))}
     </div>
   );
@@ -123,6 +102,11 @@ export function DrinkList() {
   const drinkSections = useMemo(
     () => groupByDrinkSubtype(drinks, drinkSubtypeLabel, subtypeOrder),
     [drinks, subtypeOrder]
+  );
+
+  const selectedDrink = useMemo(
+    () => (openId ? (drinks.find((d) => d.id === openId) ?? null) : null),
+    [drinks, openId]
   );
 
   useEffect(() => {
@@ -142,15 +126,36 @@ export function DrinkList() {
   }
 
   return (
-    <DrinkSubtypeSections
-      sections={drinkSections}
-      renderItems={(sectionDrinks) => (
-        <DrinkCardGrid
-          drinks={sectionDrinks}
-          openId={openId}
-          onOpen={setOpenId}
-        />
-      )}
-    />
+    <>
+      <DrinkSubtypeSections
+        sections={drinkSections}
+        renderItems={(sectionDrinks) => (
+          <DrinkCardGrid drinks={sectionDrinks} onSelect={setOpenId} />
+        )}
+      />
+      <Dialog
+        open={selectedDrink != null}
+        onOpenChange={(open) => !open && setOpenId(null)}
+      >
+        {selectedDrink ? (
+          <DialogContent
+            onOpenAutoFocus={(e) => {
+              e.preventDefault();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>{selectedDrink.name}</DialogTitle>
+              <DialogDescription className="sr-only">
+                Customize your drink options and add it to your order.
+              </DialogDescription>
+            </DialogHeader>
+            <DrinkOrderForm
+              drink={selectedDrink}
+              onSuccess={() => setOpenId(null)}
+            />
+          </DialogContent>
+        ) : null}
+      </Dialog>
+    </>
   );
 }

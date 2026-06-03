@@ -91,6 +91,15 @@
     display: none;
   }
 
+  /* Tablets/phones: skip heavy motion (dialog open, selects, etc.) */
+  @media (hover: none) and (pointer: coarse) {
+    .animate-in,
+    .animate-out {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+
   .bg-caution-stripes {
     background-image: repeating-linear-gradient(
       45deg,
