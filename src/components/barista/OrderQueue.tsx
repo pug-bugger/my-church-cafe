@@ -178,7 +178,9 @@ export function OrderQueue() {
     <Card key={order.id} className="mb-4">
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
         <CardTitle className="leading-tight">
-          # {order.order_number ?? order.id}
+          {order.customer_name
+            ? order.customer_name
+            : `# ${order.order_number ?? order.id}`}
         </CardTitle>
         {order.status === "pending" ? (
           <Button
@@ -194,6 +196,11 @@ export function OrderQueue() {
         ) : null}
       </CardHeader>
       <CardContent>
+        {order.comment && (
+          <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            {order.comment}
+          </p>
+        )}
         <ul className="space-y-2 mb-4">
           {order.items.map((item) => (
             <li key={item.id} className="flex items-start justify-between gap-2">
@@ -201,20 +208,27 @@ export function OrderQueue() {
                 <div className="font-medium">
                   {item.product_item_name ?? "Item"} × {item.quantity}
                 </div>
-                {(item.product_item_options?.length ?? 0) > 0 && (
-                  <ul className="mt-1.5 text-sm text-muted-foreground space-y-0.5 list-none pl-0">
-                    {(item.product_item_options ?? []).map((option) => (
+                <ul className="mt-1.5 text-sm text-muted-foreground space-y-0.5 list-none pl-0">
+                  {(item.product_item_options ?? [])
+                    .filter(
+                      (opt) =>
+                        opt.option_value_name != null &&
+                        opt.option_value_name !== "" &&
+                        opt.option_value_name !== "false",
+                    )
+                    .map((option) => (
                       <li key={option.id} className="flex flex-wrap gap-x-1">
                         <span className="font-medium text-foreground/80">
                           {option.option_definition_name ?? "Option"}
                         </span>
-                        {option.option_value_name != null &&
-                          String(option.option_value_name).length > 0 && (
-                            <span>: {option.option_value_name}</span>
-                          )}
+                        <span>: {option.option_value_name}</span>
                       </li>
                     ))}
-                  </ul>
+                </ul>
+                {item.comment && (
+                  <p className="mt-1 text-sm italic text-muted-foreground">
+                    {item.comment}
+                  </p>
                 )}
               </div>
               {order.status === "pending" ? (

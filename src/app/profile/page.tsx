@@ -8,6 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Bar,
   BarChart,
   Cell,
@@ -66,39 +73,200 @@ const CHART_COLORS = [
   "var(--chart-5)",
 ];
 
-function TopProductsPieChart({ data }: { data: TopProductRow[] }) {
-  const slice = data.slice(0, 8);
+// ── Date range helpers ───────────────────────────────────────────────────────
+
+type DateRange = { from: Date | null; to: Date | null };
+type Preset =
+  | "all-time"
+  | "last-sunday"
+  | "last-2-weeks"
+  | "last-month"
+  | "last-3-months"
+  | "custom";
+
+function getLastSunday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 7 : day));
+  return d;
+}
+
+function endOfToday(): Date {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function toDateInput(d: Date | null): string {
+  if (!d) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+function rangeFromPreset(p: Preset): DateRange {
+  if (p === "all-time" || p === "custom") return { from: null, to: null };
+  if (p === "last-sunday") {
+    const from = getLastSunday();
+    const to = new Date(from);
+    to.setHours(23, 59, 59, 999);
+    return { from, to };
+  }
+  const to = endOfToday();
+  const from = new Date();
+  from.setHours(0, 0, 0, 0);
+  if (p === "last-2-weeks") from.setDate(from.getDate() - 14);
+  if (p === "last-month") from.setMonth(from.getMonth() - 1);
+  if (p === "last-3-months") from.setMonth(from.getMonth() - 3);
+  return { from, to };
+}
+
+function DateRangeSelector({
+  value,
+  onChange,
+  initialPreset = "all-time",
+}: {
+  value: DateRange;
+  onChange: (r: DateRange) => void;
+  initialPreset?: Preset;
+}) {
+  const [preset, setPreset] = useState<Preset>(initialPreset);
+
+  function handlePreset(p: Preset) {
+    setPreset(p);
+    if (p !== "custom") onChange(rangeFromPreset(p));
+  }
+
   return (
-    <div className="h-[320px] w-full min-h-[280px]">
+    <div className="flex flex-wrap items-center gap-2">
+      <Select value={preset} onValueChange={(v) => handlePreset(v as Preset)}>
+        <SelectTrigger className="w-[150px] h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all-time">All time</SelectItem>
+          <SelectItem value="last-sunday">Last Sunday</SelectItem>
+          <SelectItem value="last-2-weeks">Last 2 weeks</SelectItem>
+          <SelectItem value="last-month">Last month</SelectItem>
+          <SelectItem value="last-3-months">Last 3 months</SelectItem>
+          <SelectItem value="custom">Custom range</SelectItem>
+        </SelectContent>
+      </Select>
+      {preset === "custom" && (
+        <>
+          <Input
+            type="date"
+            className="h-8 w-[130px] text-xs"
+            value={toDateInput(value.from)}
+            onChange={(e) => {
+              const from = e.target.value
+                ? new Date(e.target.value + "T00:00:00")
+                : null;
+              onChange({ ...value, from });
+            }}
+          />
+          <span className="text-xs text-muted-foreground">–</span>
+          <Input
+            type="date"
+            className="h-8 w-[130px] text-xs"
+            value={toDateInput(value.to)}
+            onChange={(e) => {
+              const to = e.target.value
+                ? new Date(e.target.value + "T23:59:59")
+                : null;
+              onChange({ ...value, to });
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+
+function HorizontalBarChart({ data }: { data: TopProductRow[] }) {
+  const slice = data.slice(0, 15);
+  const chartHeight = Math.max(160, slice.length * 38 + 40);
+  return (
+    <div style={{ height: chartHeight }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+        <BarChart
+          layout="vertical"
+          data={slice}
+          margin={{ top: 4, right: 40, left: 8, bottom: 4 }}
+        >
+          <XAxis
+            type="number"
+            tickLine={false}
+            allowDecimals={false}
+            tick={{ fontSize: 11 }}
+          />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={130}
+            tick={{ fontSize: 11 }}
+            tickLine={false}
+          />
           <Tooltip
-            formatter={(value, name) => [`×${value ?? 0}`, name]}
+            formatter={(value) => [`×${value ?? 0}`, "Ordered"]}
             contentStyle={{ borderRadius: "var(--radius)" }}
           />
-          <Pie
-            data={slice}
-            dataKey="total"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            innerRadius={48}
-            outerRadius={100}
-            paddingAngle={2}
-            stroke="var(--border)"
-            strokeWidth={1}
-            label={({ name, value }) => `${name}: ×${value ?? 0}`}
-            labelLine={{ stroke: "var(--muted-foreground)" }}
-          >
+          <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={24}>
             {slice.map((_, i) => (
-              <Cell
-                key={i}
-                fill={CHART_COLORS[i % CHART_COLORS.length]}
-              />
+              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
             ))}
-          </Pie>
-        </PieChart>
+          </Bar>
+        </BarChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+function SmallPieChart({ data }: { data: TopProductRow[] }) {
+  const slice = data.slice(0, 8);
+  return (
+    <div className="w-full space-y-3">
+      <div className="h-[160px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Tooltip
+              formatter={(value, name) => [`×${value ?? 0}`, name]}
+              contentStyle={{ borderRadius: "var(--radius)" }}
+            />
+            <Pie
+              data={slice}
+              dataKey="total"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={32}
+              outerRadius={64}
+              paddingAngle={2}
+              stroke="var(--border)"
+              strokeWidth={1}
+            >
+              {slice.map((_, i) => (
+                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <ul className="space-y-1">
+        {slice.map((row, i) => (
+          <li key={row.name} className="flex items-center gap-2 text-xs">
+            <span
+              className="shrink-0 h-2.5 w-2.5 rounded-full"
+              style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+            />
+            <span className="flex-1 min-w-0 truncate">{row.name}</span>
+            <span className="tabular-nums text-muted-foreground shrink-0">
+              ×{row.total}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -115,6 +283,13 @@ export default function ProfilePage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [topProductsRange, setTopProductsRange] = useState<DateRange>({
+    from: null,
+    to: null,
+  });
+  const [optionStatsRange, setOptionStatsRange] = useState<DateRange>(() =>
+    rangeFromPreset("last-3-months")
+  );
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
@@ -350,12 +525,14 @@ export default function ProfilePage() {
   };
 
   function profileInitials(name: string) {
-    return name
-      .split(/\s+/)
-      .map((p) => p[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "?";
+    return (
+      name
+        .split(/\s+/)
+        .map((p) => p[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "?"
+    );
   }
 
   async function handleProfilePhoto(file: File) {
@@ -374,7 +551,10 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
-      const data = (await response.json()) as { picture_url?: string; error?: string };
+      const data = (await response.json()) as {
+        picture_url?: string;
+        error?: string;
+      };
       if (!response.ok) {
         throw new Error(data?.error ?? "Upload failed");
       }
@@ -414,7 +594,9 @@ export default function ProfilePage() {
       persistUser({ ...user, picture_url: null });
       toast.success("Profile photo removed");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not remove photo");
+      toast.error(
+        err instanceof Error ? err.message : "Could not remove photo"
+      );
     } finally {
       setPhotoUploading(false);
     }
@@ -423,6 +605,9 @@ export default function ProfilePage() {
   const topProducts = useMemo(() => {
     const byName = new Map<string, number>();
     for (const order of orders) {
+      const t = new Date(order.created_at);
+      if (topProductsRange.from && t < topProductsRange.from) continue;
+      if (topProductsRange.to && t > topProductsRange.to) continue;
       for (const item of order.items) {
         const name = item.product_item_name ?? "Unknown";
         byName.set(name, (byName.get(name) ?? 0) + item.quantity);
@@ -431,39 +616,31 @@ export default function ProfilePage() {
     return Array.from(byName.entries())
       .map(([name, total]) => ({ name, total }))
       .sort((a, b) => b.total - a.total);
-  }, [orders]);
+  }, [orders, topProductsRange]);
 
-  const { previousMonthLabel, topProductsLastMonth } = useMemo(() => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      0,
-      23,
-      59,
-      59,
-      999
-    );
-    const label = start.toLocaleDateString(undefined, {
-      month: "long",
-      year: "numeric",
-    });
-    const byName = new Map<string, number>();
+  const optionStats = useMemo(() => {
+    const byDefinition = new Map<string, Map<string, number>>();
     for (const order of orders) {
       const t = new Date(order.created_at);
-      if (t < start || t > end) continue;
+      if (optionStatsRange.from && t < optionStatsRange.from) continue;
+      if (optionStatsRange.to && t > optionStatsRange.to) continue;
       for (const item of order.items) {
-        const name = item.product_item_name ?? "Unknown";
-        byName.set(name, (byName.get(name) ?? 0) + item.quantity);
+        for (const opt of item.product_item_options ?? []) {
+          const def = opt.option_definition_name ?? "Other";
+          const val = opt.option_value_name ?? "Unknown";
+          if (!byDefinition.has(def)) byDefinition.set(def, new Map());
+          const inner = byDefinition.get(def)!;
+          inner.set(val, (inner.get(val) ?? 0) + 1);
+        }
       }
     }
-    const list = Array.from(byName.entries())
-      .map(([name, total]) => ({ name, total }))
-      .sort((a, b) => b.total - a.total);
-    return { previousMonthLabel: label, topProductsLastMonth: list };
-  }, [orders]);
+    return Array.from(byDefinition.entries()).map(([definition, valMap]) => ({
+      definition,
+      data: Array.from(valMap.entries())
+        .map(([name, total]) => ({ name, total }))
+        .sort((a, b) => b.total - a.total),
+    }));
+  }, [orders, optionStatsRange]);
 
   const ordersByDate = useMemo(() => {
     const byDate = new Map<string, { count: number; date: string }>();
@@ -474,7 +651,12 @@ export default function ProfilePage() {
       else byDate.set(key, { count: 1, date: order.created_at });
     }
     return Array.from(byDate.entries())
-      .map(([key, { count, date }]) => ({ dateKey: key, date, count, label: formatDate(date) }))
+      .map(([key, { count, date }]) => ({
+        dateKey: key,
+        date,
+        count,
+        label: formatDate(date),
+      }))
       .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
       .slice(-14);
   }, [orders]);
@@ -518,7 +700,12 @@ export default function ProfilePage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle>Profile <span className="text-muted-foreground text-sm">{user?.role ? `(${user.role})` : ''}</span></CardTitle>
+          <CardTitle>
+            Profile{" "}
+            <span className="text-muted-foreground text-sm">
+              {user?.role ? `(${user.role})` : ""}
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!apiUrl && (
@@ -566,12 +753,14 @@ export default function ProfilePage() {
               <div className="flex flex-col sm:flex-row sm:items-start gap-6">
                 <div className="flex flex-col items-center sm:items-start gap-3">
                   <Avatar className="h-24 w-24 border-2 border-border">
-                    {user?.picture_url && <>
-                      <AvatarImage
-                        src={resolveMediaUrl(user?.picture_url ?? undefined)}
-                        alt=""
-                      />
-                    </>}
+                    {user?.picture_url && (
+                      <>
+                        <AvatarImage
+                          src={resolveMediaUrl(user?.picture_url ?? undefined)}
+                          alt=""
+                        />
+                      </>
+                    )}
                     <AvatarFallback className="text-lg">
                       {user?.name ? profileInitials(user.name) : "?"}
                     </AvatarFallback>
@@ -653,7 +842,9 @@ export default function ProfilePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold tabular-nums">{stats.totalOrders}</p>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {stats.totalOrders}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -663,7 +854,9 @@ export default function ProfilePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold tabular-nums">{stats.totalItems}</p>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {stats.totalItems}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -673,7 +866,9 @@ export default function ProfilePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold tabular-nums">{stats.ordersThisWeek}</p>
+                    <p className="text-2xl font-bold tabular-nums">
+                      {stats.ordersThisWeek}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -714,9 +909,13 @@ export default function ProfilePage() {
                   </CardHeader>
                   <CardContent>
                     {usersLoading && directoryUsers.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">Loading users…</p>
+                      <p className="text-muted-foreground text-sm">
+                        Loading users…
+                      </p>
                     ) : directoryUsers.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">No users found.</p>
+                      <p className="text-muted-foreground text-sm">
+                        No users found.
+                      </p>
                     ) : (
                       <div className="rounded-md border overflow-x-auto max-h-[320px] overflow-y-auto">
                         <table className="w-full text-sm">
@@ -734,8 +933,12 @@ export default function ProfilePage() {
                             {directoryUsers.map((u) => (
                               <tr key={u.id} className="border-b last:border-0">
                                 <td className="p-3 font-medium">{u.name}</td>
-                                <td className="p-3 text-muted-foreground">{u.email}</td>
-                                <td className="p-3 capitalize">{u.role ?? "—"}</td>
+                                <td className="p-3 text-muted-foreground">
+                                  {u.email}
+                                </td>
+                                <td className="p-3 capitalize">
+                                  {u.role ?? "—"}
+                                </td>
                                 <td className="p-3 text-muted-foreground hidden sm:table-cell">
                                   {u.created_at
                                     ? new Date(u.created_at).toLocaleDateString()
@@ -751,48 +954,76 @@ export default function ProfilePage() {
                 </Card>
               )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Most ordered products</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {isAdminDashboard
-                        ? "Top items by quantity across all orders (all time)"
-                        : "Your top items by quantity ordered (all time)"}
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    {topProducts.length === 0 ? (
-                      <p className="text-muted-foreground text-sm py-8 text-center">
+              {/* Most ordered products — horizontal bar chart */}
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div>
+                      <CardTitle>Most ordered products</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
                         {isAdminDashboard
-                          ? "No orders yet."
-                          : "No orders yet. Order from the Terminal to see your top products here."}
+                          ? "Top items by quantity across all orders"
+                          : "Your top items by quantity ordered"}
                       </p>
-                    ) : (
-                      <TopProductsPieChart data={topProducts} />
-                    )}
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Last month</CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    </div>
+                    <DateRangeSelector
+                      value={topProductsRange}
+                      onChange={setTopProductsRange}
+                      initialPreset="all-time"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {topProducts.length === 0 ? (
+                    <p className="text-muted-foreground text-sm py-8 text-center">
                       {isAdminDashboard
-                        ? `Top products in ${previousMonthLabel} (all orders)`
-                        : `Top products in ${previousMonthLabel}`}
+                        ? "No orders in this range."
+                        : "No orders yet. Order from the Terminal to see your top products here."}
                     </p>
-                  </CardHeader>
-                  <CardContent>
-                    {topProductsLastMonth.length === 0 ? (
-                      <p className="text-muted-foreground text-sm py-8 text-center">
-                        No orders in {previousMonthLabel}.
+                  ) : (
+                    <HorizontalBarChart data={topProducts} />
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Option statistics — pie charts per option type */}
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div>
+                      <CardTitle>Option statistics</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {isAdminDashboard
+                          ? "Breakdown of drink options chosen across all orders"
+                          : "Breakdown of drink options you have chosen"}
                       </p>
-                    ) : (
-                      <TopProductsPieChart data={topProductsLastMonth} />
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                    </div>
+                    <DateRangeSelector
+                      value={optionStatsRange}
+                      onChange={setOptionStatsRange}
+                      initialPreset="last-3-months"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {optionStats.length === 0 ? (
+                    <p className="text-muted-foreground text-sm py-8 text-center">
+                      No option data in this range.
+                    </p>
+                  ) : (
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      {optionStats.map(({ definition, data }) => (
+                        <div key={definition} className="space-y-1">
+                          <p className="text-sm font-medium text-center capitalize">
+                            {definition}
+                          </p>
+                          <SmallPieChart data={data} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               <Card>
                 <CardHeader>
@@ -848,11 +1079,13 @@ export default function ProfilePage() {
                 loading={ordersLoading}
                 showUserColumns={isAdminDashboard}
                 title={
-                  isAdminDashboard ? "All orders — line items" : "Your orders data"
+                  isAdminDashboard
+                    ? "All orders — line items"
+                    : "Your orders data"
                 }
                 description={
                   isAdminDashboard
-                    ? "Every customer’s line items. Default range is the last 30 days; filter, sort, group, and export."
+                    ? "Every customer's line items. Default range is the last 30 days; filter, sort, group, and export."
                     : "Line items from your orders. Default range is the last 30 days; change dates, sort, group, and export."
                 }
               />

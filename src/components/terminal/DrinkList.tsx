@@ -99,14 +99,19 @@ export function DrinkList() {
   const subtypeOrder = useDrinkSubtypeOrder();
   const [openId, setOpenId] = useState<string | null>(null);
 
+  const activeDrinks = useMemo(
+    () => drinks.filter((d) => d.active !== false),
+    [drinks]
+  );
+
   const drinkSections = useMemo(
-    () => groupByDrinkSubtype(drinks, drinkSubtypeLabel, subtypeOrder),
-    [drinks, subtypeOrder]
+    () => groupByDrinkSubtype(activeDrinks, drinkSubtypeLabel, subtypeOrder),
+    [activeDrinks, subtypeOrder]
   );
 
   const selectedDrink = useMemo(
-    () => (openId ? (drinks.find((d) => d.id === openId) ?? null) : null),
-    [drinks, openId]
+    () => (openId ? (activeDrinks.find((d) => d.id === openId) ?? null) : null),
+    [activeDrinks, openId]
   );
 
   useEffect(() => {
@@ -117,7 +122,7 @@ export function DrinkList() {
     return <DrinkListSkeleton />;
   }
 
-  if (drinks.length === 0) {
+  if (activeDrinks.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-8">
         No drinks available.

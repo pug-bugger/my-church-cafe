@@ -22,6 +22,10 @@ export type Drink = {
   imageUrl?: string;
   iconName?: string;
   availableOptions: DrinkOption[];
+  /** false means hidden from menu and terminal (soft-deleted) */
+  active?: boolean;
+  /** ISO datetime until which the product is hidden; null means permanent or not hidden */
+  available_until?: string | null;
 };
 
 export type OrderItem = {
@@ -31,6 +35,7 @@ export type OrderItem = {
     [key: string]: string;
   };
   quantity: number;
+  comment?: string;
 };
 
 export type OrderStatus =
@@ -56,6 +61,7 @@ export type ServerOrderItem = {
   price: number | null;
   product_item_name: string | null;
   product_item_options?: ServerOrderItemOption[];
+  comment?: string | null;
 };
 
 /** User row from `/api/users` or `/api/users/me` */
@@ -77,5 +83,7 @@ export type ServerOrder = {
   created_at: string;
   user_name?: string | null;
   user_email?: string | null;
+  comment?: string | null;
+  customer_name?: string | null;
   items: ServerOrderItem[];
 };

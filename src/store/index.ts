@@ -63,6 +63,8 @@ function mapApiProductToDrink(product: Record<string, unknown>): Drink {
     availableOptions: mapProductApiToDrinkOptions(
       product.drink_options as Parameters<typeof mapProductApiToDrinkOptions>[0]
     ),
+    active: product.available !== 0 && product.available !== false,
+    available_until: product.available_until != null ? String(product.available_until) : null,
   };
 }
 
@@ -119,6 +121,7 @@ interface AppState {
   updateDessertApi: (id: string, dessert: Omit<Drink, "id">) => Promise<void>;
   deleteDessertApi: (id: string) => Promise<void>;
   uploadProductImage: (productId: string, file: File) => Promise<string>;
+  toggleProductAvailableApi: (id: string, active: boolean, hideUntilMidnight?: boolean) => Promise<void>;
   setOrders: (orders: ServerOrder[]) => void;
   updateOrderStatus: (orderId: number, status: OrderStatus) => void;
   removeOrderItem: (orderId: number, itemId: number) => void;
@@ -438,6 +441,35 @@ export const useAppStore = create<AppState>((set) => ({
     return imageUrl;
   },
   
+  toggleProductAvailableApi: async (id, active, hideUntilMidnight) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
+    const token = getAuthToken();
+    if (!token) throw new Error("Login required");
+    const response = await fetch(`${apiUrl}/api/products/${id}/availability`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ available: active, hide_until_midnight: hideUntilMidnight ?? false }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error ?? "Failed to update product availability");
+    }
+    // available_until is non-null only for the temporary-hide case (value used only for the label)
+    const available_until = !active && hideUntilMidnight ? "scheduled" : null;
+    set((state) => ({
+      drinks: state.drinks.map((d) =>
+        d.id === id ? { ...d, active, available_until } : d
+      ),
+      desserts: state.desserts.map((d) =>
+        d.id === id ? { ...d, active, available_until } : d
+      ),
+    }));
+  },
+
   setOrders: (orders) => set(() => ({
     orders
   })),
@@ -446,7 +478,8 @@ export const useAppStore = create<AppState>((set) => ({
     const existingIndex = state.draftItems.findIndex((existing) => {
       return (
         existing.drinkId === item.drinkId &&
-        areSelectedOptionsEqual(existing.selectedOptions, item.selectedOptions)
+        areSelectedOptionsEqual(existing.selectedOptions, item.selectedOptions) &&
+        (existing.comment ?? "") === (item.comment ?? "")
       );
     });
     if (existingIndex !== -1) {

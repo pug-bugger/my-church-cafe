@@ -43,9 +43,14 @@ export function DessertList() {
   const loadDesserts = useAppStore((state) => state.loadDesserts);
   const [openId, setOpenId] = useState<string | null>(null);
 
+  const activeDesserts = useMemo(
+    () => desserts.filter((d) => d.active !== false),
+    [desserts]
+  );
+
   const selectedDessert = useMemo(
-    () => (openId ? (desserts.find((d) => d.id === openId) ?? null) : null),
-    [desserts, openId]
+    () => (openId ? (activeDesserts.find((d) => d.id === openId) ?? null) : null),
+    [activeDesserts, openId]
   );
 
   useEffect(() => {
@@ -56,7 +61,7 @@ export function DessertList() {
     return <DessertListSkeleton />;
   }
 
-  if (desserts.length === 0) {
+  if (activeDesserts.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-4">
         No desserts are available right now.
@@ -67,7 +72,7 @@ export function DessertList() {
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {desserts.map((dessert) => (
+        {activeDesserts.map((dessert) => (
           <Card
             key={dessert.id}
             className="flex cursor-pointer flex-col"

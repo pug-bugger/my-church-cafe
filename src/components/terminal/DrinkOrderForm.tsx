@@ -34,6 +34,7 @@ interface DrinkOrderFormProps {
 const formSchema = z.object({
   quantity: z.coerce.number().int().min(1),
   options: z.record(z.string()),
+  comment: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -81,6 +82,7 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
     defaultValues: {
       quantity: 1,
       options: defaultOptionValues,
+      comment: "",
     },
   });
 
@@ -90,6 +92,7 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
       drinkId: drink.id,
       quantity: values.quantity,
       selectedOptions: values.options,
+      comment: values.comment?.trim() || undefined,
     });
     form.reset();
     onSuccess?.();
@@ -202,6 +205,23 @@ export function DrinkOrderForm({ drink, onSuccess }: DrinkOrderFormProps) {
             )}
           />
         ))}
+
+        <FormField
+          control={form.control}
+          name="comment"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Note</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. extra hot, no ice..."
+                  className="h-12 text-base"
+                  {...field}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
         <Button type="submit" size="lg" className="w-full text-lg">
           Add to Order

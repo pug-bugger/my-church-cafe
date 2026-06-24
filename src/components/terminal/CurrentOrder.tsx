@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -28,6 +29,8 @@ export function CurrentOrder() {
     { id: number; name: string | null }[]
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderComment, setOrderComment] = useState("");
+  const [customerName, setCustomerName] = useState("");
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
@@ -38,6 +41,13 @@ export function CurrentOrder() {
     const product = getProductById(item.drinkId);
     return sum + (product ? product.price * item.quantity : 0);
   }, 0);
+
+  useEffect(() => {
+    if (draftItems.length === 0) {
+      setOrderComment("");
+      setCustomerName("");
+    }
+  }, [draftItems.length]);
 
   useEffect(() => {
     if (!apiUrl) return;
@@ -105,6 +115,7 @@ export function CurrentOrder() {
       quantity: item.quantity,
       productId: resolveProductId(item.drinkId),
       selectedOptions: item.selectedOptions,
+      comment: item.comment || null,
     }));
     const missing = orderItemsPayload.find((item) => !item.productId);
     if (missing) {
@@ -122,6 +133,8 @@ export function CurrentOrder() {
         },
         body: JSON.stringify({
           order: {
+            comment: orderComment.trim() || null,
+            customer_name: customerName.trim() || null,
             order_items: orderItemsPayload,
           },
         }),
@@ -185,6 +198,11 @@ export function CurrentOrder() {
                         }
                       )}
                     </ul>
+                    {item.comment && (
+                      <p className="mt-1 text-sm italic text-muted-foreground">
+                        {item.comment}
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className="whitespace-nowrap font-medium text-base">
@@ -204,6 +222,22 @@ export function CurrentOrder() {
               );
             })}
           </ul>
+        )}
+        {draftItems.length > 0 && (
+          <div className="mt-4 pt-3 border-t space-y-2">
+            <Input
+              placeholder="Customer name..."
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="text-sm"
+            />
+            <Input
+              placeholder="Order note..."
+              value={orderComment}
+              onChange={(e) => setOrderComment(e.target.value)}
+              className="text-sm"
+            />
+          </div>
         )}
       </CardContent>
       <CardFooter className="flex shrink-0 flex-col items-start gap-3">

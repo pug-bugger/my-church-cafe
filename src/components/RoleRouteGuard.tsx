@@ -22,11 +22,10 @@ function hasAuthToken(): boolean {
   if (typeof window === "undefined") return false;
   return Boolean(
     localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken")
+    localStorage.getItem("jwt") ??
+    localStorage.getItem("accessToken"),
   );
 }
-console.log("test");
 const STAFF_ROLES: AppRole[] = ["admin", "personal"];
 const ADMIN_ONLY: AppRole[] = ["admin"];
 
@@ -52,9 +51,7 @@ export function RoleRouteGuard({
     }
     const role = readStoredRole();
     const ok =
-      mode === "admin"
-        ? ADMIN_ONLY.includes(role)
-        : STAFF_ROLES.includes(role);
+      mode === "admin" ? ADMIN_ONLY.includes(role) : STAFF_ROLES.includes(role);
     if (!ok) {
       setAllowed(false);
       router.replace(redirectTo);

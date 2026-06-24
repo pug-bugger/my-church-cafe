@@ -12,6 +12,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -28,7 +35,7 @@ import { DrinkOptionManagement } from "./DrinkOptionManagement";
 import { DrinkSubtypeSections } from "@/components/drinks/DrinkSubtypeSections";
 import { Drink } from "@/types";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
+import { Clock, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import {
   productImageClassName,
   resolveProductImageUrl,
@@ -38,6 +45,13 @@ import {
   groupByDrinkSubtype,
 } from "@/lib/drinkSubtypeGroups";
 import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
+
+type VisibilityAction = "show" | "hide" | "hide_until_midnight";
+
+function productStatusLabel(drink: Drink): string | null {
+  if (drink.active !== false) return null;
+  return drink.available_until ? "Hidden until midnight" : "Inactive";
+}
 
 function DrinkManagementSkeleton() {
   return (
@@ -73,86 +87,145 @@ function DrinkCardGrid({
   drinks,
   editingId,
   deletingId,
+  togglingId,
   onEdit,
   onDelete,
+  onSetVisibility,
 }: {
   drinks: Drink[];
   editingId: string | null;
   deletingId: string | null;
+  togglingId: string | null;
   onEdit: (id: string) => void;
   onDelete: (drink: Drink) => void;
+  onSetVisibility: (drink: Drink, action: VisibilityAction) => void;
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {drinks.map((drink) => (
-        <Card key={drink.id} className="relative">
-          <CardHeader className="pb-2">
-            <div className="flex items-start gap-4">
-              <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={resolveProductImageUrl(drink.imageUrl)}
-                  alt=""
-                  className={productImageClassName(
-                    resolveProductImageUrl(drink.imageUrl)
+      {drinks.map((drink) => {
+        const statusLabel = productStatusLabel(drink);
+        const isHidden = drink.active === false;
+        return (
+          <Card
+            key={drink.id}
+            className={`relative transition-opacity ${isHidden ? "opacity-60" : ""}`}
+          >
+            <CardHeader className="pb-2">
+              <div className="flex items-start gap-4">
+                <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resolveProductImageUrl(drink.imageUrl)}
+                    alt=""
+                    className={productImageClassName(
+                      resolveProductImageUrl(drink.imageUrl)
+                    )}
+                  />
+                </div>
+                <div className="min-w-0 flex-1 pr-24">
+                  <CardTitle>{drink.name}</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    ${drink.price.toFixed(2)}
+                  </p>
+                  {statusLabel && (
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {statusLabel}
+                    </span>
                   )}
-                />
+                </div>
+                <div className="absolute right-4 top-4 flex items-center gap-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label={`Visibility options for ${drink.name}`}
+                        disabled={togglingId === drink.id}
+                      >
+                        {isHidden ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => onSetVisibility(drink, "show")}
+                        disabled={drink.active !== false}
+                      >
+                        <Eye className="h-4 w-4" />
+                        Show
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onSetVisibility(drink, "hide")}
+                        disabled={isHidden && !drink.available_until}
+                      >
+                        <EyeOff className="h-4 w-4" />
+                        Hide
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          onSetVisibility(drink, "hide_until_midnight")
+                        }
+                        disabled={isHidden && !!drink.available_until}
+                      >
+                        <Clock className="h-4 w-4" />
+                        Hide until midnight
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Dialog
+                    open={editingId === drink.id}
+                    onOpenChange={(open) => !open && onEdit("")}
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label={`Edit ${drink.name}`}
+                        onClick={() => onEdit(drink.id)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>Edit drink</DialogTitle>
+                        <DialogDescription className="sr-only">
+                          Update the drink details and save your changes.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <ProductForm
+                        product={drink}
+                        onSuccess={() => onEdit("")}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    aria-label={`Delete ${drink.name}`}
+                    disabled={deletingId === drink.id}
+                    onClick={() => onDelete(drink)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="min-w-0 flex-1 pr-20">
-                <CardTitle>{drink.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  ${drink.price.toFixed(2)}
-                </p>
-              </div>
-              <div className="absolute right-4 top-4 flex items-center gap-1">
-                <Dialog
-                  open={editingId === drink.id}
-                  onOpenChange={(open) => !open && onEdit("")}
-                >
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                      aria-label={`Edit ${drink.name}`}
-                      onClick={() => onEdit(drink.id)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Edit drink</DialogTitle>
-                      <DialogDescription className="sr-only">
-                        Update the drink details and save your changes.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <ProductForm
-                      product={drink}
-                      onSuccess={() => onEdit("")}
-                    />
-                  </DialogContent>
-                </Dialog>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  aria-label={`Delete ${drink.name}`}
-                  disabled={deletingId === drink.id}
-                  onClick={() => onDelete(drink)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {drink.description}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {drink.description}
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -162,9 +235,13 @@ export function DrinkManagement() {
   const drinksLoading = useAppStore((state) => state.drinksLoading);
   const loadDrinks = useAppStore((state) => state.loadDrinks);
   const deleteDrinkApi = useAppStore((state) => state.deleteDrinkApi);
+  const toggleProductAvailableApi = useAppStore(
+    (state) => state.toggleProductAvailableApi
+  );
   const subtypeOrder = useDrinkSubtypeOrder();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [drinkToDelete, setDrinkToDelete] = useState<Drink | null>(null);
 
   const drinkSections = useMemo(
@@ -188,6 +265,28 @@ export function DrinkManagement() {
       toast.error(message);
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleSetVisibility(drink: Drink, action: VisibilityAction) {
+    setTogglingId(drink.id);
+    try {
+      if (action === "show") {
+        await toggleProductAvailableApi(drink.id, true);
+        toast.success(`"${drink.name}" is now visible`);
+      } else if (action === "hide") {
+        await toggleProductAvailableApi(drink.id, false);
+        toast.success(`"${drink.name}" is now hidden`);
+      } else {
+        await toggleProductAvailableApi(drink.id, false, true);
+        toast.success(`"${drink.name}" hidden until midnight`);
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update visibility";
+      toast.error(message);
+    } finally {
+      setTogglingId(null);
     }
   }
 
@@ -220,8 +319,10 @@ export function DrinkManagement() {
               drinks={sectionDrinks}
               editingId={editingId}
               deletingId={deletingId}
+              togglingId={togglingId}
               onEdit={handleEditClose}
               onDelete={setDrinkToDelete}
+              onSetVisibility={handleSetVisibility}
             />
           )}
         />
