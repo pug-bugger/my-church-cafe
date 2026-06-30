@@ -35,9 +35,10 @@ import { Drink } from "@/types";
 import { toast } from "sonner";
 import { Clock, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import {
-  productImageClassName,
+  isDefaultProductImageUrl,
   resolveProductImageUrl,
 } from "@/lib/imageUrl";
+import { CafeIcon } from "@/components/CafeIcon";
 
 type VisibilityAction = "show" | "hide" | "hide_until_midnight";
 
@@ -149,15 +150,17 @@ export function DessertManagement() {
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start gap-4">
-                    <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={resolveProductImageUrl(dessert.imageUrl)}
-                        alt=""
-                        className={productImageClassName(
-                          resolveProductImageUrl(dessert.imageUrl)
-                        )}
-                      />
+                    <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0 flex items-center justify-center">
+                      {isDefaultProductImageUrl(resolveProductImageUrl(dessert.imageUrl)) ? (
+                        <CafeIcon className="h-8 w-8 text-muted-foreground" />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={resolveProductImageUrl(dessert.imageUrl)}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1 pr-24">
                       <CardTitle>{dessert.name}</CardTitle>

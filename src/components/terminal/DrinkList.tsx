@@ -20,9 +20,10 @@ import { DrinkOrderForm } from "@/components/terminal/DrinkOrderForm";
 import { DrinkSubtypeSections } from "@/components/drinks/DrinkSubtypeSections";
 import { useEffect, useMemo, useState } from "react";
 import {
-  productImageClassName,
+  isDefaultProductImageUrl,
   resolveProductImageUrl,
 } from "@/lib/imageUrl";
+import { CafeIcon } from "@/components/CafeIcon";
 import {
   drinkSubtypeLabel,
   groupByDrinkSubtype,
@@ -68,17 +69,19 @@ function DrinkCardGrid({
         >
           <CardHeader>
             <div className="flex items-center gap-4">
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={resolveProductImageUrl(drink.imageUrl)}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className={productImageClassName(
-                    resolveProductImageUrl(drink.imageUrl)
-                  )}
-                />
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border flex items-center justify-center">
+                {isDefaultProductImageUrl(resolveProductImageUrl(drink.imageUrl)) ? (
+                  <CafeIcon className="h-7 w-7 text-muted-foreground" />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={resolveProductImageUrl(drink.imageUrl)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
+                )}
               </div>
               <div className="min-w-0">
                 <CardTitle className="line-clamp-2">{drink.name}</CardTitle>

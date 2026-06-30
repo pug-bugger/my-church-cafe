@@ -30,10 +30,3 @@ export function isDefaultProductImageUrl(url: string): boolean {
     url === DEFAULT_PRODUCT_IMAGE || url.endsWith("/small-cup-icon.svg")
   );
 }
-
-/** Tailwind classes for product thumbnails (default icon is shown smaller via SVG + contain). */
-export function productImageClassName(resolvedUrl: string): string {
-  return isDefaultProductImageUrl(resolvedUrl)
-    ? "h-full w-full object-contain p-1"
-    : "h-full w-full object-cover";
-}

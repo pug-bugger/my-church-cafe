@@ -29,9 +29,10 @@ import {
   mapDefinitionToDrinkOption,
   type DrinkOptionDefinitionApi,
 } from "@/lib/drinkOptions";
+import { CafeIcon } from "@/components/CafeIcon";
 import {
   DEFAULT_PRODUCT_IMAGE,
-  productImageClassName,
+  isDefaultProductImageUrl,
   resolveProductImageUrl,
 } from "@/lib/imageUrl";
 import {
@@ -353,13 +354,17 @@ export function ProductForm({
         />
 
         <div className="flex gap-4 items-start">
-          <div className="relative h-24 w-24 rounded-md border bg-muted overflow-hidden shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={displayImageSrc}
-              alt=""
-              className={productImageClassName(displayImageSrc)}
-            />
+          <div className="relative h-24 w-24 rounded-md border bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+            {isDefaultProductImageUrl(displayImageSrc) ? (
+              <CafeIcon className="h-11 w-11 text-muted-foreground" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={displayImageSrc}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            )}
           </div>
           <div className="space-y-2 flex-1 min-w-0">
             <FormLabel htmlFor="product-image">Photo</FormLabel>

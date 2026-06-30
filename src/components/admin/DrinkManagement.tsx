@@ -37,9 +37,10 @@ import { Drink } from "@/types";
 import { toast } from "sonner";
 import { Clock, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import {
-  productImageClassName,
+  isDefaultProductImageUrl,
   resolveProductImageUrl,
 } from "@/lib/imageUrl";
+import { CafeIcon } from "@/components/CafeIcon";
 import {
   drinkSubtypeLabel,
   groupByDrinkSubtype,
@@ -112,15 +113,17 @@ function DrinkCardGrid({
           >
             <CardHeader className="pb-2">
               <div className="flex items-start gap-4">
-                <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={resolveProductImageUrl(drink.imageUrl)}
-                    alt=""
-                    className={productImageClassName(
-                      resolveProductImageUrl(drink.imageUrl)
-                    )}
-                  />
+                <div className="h-16 w-16 rounded-md border overflow-hidden shrink-0 flex items-center justify-center">
+                  {isDefaultProductImageUrl(resolveProductImageUrl(drink.imageUrl)) ? (
+                    <CafeIcon className="h-8 w-8 text-muted-foreground" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={resolveProductImageUrl(drink.imageUrl)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1 pr-24">
                   <CardTitle>{drink.name}</CardTitle>

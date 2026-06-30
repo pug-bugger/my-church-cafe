@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
+import { CafeIcon } from "@/components/CafeIcon";
 
 /** Who sees this nav item (guest = not signed in → same as parishioner). */
 type NavVisibility = "public" | "staff" | "admin";
@@ -157,7 +158,7 @@ export function Navigation() {
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
               <Link href="/" className="flex items-center gap-2 text-xl font-bold">
-                <img src="/cup.svg" alt="Church Cafe" className="w-8 h-8" />
+                <CafeIcon size={32} />
                 Church Cafe
               </Link>
               <span className="ml-2 text-sm font-medium text-muted-foreground">

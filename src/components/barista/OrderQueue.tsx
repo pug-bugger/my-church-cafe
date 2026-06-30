@@ -202,7 +202,7 @@ export function OrderQueue() {
           </p>
         )}
         <ul className="space-y-2 mb-4">
-          {order.items.map((item) => (
+          {order.items.filter((item) => item.category_name !== "Dessert").map((item) => (
             <li key={item.id} className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="font-medium">
@@ -246,7 +246,7 @@ export function OrderQueue() {
               ) : null}
             </li>
           ))}
-          {order.items.length === 0 && (
+          {order.items.filter((item) => item.category_name !== "Dessert").length === 0 && (
             <li className="text-sm text-muted-foreground">No items</li>
           )}
         </ul>

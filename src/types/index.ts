@@ -60,6 +60,7 @@ export type ServerOrderItem = {
   quantity: number;
   price: number | null;
   product_item_name: string | null;
+  category_name?: string | null;
   product_item_options?: ServerOrderItemOption[];
   comment?: string | null;
 };

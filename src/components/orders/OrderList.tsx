@@ -2,7 +2,6 @@
 
 import { useAppStore } from "@/store";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWebSocket } from "@/context/WebSocketContext";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
@@ -46,7 +45,21 @@ export function OrderList() {
   }, [fetchOrders, ordersRefreshKey]);
 
   const readyForPickup = orders.filter((o) => o.status === "ready");
-  const preparingOrders = orders.filter((o) => o.status !== "ready" && o.status !== "completed" && o.status !== "cancelled");
+  const preparingOrders = orders.filter(
+    (o) =>
+      o.status !== "ready" &&
+      o.status !== "completed" &&
+      o.status !== "cancelled",
+  );
+
+  const getOrderLabel = (order: ServerOrder): string =>
+    order.customer_name?.trim() || String(order.order_number ?? order.id);
+
+  const isNumeric = (label: string) => /^\d+$/.test(label);
+
+  const getLabelTracking = (label: string): string =>
+    isNumeric(label) ? "tracking-tighter" : "tracking-wide";
+
   // const OrderNumberCup = ({ order }: { order: ServerOrder }) => (
   //   <div className="relative flex items-center justify-center w-[300px] h-[300px] shrink-0">
   //     <div
@@ -79,17 +92,24 @@ export function OrderList() {
             <h2 className="text-4xl font-semibold  text-center pb-4 tracking-tight">
               Preparing
             </h2>
-            <div className="flex flex-wrap gap-5 justify-center">
-              {preparingOrders.map((order) => (
-                // <OrderNumberCup key={order.id} order={order} />
-                <Card key={order.id} className="h-full p-10">
-                  <CardHeader className="flex items-center justify-center p-6">
-                    <CardTitle className="text-8xl font-black tracking-tighter text-foreground">
-                      {order.order_number ?? order.id}
-                    </CardTitle>{" "}
-                  </CardHeader>
-                </Card>
-              ))}
+            <div className="flex flex-wrap gap-8 justify-start">
+              {preparingOrders.map((order) => {
+                const label = getOrderLabel(order);
+                return (
+                  <Card
+                    key={order.id}
+                    className="h-36 w-fit flex items-center justify-center px-8"
+                  >
+                    <CardHeader className="p-0">
+                      <CardTitle
+                        className={`${isNumeric(label) ? "text-8xl" : "text-6xl"} ${getLabelTracking(label)} font-black text-foreground whitespace-nowrap`}
+                      >
+                        {label}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                );
+              })}
               {preparingOrders.length === 0 && (
                 <p className="text-muted-foreground text-center py-6">
                   No orders ready for pickup
@@ -101,17 +121,24 @@ export function OrderList() {
             <h2 className="text-4xl font-semibold  text-center pb-4 tracking-tight">
               Ready to pick up
             </h2>
-            <div className="flex flex-wrap gap-5 justify-center">
-              {readyForPickup.map((order) => (
-                // <OrderNumberCup key={order.id} order={order} />
-                <Card key={order.id} className="h-full p-10">
-                  <CardHeader className="flex items-center justify-center p-6">
-                    <CardTitle className="text-8xl font-black tracking-tighter text-foreground">
-                      {order.order_number ?? order.id}
-                    </CardTitle>{" "}
-                  </CardHeader>
-                </Card>
-              ))}
+            <div className="flex flex-wrap gap-5 justify-start">
+              {readyForPickup.map((order) => {
+                const label = getOrderLabel(order);
+                return (
+                  <Card
+                    key={order.id}
+                    className="h-36 w-fit flex items-center justify-center px-8"
+                  >
+                    <CardHeader className="p-0">
+                      <CardTitle
+                        className={`${isNumeric(label) ? "text-8xl" : "text-4xl"} ${getLabelTracking(label)} font-black text-foreground whitespace-nowrap`}
+                      >
+                        {label}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                );
+              })}
               {readyForPickup.length === 0 && (
                 <p className="text-muted-foreground text-center py-6">
                   No orders ready for pickup
