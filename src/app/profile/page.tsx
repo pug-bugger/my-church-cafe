@@ -15,6 +15,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
+import {
   Bar,
   BarChart,
   Cell,
@@ -954,124 +960,135 @@ export default function ProfilePage() {
                 </Card>
               )}
 
-              {/* Most ordered products — horizontal bar chart */}
+              {/* Analytics — tabbed charts */}
               <Card>
-                <CardHeader>
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div>
-                      <CardTitle>Most ordered products</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {isAdminDashboard
-                          ? "Top items by quantity across all orders"
-                          : "Your top items by quantity ordered"}
-                      </p>
+                <Tabs defaultValue="top-products">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <CardTitle>Analytics</CardTitle>
+                      <TabsList className="w-full sm:w-auto">
+                        <TabsTrigger value="top-products" className="flex-1 sm:flex-none">
+                          Top products
+                        </TabsTrigger>
+                        <TabsTrigger value="option-stats" className="flex-1 sm:flex-none">
+                          Options
+                        </TabsTrigger>
+                        <TabsTrigger value="by-date" className="flex-1 sm:flex-none">
+                          By date
+                        </TabsTrigger>
+                      </TabsList>
                     </div>
-                    <DateRangeSelector
-                      value={topProductsRange}
-                      onChange={setTopProductsRange}
-                      initialPreset="all-time"
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {topProducts.length === 0 ? (
-                    <p className="text-muted-foreground text-sm py-8 text-center">
-                      {isAdminDashboard
-                        ? "No orders in this range."
-                        : "No orders yet. Order from the Terminal to see your top products here."}
-                    </p>
-                  ) : (
-                    <HorizontalBarChart data={topProducts} />
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Option statistics — pie charts per option type */}
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div>
-                      <CardTitle>Option statistics</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {isAdminDashboard
-                          ? "Breakdown of drink options chosen across all orders"
-                          : "Breakdown of drink options you have chosen"}
-                      </p>
-                    </div>
-                    <DateRangeSelector
-                      value={optionStatsRange}
-                      onChange={setOptionStatsRange}
-                      initialPreset="last-3-months"
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {optionStats.length === 0 ? (
-                    <p className="text-muted-foreground text-sm py-8 text-center">
-                      No option data in this range.
-                    </p>
-                  ) : (
-                    <div className="grid gap-6 sm:grid-cols-2">
-                      {optionStats.map(({ definition, data }) => (
-                        <div key={definition} className="space-y-1">
-                          <p className="text-sm font-medium text-center capitalize">
-                            {definition}
+                  </CardHeader>
+                  <CardContent>
+                    <TabsContent value="top-products" className="mt-0">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                        <div>
+                          <p className="font-medium text-sm">Most ordered products</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {isAdminDashboard
+                              ? "Top items by quantity across all orders"
+                              : "Your top items by quantity ordered"}
                           </p>
-                          <SmallPieChart data={data} />
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        <DateRangeSelector
+                          value={topProductsRange}
+                          onChange={setTopProductsRange}
+                          initialPreset="all-time"
+                        />
+                      </div>
+                      {topProducts.length === 0 ? (
+                        <p className="text-muted-foreground text-sm py-8 text-center">
+                          {isAdminDashboard
+                            ? "No orders in this range."
+                            : "No orders yet. Order from the Terminal to see your top products here."}
+                        </p>
+                      ) : (
+                        <HorizontalBarChart data={topProducts} />
+                      )}
+                    </TabsContent>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Orders by date</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {isAdminDashboard
-                      ? "Last 14 days — count of all orders per day"
-                      : "Last 14 days"}
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  {ordersByDate.length === 0 ? (
-                    <p className="text-muted-foreground text-sm py-8 text-center">
-                      No orders yet.
-                    </p>
-                  ) : (
-                    <div className="h-[240px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={ordersByDate}
-                          margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
-                        >
-                          <XAxis
-                            dataKey="label"
-                            tick={{ fontSize: 11 }}
-                            tickLine={false}
-                          />
-                          <YAxis
-                            dataKey="count"
-                            allowDecimals={false}
-                            tickLine={false}
-                            width={24}
-                          />
-                          <Tooltip
-                            formatter={(value) => [value ?? 0, "Orders"]}
-                            contentStyle={{ borderRadius: "var(--radius)" }}
-                          />
-                          <Bar
-                            dataKey="count"
-                            fill="var(--primary)"
-                            radius={[4, 4, 0, 0]}
-                            maxBarSize={32}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
+                    <TabsContent value="option-stats" className="mt-0">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                        <div>
+                          <p className="font-medium text-sm">Option statistics</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {isAdminDashboard
+                              ? "Breakdown of drink options chosen across all orders"
+                              : "Breakdown of drink options you have chosen"}
+                          </p>
+                        </div>
+                        <DateRangeSelector
+                          value={optionStatsRange}
+                          onChange={setOptionStatsRange}
+                          initialPreset="last-3-months"
+                        />
+                      </div>
+                      {optionStats.length === 0 ? (
+                        <p className="text-muted-foreground text-sm py-8 text-center">
+                          No option data in this range.
+                        </p>
+                      ) : (
+                        <div className="grid gap-6 sm:grid-cols-2">
+                          {optionStats.map(({ definition, data }) => (
+                            <div key={definition} className="space-y-1">
+                              <p className="text-sm font-medium text-center capitalize">
+                                {definition}
+                              </p>
+                              <SmallPieChart data={data} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="by-date" className="mt-0">
+                      <div className="mb-4">
+                        <p className="font-medium text-sm">Orders by date</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {isAdminDashboard
+                            ? "Last 14 days — count of all orders per day"
+                            : "Last 14 days"}
+                        </p>
+                      </div>
+                      {ordersByDate.length === 0 ? (
+                        <p className="text-muted-foreground text-sm py-8 text-center">
+                          No orders yet.
+                        </p>
+                      ) : (
+                        <div className="h-[240px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={ordersByDate}
+                              margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
+                            >
+                              <XAxis
+                                dataKey="label"
+                                tick={{ fontSize: 11 }}
+                                tickLine={false}
+                              />
+                              <YAxis
+                                dataKey="count"
+                                allowDecimals={false}
+                                tickLine={false}
+                                width={24}
+                              />
+                              <Tooltip
+                                formatter={(value) => [value ?? 0, "Orders"]}
+                                contentStyle={{ borderRadius: "var(--radius)" }}
+                              />
+                              <Bar
+                                dataKey="count"
+                                fill="var(--primary)"
+                                radius={[4, 4, 0, 0]}
+                                maxBarSize={32}
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </TabsContent>
+                  </CardContent>
+                </Tabs>
               </Card>
 
               <OrdersDataTable
