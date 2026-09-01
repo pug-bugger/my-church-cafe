@@ -71,6 +71,56 @@ function dateline(): string {
  */
 /** In the page it stays at a comfortable reading size; on a room screen it
  *  grows to whatever the display can hold. */
+/**
+ * The board's headline cycles slowly so a screen left up all morning still has
+ * something to say. Swapping is a fade out, change, fade back in — one element,
+ * so the line never jumps while both strings are on screen.
+ */
+const TAGLINES = [
+  "Today at the cafe",
+  "Daily Bread and Daily Brew",
+  "Fellowship starts here — one cup at a time",
+  "Every cup brewed with a blessing",
+];
+const TAGLINE_INTERVAL_MS = 10_000;
+const TAGLINE_FADE_MS = 400;
+
+function useRotatingTagline() {
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (TAGLINES.length < 2) return;
+
+    // With motion reduced the fade is disabled in CSS, so hiding first would
+    // just blank the line for 400ms — swap straight over instead.
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    let swap: ReturnType<typeof setTimeout>;
+    const advance = () => setIndex((i) => (i + 1) % TAGLINES.length);
+    const cycle = setInterval(() => {
+      if (reducedMotion) {
+        advance();
+        return;
+      }
+      setVisible(false);
+      swap = setTimeout(() => {
+        advance();
+        setVisible(true);
+      }, TAGLINE_FADE_MS);
+    }, TAGLINE_INTERVAL_MS);
+
+    return () => {
+      clearInterval(cycle);
+      clearTimeout(swap);
+    };
+  }, []);
+
+  return { tagline: TAGLINES[index], visible };
+}
+
 const MAX_BOARD_FONT_PX = 22;
 const MAX_BOARD_FONT_PRESENTING_PX = 48;
 const MIN_BOARD_FONT_PX = 9;
@@ -210,7 +260,8 @@ export function MenuList() {
   const togglePresenting = useCallback(() => {
     setPresenting((wasPresenting) => {
       if (wasPresenting) {
-        if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+        if (document.fullscreenElement)
+          void document.exitFullscreen().catch(() => {});
         return false;
       }
       void rootRef.current?.requestFullscreen?.().catch(() => {});
@@ -246,7 +297,7 @@ export function MenuList() {
           category_name: drink.subtypeName ?? PRODUCT_CATEGORY.DRINK,
           parent_category_name: PRODUCT_CATEGORY.DRINK,
           available: true,
-        }))
+        })),
       );
       setLoading(false);
       return;
@@ -279,18 +330,18 @@ export function MenuList() {
 
   const availableProducts = useMemo(
     () => products.filter((product) => isAvailable(product.available)),
-    [products]
+    [products],
   );
 
   /** Drink subtypes in menu order — these share one card. */
   const drinkGroups = useMemo<MenuGroup[]>(() => {
     const drinkItems = availableProducts.filter((p) =>
-      isProductCategory(productTypeName(p), PRODUCT_CATEGORY.DRINK)
+      isProductCategory(productTypeName(p), PRODUCT_CATEGORY.DRINK),
     );
     return groupByDrinkSubtype(
       drinkItems,
       menuProductSubtypeLabel,
-      subtypeOrder
+      subtypeOrder,
     ).map((section) => ({ name: section.title, items: section.items }));
   }, [availableProducts, subtypeOrder]);
 
@@ -304,7 +355,7 @@ export function MenuList() {
     for (const { title, category } of MENU_SECTIONS) {
       if (category === PRODUCT_CATEGORY.DRINK) continue;
       const items = availableProducts.filter((p) =>
-        isProductCategory(productTypeName(p), category)
+        isProductCategory(productTypeName(p), category),
       );
       if (items.length) result.push({ name: title, items });
     }
@@ -313,7 +364,7 @@ export function MenuList() {
       const type = productTypeName(p);
       if (!type) return true;
       return !MENU_SECTIONS.some(({ category }) =>
-        isProductCategory(type, category)
+        isProductCategory(type, category),
       );
     });
     if (uncategorized.length) {
@@ -323,9 +374,13 @@ export function MenuList() {
     return result;
   }, [availableProducts]);
 
+  const { tagline, visible: taglineVisible } = useRotatingTagline();
+
+  // A longer headline can wrap to a second line and push the board down, so the
+  // fit has to re-run whenever the line changes.
   const { boxRef, contentRef } = useFitToBox(
     presenting ? MAX_BOARD_FONT_PRESENTING_PX : MAX_BOARD_FONT_PX,
-    [drinkGroups, otherGroups, presenting]
+    [drinkGroups, otherGroups, presenting, tagline],
   );
 
   return (
@@ -334,7 +389,7 @@ export function MenuList() {
       className={cn(
         "flex flex-col",
         presenting &&
-          "fixed inset-0 z-50 h-full overflow-auto bg-background p-5 sm:overflow-hidden sm:p-8"
+          "fixed inset-0 z-50 h-full overflow-auto bg-background p-5 sm:overflow-hidden sm:p-8",
       )}
     >
       <DataState
@@ -344,8 +399,16 @@ export function MenuList() {
         loadingFallback={<MenuListSkeleton />}
         emptyMessage="No products are currently available."
       >
-        <h1 className="mb-1 text-[28px] font-extrabold tracking-[-0.02em]">
-          Today at the cafe
+        <h1
+          className={cn(
+            "mb-1 text-[28px] font-extrabold tracking-[-0.02em] transition-[opacity,transform] ease-out motion-reduce:transition-none",
+            taglineVisible
+              ? "translate-y-0 opacity-100"
+              : "-translate-y-1 opacity-0",
+          )}
+          style={{ transitionDuration: `${TAGLINE_FADE_MS}ms` }}
+        >
+          {tagline}
         </h1>
         <p className="mb-[22px] text-sm text-muted-foreground">
           {dateline()} · prices in euro
@@ -358,15 +421,12 @@ export function MenuList() {
             ref={contentRef}
             className="flex flex-col gap-[1.2em] text-[15px]"
           >
-            {drinkGroups.length > 0 ? (
-              <MenuCard groups={drinkGroups} />
-            ) : null}
+            {drinkGroups.length > 0 ? <MenuCard groups={drinkGroups} /> : null}
             {otherGroups.map((group) => (
               <MenuCard key={group.name} groups={[group]} />
             ))}
           </div>
         </div>
-
       </DataState>
 
       <button

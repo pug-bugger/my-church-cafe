@@ -47,6 +47,67 @@ function PickerSkeleton() {
   );
 }
 
+/** One tappable product: name, price, and how many questions it will ask. */
+function ProductTile({
+  product,
+  onOpen,
+}: {
+  product: Drink;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(product.id)}
+      className="press tile flex min-h-[126px] flex-col justify-between gap-3 rounded-card border border-line bg-surface p-[18px] text-left text-foreground"
+    >
+      <span className="text-[19px] font-bold leading-[1.2] tracking-[-0.01em]">
+        {product.name}
+      </span>
+      <span className="flex items-center justify-between gap-2.5">
+        <span className="num text-[17px] font-semibold">
+          {formatPrice(product.price)}
+        </span>
+        <span className="rounded-full bg-ac-soft px-2.5 py-[5px] text-xs font-semibold text-ac-dark">
+          {optionsLabel(product)}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function TileGrid({
+  items,
+  onOpen,
+}: {
+  items: Drink[];
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
+      {items.map((product) => (
+        <ProductTile key={product.id} product={product} onOpen={onOpen} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Caption above a run of tiles. Only shown under "All", where the pill row no
+ * longer tells you which group you are looking at.
+ */
+function CategoryLabel({ name, count }: { name: string; count: number }) {
+  return (
+    <div className="mb-2.5 flex items-center gap-3">
+      <h3 className="text-[13px] font-semibold text-muted-foreground">
+        {name}
+      </h3>
+      <span aria-hidden="true" className="h-px flex-1 bg-line" />
+      <span className="num text-xs text-muted-foreground/70">{count}</span>
+    </div>
+  );
+}
+
 export function ProductPicker() {
   const drinks = useAppStore((state) => state.drinks);
   const desserts = useAppStore((state) => state.desserts);
@@ -68,22 +129,26 @@ export function ProductPicker() {
    * "All" first, then drink subtypes in menu order, then desserts. The All tab
    * is what a barista reaches for when they know the drink but not its group.
    */
-  const categories = useMemo<Category[]>(() => {
+  const sections = useMemo<Category[]>(() => {
     const activeDrinks = drinks.filter((d) => d.active !== false);
     const activeDesserts = desserts.filter((d) => d.active !== false);
-    const sections = groupByDrinkSubtype(
+    const groups = groupByDrinkSubtype(
       activeDrinks,
       drinkSubtypeLabel,
       subtypeOrder
     ).map((section) => ({ name: section.title, items: section.items }));
     if (activeDesserts.length) {
-      sections.push({ name: DESSERTS_CATEGORY, items: activeDesserts });
+      groups.push({ name: DESSERTS_CATEGORY, items: activeDesserts });
     }
+    return groups;
+  }, [drinks, desserts, subtypeOrder]);
+
+  const categories = useMemo<Category[]>(() => {
     if (sections.length === 0) return [];
     // Built from the grouped sections so All follows the same running order.
     const all = sections.flatMap((section) => section.items);
     return [{ name: ALL_CATEGORY, items: all }, ...sections];
-  }, [drinks, desserts, subtypeOrder]);
+  }, [sections]);
 
   // Keep a valid selection as categories load or a category empties out.
   const selected =
@@ -135,28 +200,18 @@ export function ProductPicker() {
         })}
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
-        {selected?.items.map((product) => (
-          <button
-            key={product.id}
-            type="button"
-            onClick={() => setOpenId(product.id)}
-            className="press tile flex min-h-[126px] flex-col justify-between gap-3 rounded-card border border-line bg-surface p-[18px] text-left text-foreground"
-          >
-            <span className="text-[19px] font-bold leading-[1.2] tracking-[-0.01em]">
-              {product.name}
-            </span>
-            <span className="flex items-center justify-between gap-2.5">
-              <span className="num text-[17px] font-semibold">
-                {formatPrice(product.price)}
-              </span>
-              <span className="rounded-full bg-ac-soft px-2.5 py-[5px] text-xs font-semibold text-ac-dark">
-                {optionsLabel(product)}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
+      {selected?.name === ALL_CATEGORY ? (
+        <div className="flex flex-col gap-6">
+          {sections.map((section) => (
+            <section key={section.name}>
+              <CategoryLabel name={section.name} count={section.items.length} />
+              <TileGrid items={section.items} onOpen={setOpenId} />
+            </section>
+          ))}
+        </div>
+      ) : (
+        <TileGrid items={selected?.items ?? []} onOpen={setOpenId} />
+      )}
 
       <ProductSheet product={openProduct} onClose={() => setOpenId(null)} />
     </>
