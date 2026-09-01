@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataState } from "@/components/ui/data-state";
@@ -54,17 +63,92 @@ function dateline(): string {
   });
 }
 
+/**
+ * The board is meant to be read across a room from a portrait screen, so the
+ * card's type is sized to whatever makes the whole menu fit — never scroll.
+ * Everything inside the card is sized in `em`, so changing this one font-size
+ * reflows the columns properly instead of just squashing them.
+ */
+/** In the page it stays at a comfortable reading size; on a room screen it
+ *  grows to whatever the display can hold. */
+const MAX_BOARD_FONT_PX = 22;
+const MAX_BOARD_FONT_PRESENTING_PX = 48;
+const MIN_BOARD_FONT_PX = 9;
+const BOARD_FONT_STEP_PX = 0.5;
+
+/** Below this the board scrolls normally — shrinking to fit a phone is unreadable. */
+const FIT_MIN_VIEWPORT_PX = 640;
+
+/** Breathing room kept under the board (and clear of the full-screen button). */
+const BOARD_BOTTOM_GUTTER_PX = 28;
+
+function useFitToBox(maxFontPx: number, deps: unknown[]) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const fit = useCallback(() => {
+    const box = boxRef.current;
+    const content = contentRef.current;
+    if (!box || !content) return;
+
+    if (window.innerWidth < FIT_MIN_VIEWPORT_PX) {
+      content.style.fontSize = "";
+      return;
+    }
+
+    // Measure against the viewport, not the box: the box is free to grow with
+    // its content, so its own height would always look like it fits.
+    const available =
+      window.innerHeight -
+      box.getBoundingClientRect().top -
+      BOARD_BOTTOM_GUTTER_PX;
+    if (available <= 0) return;
+
+    // Start at the largest comfortable size and step down until it fits. Each
+    // step reflows, so the column balance stays correct at the final size.
+    let size = maxFontPx;
+    content.style.fontSize = `${size}px`;
+    while (size > MIN_BOARD_FONT_PX && content.scrollHeight > available) {
+      size -= BOARD_FONT_STEP_PX;
+      content.style.fontSize = `${size}px`;
+    }
+  }, [maxFontPx]);
+
+  useLayoutEffect(() => {
+    fit();
+    const box = boxRef.current;
+    if (!box) return;
+    // Observe the box only — observing the content we resize would loop.
+    const observer = new ResizeObserver(fit);
+    observer.observe(box);
+    window.addEventListener("resize", fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fit, ...deps]);
+
+  return { boxRef, contentRef };
+}
+
 function MenuListSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
-      {Array.from({ length: 3 }).map((_, i) => (
+    <div className="flex flex-col gap-5">
+      {[3, 1].map((sections, card) => (
         <div
-          key={i}
-          className="space-y-3.5 rounded-card border border-line bg-surface p-[22px]"
+          key={card}
+          className="rounded-card border border-line bg-surface p-6 sm:p-8"
         >
-          <Skeleton className="h-5 w-28" />
-          {Array.from({ length: 5 }).map((_, row) => (
-            <Skeleton key={row} className="h-4 w-full" />
+          {Array.from({ length: sections }).map((_, i) => (
+            <div key={i} className="mb-6 space-y-3.5 last:mb-0">
+              <Skeleton className="h-5 w-28" />
+              <div className="columns-1 gap-10 sm:columns-2">
+                {Array.from({ length: 4 }).map((_, row) => (
+                  <Skeleton key={row} className="mb-3 h-4 w-full" />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ))}
@@ -72,11 +156,83 @@ function MenuListSkeleton() {
   );
 }
 
+/** One priced row: name, dot leader, price. */
+function MenuRow({ product }: { product: Product }) {
+  return (
+    <li className="flex break-inside-avoid items-baseline gap-[0.6em]">
+      <span className="text-[1em]">{product.name}</span>
+      {/* Dot leader tying the name to its price. */}
+      <span aria-hidden="true" className="h-px flex-1 bg-line" />
+      <span className="num text-[1em] font-semibold">
+        {formatPrice(product.base_price)}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * A card of categories. Each category's items run in two columns, and the next
+ * category always starts on a fresh line below rather than flowing alongside.
+ */
+function MenuCard({ groups }: { groups: MenuGroup[] }) {
+  return (
+    <section className="rounded-card border border-line bg-surface p-[1.4em] sm:p-[1.6em]">
+      {groups.map((group) => (
+        <div key={group.name} className="mb-[1.4em] last:mb-0">
+          <h2 className="mb-[0.7em] text-[1.05em] font-bold text-ac-dark">
+            {group.name}
+          </h2>
+          <ul className="columns-1 gap-[2.5em] sm:columns-2">
+            {group.items.map((product) => (
+              <MenuRow key={String(product.id)} product={product} />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export function MenuList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [presenting, setPresenting] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const subtypeOrder = useDrinkSubtypeOrder();
+
+  /**
+   * Presentation mode fills the screen with just the board. The real Fullscreen
+   * API is used where it exists (so browser chrome goes too); the fixed overlay
+   * is what actually hides the app header, and stands alone on browsers — iOS
+   * Safari — that refuse element fullscreen.
+   */
+  const togglePresenting = useCallback(() => {
+    setPresenting((wasPresenting) => {
+      if (wasPresenting) {
+        if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+        return false;
+      }
+      void rootRef.current?.requestFullscreen?.().catch(() => {});
+      return true;
+    });
+  }, []);
+
+  // Esc leaves native fullscreen without telling React; keep the two in step.
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) setPresenting(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPresenting(false);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -126,20 +282,24 @@ export function MenuList() {
     [products]
   );
 
-  /**
-   * One flat list of groups — drink subtypes first (in menu order), then the
-   * other top-level categories, then anything uncategorised. The canvas lays
-   * these out as equal cards rather than nesting drinks under a heading.
-   */
-  const groups = useMemo<MenuGroup[]>(() => {
+  /** Drink subtypes in menu order — these share one card. */
+  const drinkGroups = useMemo<MenuGroup[]>(() => {
     const drinkItems = availableProducts.filter((p) =>
       isProductCategory(productTypeName(p), PRODUCT_CATEGORY.DRINK)
     );
-    const result: MenuGroup[] = groupByDrinkSubtype(
+    return groupByDrinkSubtype(
       drinkItems,
       menuProductSubtypeLabel,
       subtypeOrder
     ).map((section) => ({ name: section.title, items: section.items }));
+  }, [availableProducts, subtypeOrder]);
+
+  /**
+   * Everything that is not a drink — desserts, meals, anything uncategorised.
+   * Each gets its own card, so a dessert is never read as a drink.
+   */
+  const otherGroups = useMemo<MenuGroup[]>(() => {
+    const result: MenuGroup[] = [];
 
     for (const { title, category } of MENU_SECTIONS) {
       if (category === PRODUCT_CATEGORY.DRINK) continue;
@@ -161,53 +321,68 @@ export function MenuList() {
     }
 
     return result;
-  }, [availableProducts, subtypeOrder]);
+  }, [availableProducts]);
+
+  const { boxRef, contentRef } = useFitToBox(
+    presenting ? MAX_BOARD_FONT_PRESENTING_PX : MAX_BOARD_FONT_PX,
+    [drinkGroups, otherGroups, presenting]
+  );
 
   return (
-    <DataState
-      loading={loading}
-      error={error}
-      isEmpty={availableProducts.length === 0}
-      loadingFallback={<MenuListSkeleton />}
-      emptyMessage="No products are currently available."
+    <div
+      ref={rootRef}
+      className={cn(
+        "flex flex-col",
+        presenting &&
+          "fixed inset-0 z-50 h-full overflow-auto bg-background p-5 sm:overflow-hidden sm:p-8"
+      )}
     >
-      <h1 className="mb-1 text-[28px] font-extrabold tracking-[-0.02em]">
-        Today at the cafe
-      </h1>
-      <p className="mb-[22px] text-sm text-muted-foreground">
-        {dateline()} · prices in euro
-      </p>
+      <DataState
+        loading={loading}
+        error={error}
+        isEmpty={availableProducts.length === 0}
+        loadingFallback={<MenuListSkeleton />}
+        emptyMessage="No products are currently available."
+      >
+        <h1 className="mb-1 text-[28px] font-extrabold tracking-[-0.02em]">
+          Today at the cafe
+        </h1>
+        <p className="mb-[22px] text-sm text-muted-foreground">
+          {dateline()} · prices in euro
+        </p>
 
-      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
-        {groups.map((group) => (
-          <section
-            key={group.name}
-            className="rounded-card border border-line bg-surface p-[22px]"
+        {/* The box is the space the board may occupy; the cards inside are
+            sized down until they fit, so the whole menu is visible at once. */}
+        <div ref={boxRef} className="min-h-0 flex-1 sm:overflow-hidden">
+          <div
+            ref={contentRef}
+            className="flex flex-col gap-[1.2em] text-[15px]"
           >
-            <h2 className="mb-3.5 text-base font-bold text-ac-dark">
-              {group.name}
-            </h2>
-            <ul className="flex flex-col gap-[11px]">
-              {group.items.map((product) => (
-                <li
-                  key={String(product.id)}
-                  className="flex items-baseline gap-2.5"
-                >
-                  <span className="text-[15px]">{product.name}</span>
-                  {/* Dot leader tying the name to its price. */}
-                  <span
-                    aria-hidden="true"
-                    className="h-px flex-1 bg-line"
-                  />
-                  <span className="num text-[15px] font-semibold">
-                    {formatPrice(product.base_price)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-    </DataState>
+            {drinkGroups.length > 0 ? (
+              <MenuCard groups={drinkGroups} />
+            ) : null}
+            {otherGroups.map((group) => (
+              <MenuCard key={group.name} groups={[group]} />
+            ))}
+          </div>
+        </div>
+
+      </DataState>
+
+      <button
+        type="button"
+        onClick={togglePresenting}
+        aria-pressed={presenting}
+        title={presenting ? "Exit full screen" : "Show full screen"}
+        aria-label={presenting ? "Exit full screen" : "Show full screen"}
+        className="press fixed bottom-6 right-6 z-[60] flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface text-muted-foreground shadow-card hover:bg-ink/5 hover:text-foreground"
+      >
+        {presenting ? (
+          <Minimize2 className="h-5 w-5" />
+        ) : (
+          <Maximize2 className="h-5 w-5" />
+        )}
+      </button>
+    </div>
   );
 }
