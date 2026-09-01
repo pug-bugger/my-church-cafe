@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { ServerOrder } from "@/types";
 
@@ -55,14 +61,21 @@ function defaultRange(): { fromStr: string; toStr: string } {
   return { fromStr: toInputDate(from), toStr: toInputDate(to) };
 }
 
-function compareRows(a: FlatOrderRow, b: FlatOrderRow, key: SortKey, dir: 1 | -1): number {
+function compareRows(
+  a: FlatOrderRow,
+  b: FlatOrderRow,
+  key: SortKey,
+  dir: 1 | -1,
+): number {
   let cmp = 0;
   switch (key) {
     case "date":
       cmp = a.orderDate.getTime() - b.orderDate.getTime();
       break;
     case "product":
-      cmp = a.productName.localeCompare(b.productName, undefined, { sensitivity: "base" });
+      cmp = a.productName.localeCompare(b.productName, undefined, {
+        sensitivity: "base",
+      });
       break;
     case "price":
       cmp = a.unitPrice - b.unitPrice;
@@ -98,10 +111,12 @@ function buildDisplayPieces(
   flat: FlatOrderRow[],
   sortKey: SortKey,
   sortDir: 1 | -1,
-  groupBy: GroupBy
+  groupBy: GroupBy,
 ): DisplayPiece[] {
   if (groupBy === "none") {
-    const sorted = [...flat].sort((a, b) => compareRows(a, b, sortKey, sortDir));
+    const sorted = [...flat].sort((a, b) =>
+      compareRows(a, b, sortKey, sortDir),
+    );
     return sorted.map((row) => ({ kind: "row" as const, row }));
   }
 
@@ -113,7 +128,9 @@ function buildDisplayPieces(
   }
 
   const entries = [...map.entries()].map(([key, rows]) => {
-    const sortedInner = [...rows].sort((a, b) => compareRows(a, b, sortKey, sortDir));
+    const sortedInner = [...rows].sort((a, b) =>
+      compareRows(a, b, sortKey, sortDir),
+    );
     const subtotal = sortedInner.reduce((s, r) => s + r.lineTotal, 0);
     return { key, rows: sortedInner, subtotal };
   });
@@ -230,14 +247,21 @@ export function OrdersDataTable({
   description = "Filter by date, sort columns, group rows, and export the current range.",
 }: OrdersDataTableProps) {
   const initial = useMemo(() => defaultRange(), []);
+  const [exportOpen, setExportOpen] = useState(false);
   const [fromStr, setFromStr] = useState(initial.fromStr);
   const [toStr, setToStr] = useState(initial.toStr);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
 
-  const fromTime = useMemo(() => parseInputDateLocal(fromStr, false).getTime(), [fromStr]);
-  const toTime = useMemo(() => parseInputDateLocal(toStr, true).getTime(), [toStr]);
+  const fromTime = useMemo(
+    () => parseInputDateLocal(fromStr, false).getTime(),
+    [fromStr],
+  );
+  const toTime = useMemo(
+    () => parseInputDateLocal(toStr, true).getTime(),
+    [toStr],
+  );
 
   const flatRows = useMemo(() => {
     const rows: FlatOrderRow[] = [];
@@ -269,7 +293,7 @@ export function OrdersDataTable({
 
   const displayPieces = useMemo(
     () => buildDisplayPieces(flatRows, sortKey, sortDir, groupBy),
-    [flatRows, sortKey, sortDir, groupBy]
+    [flatRows, sortKey, sortDir, groupBy],
   );
 
   const exportRowsOrdered = useMemo(() => {
@@ -288,11 +312,12 @@ export function OrdersDataTable({
         setSortDir(key === "date" || key === "orderId" ? -1 : 1);
       }
     },
-    [sortKey]
+    [sortKey],
   );
 
   const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sortKey !== column) return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-40" />;
+    if (sortKey !== column)
+      return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-40" />;
     return sortDir === 1 ? (
       <ArrowUp className="ml-1 h-3.5 w-3.5" />
     ) : (
@@ -306,7 +331,7 @@ export function OrdersDataTable({
       onClick={() => toggleSort(column)}
       className={cn(
         "inline-flex items-center font-medium hover:text-foreground",
-        sortKey === column ? "text-foreground" : "text-muted-foreground"
+        sortKey === column ? "text-foreground" : "text-muted-foreground",
       )}
     >
       {label}
@@ -391,29 +416,51 @@ export function OrdersDataTable({
       <CardHeader className="space-y-1">
         <CardTitle>{title}</CardTitle>
         <p className="text-sm text-muted-foreground">{description}</p>
-        <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:flex-wrap sm:items-end">
-          <div className="grid gap-2 sm:max-w-[140px]">
-            <Label htmlFor="orders-from">From</Label>
+        {/* One row of equal-height controls; each field keeps its label directly
+            above it and every control lines up on the same baseline. */}
+        <div className="flex flex-wrap items-end gap-3 pt-4">
+          <div className="flex w-full flex-col gap-1.5 sm:w-[170px]">
+            <Label
+              htmlFor="orders-from"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              From
+            </Label>
             <Input
               id="orders-from"
               type="date"
+              className="h-11"
               value={fromStr}
               onChange={(e) => setFromStr(e.target.value)}
             />
           </div>
-          <div className="grid gap-2 sm:max-w-[140px]">
-            <Label htmlFor="orders-to">To</Label>
+          <div className="flex w-full flex-col gap-1.5 sm:w-[170px]">
+            <Label
+              htmlFor="orders-to"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              To
+            </Label>
             <Input
               id="orders-to"
               type="date"
+              className="h-11"
               value={toStr}
               onChange={(e) => setToStr(e.target.value)}
             />
           </div>
-          <div className="grid gap-2 sm:min-w-[180px]">
-            <Label>Group by</Label>
-            <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger>
+          <div className="flex w-full flex-col gap-1.5 sm:w-[180px]">
+            <Label
+              htmlFor="orders-group-by"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Group by
+            </Label>
+            <Select
+              value={groupBy}
+              onValueChange={(v) => setGroupBy(v as GroupBy)}
+            >
+              <SelectTrigger id="orders-group-by" className="h-11 rounded-ctl">
                 <SelectValue placeholder="Group by" />
               </SelectTrigger>
               <SelectContent>
@@ -424,18 +471,39 @@ export function OrdersDataTable({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={downloadCsv}>
-              Export CSV
-            </Button>
-            <Button type="button" variant="secondary" size="sm" onClick={() => void downloadExcel()}>
-              Export Excel
-            </Button>
+          {/* Auto left margin pushes Export to the far edge of the flex row. */}
+          <div className="w-full sm:ml-auto sm:w-auto">
+            <DropdownMenu open={exportOpen} onOpenChange={setExportOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full rounded-ctl sm:w-auto"
+                >
+                  Export
+                  <ChevronDown
+                    className={cn(
+                      "transition-transform duration-200 motion-reduce:transition-none",
+                      exportOpen && "rotate-180",
+                    )}
+                  />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => downloadCsv()}>
+                  CSV (.csv)
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void downloadExcel()}>
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <p className="text-xs text-muted-foreground pt-1">
-          Showing {flatRows.length} line item{flatRows.length === 1 ? "" : "s"} in range (
-          {orders.length} order{orders.length === 1 ? "" : "s"} loaded).
+          Showing {flatRows.length} line item{flatRows.length === 1 ? "" : "s"}{" "}
+          in range ({orders.length} order{orders.length === 1 ? "" : "s"}{" "}
+          loaded).
         </p>
       </CardHeader>
       <CardContent>
@@ -443,7 +511,8 @@ export function OrdersDataTable({
           <p className="text-sm text-muted-foreground">Loading orders…</p>
         ) : flatRows.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">
-            No line items in this date range. Widen the range or place orders to see data here.
+            No line items in this date range. Widen the range or place orders to
+            see data here.
           </p>
         ) : (
           <div className="rounded-md border overflow-x-auto">
@@ -452,19 +521,33 @@ export function OrdersDataTable({
                 <tr className="text-left">
                   {showUserColumns && (
                     <>
-                      <th className="p-3 font-medium whitespace-nowrap">Customer</th>
-                      <th className="p-3 font-medium whitespace-nowrap">Email</th>
+                      <th className="p-3 font-medium whitespace-nowrap">
+                        Customer
+                      </th>
+                      <th className="p-3 font-medium whitespace-nowrap">
+                        Email
+                      </th>
                     </>
                   )}
-                  <th className="p-3 font-medium whitespace-nowrap">{headerBtn("Order", "orderId")}</th>
-                  <th className="p-3 font-medium whitespace-nowrap">{headerBtn("Date", "date")}</th>
+                  <th className="p-3 font-medium whitespace-nowrap">
+                    {headerBtn("Order", "orderId")}
+                  </th>
+                  <th className="p-3 font-medium whitespace-nowrap">
+                    {headerBtn("Date", "date")}
+                  </th>
                   <th className="p-3 font-medium whitespace-nowrap">Status</th>
-                  <th className="p-3 font-medium whitespace-nowrap">{headerBtn("Product", "product")}</th>
-                  <th className="p-3 font-medium text-right whitespace-nowrap">Qty</th>
+                  <th className="p-3 font-medium whitespace-nowrap">
+                    {headerBtn("Product", "product")}
+                  </th>
+                  <th className="p-3 font-medium text-right whitespace-nowrap">
+                    Qty
+                  </th>
                   <th className="p-3 font-medium text-right whitespace-nowrap">
                     {headerBtn("Unit price", "price")}
                   </th>
-                  <th className="p-3 font-medium text-right whitespace-nowrap">Line total</th>
+                  <th className="p-3 font-medium text-right whitespace-nowrap">
+                    Line total
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -488,10 +571,16 @@ export function OrdersDataTable({
                   }
                   const r = piece.row;
                   return (
-                    <tr key={`${r.orderId}-${r.productName}-${i}`} className="border-t border-border/60">
+                    <tr
+                      key={`${r.orderId}-${r.productName}-${i}`}
+                      className="border-t border-border/60"
+                    >
                       {showUserColumns && (
                         <>
-                          <td className="p-3 whitespace-nowrap max-w-[140px] truncate" title={r.userName ?? undefined}>
+                          <td
+                            className="p-3 whitespace-nowrap max-w-[140px] truncate"
+                            title={r.userName ?? undefined}
+                          >
                             {r.userName ?? "—"}
                           </td>
                           <td className="p-3 whitespace-nowrap max-w-[180px] truncate text-muted-foreground">
@@ -511,10 +600,16 @@ export function OrdersDataTable({
                           minute: "2-digit",
                         })}
                       </td>
-                      <td className="p-3 capitalize whitespace-nowrap">{r.status}</td>
+                      <td className="p-3 capitalize whitespace-nowrap">
+                        {r.status}
+                      </td>
                       <td className="p-3 max-w-[200px]">{r.productName}</td>
-                      <td className="p-3 text-right tabular-nums">{r.quantity}</td>
-                      <td className="p-3 text-right tabular-nums">€{r.unitPrice.toFixed(2)}</td>
+                      <td className="p-3 text-right tabular-nums">
+                        {r.quantity}
+                      </td>
+                      <td className="p-3 text-right tabular-nums">
+                        €{r.unitPrice.toFixed(2)}
+                      </td>
                       <td className="p-3 text-right tabular-nums font-medium">
                         €{r.lineTotal.toFixed(2)}
                       </td>

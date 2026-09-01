@@ -20,6 +20,7 @@ import { formatPrice } from "@/lib/format";
  */
 
 const DESSERTS_CATEGORY = "Desserts";
+const ALL_CATEGORY = "All";
 
 type Category = { name: string; items: Drink[] };
 
@@ -63,7 +64,10 @@ export function ProductPicker() {
     loadDesserts();
   }, [loadDrinks, loadDesserts]);
 
-  /** Drink subtypes in menu order, then desserts as one trailing category. */
+  /**
+   * "All" first, then drink subtypes in menu order, then desserts. The All tab
+   * is what a barista reaches for when they know the drink but not its group.
+   */
   const categories = useMemo<Category[]>(() => {
     const activeDrinks = drinks.filter((d) => d.active !== false);
     const activeDesserts = desserts.filter((d) => d.active !== false);
@@ -75,7 +79,10 @@ export function ProductPicker() {
     if (activeDesserts.length) {
       sections.push({ name: DESSERTS_CATEGORY, items: activeDesserts });
     }
-    return sections;
+    if (sections.length === 0) return [];
+    // Built from the grouped sections so All follows the same running order.
+    const all = sections.flatMap((section) => section.items);
+    return [{ name: ALL_CATEGORY, items: all }, ...sections];
   }, [drinks, desserts, subtypeOrder]);
 
   // Keep a valid selection as categories load or a category empties out.
