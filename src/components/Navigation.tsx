@@ -25,7 +25,12 @@ type NavLink = {
 };
 
 const BASE_LINKS: NavLink[] = [
-  { href: "/terminal", label: "Terminal", available: true, visibility: "staff" },
+  {
+    href: "/terminal",
+    label: "Terminal",
+    available: true,
+    visibility: "staff",
+  },
   { href: "/barista", label: "Barista", available: true, visibility: "staff" },
   { href: "/orders", label: "Board", available: true, visibility: "public" },
   { href: "/menu", label: "Menu", available: true, visibility: "public" },
@@ -35,7 +40,7 @@ const BASE_LINKS: NavLink[] = [
 
 function navLinkVisible(
   visibility: NavVisibility,
-  role: string | null
+  role: string | null,
 ): boolean {
   if (visibility === "public") return true;
   if (visibility === "staff") return role === "admin" || role === "personal";
@@ -96,16 +101,20 @@ export function Navigation() {
   }, [pathname]);
 
   const visibleLinks = links.filter((link) =>
-    navLinkVisible(link.visibility, navRole)
+    navLinkVisible(link.visibility, navRole),
   );
   const signedIn = navRole !== null;
 
-  const disabledStyle = ({ available }: { available: boolean }): CSSProperties =>
+  const disabledStyle = ({
+    available,
+  }: {
+    available: boolean;
+  }): CSSProperties =>
     available ? { cursor: "pointer" } : { cursor: "not-allowed", opacity: 0.5 };
 
   const unlockLink = (href: string, label: string) => {
     setLinks((prev) =>
-      prev.map((l) => (l.href === href ? { ...l, available: true } : l))
+      prev.map((l) => (l.href === href ? { ...l, available: true } : l)),
     );
     toast.success(`${label} unlocked`);
   };
@@ -124,7 +133,7 @@ export function Navigation() {
             ? "bg-primary font-bold text-primary-foreground"
             : "font-medium text-muted-foreground hover:bg-ink/5 hover:text-foreground",
           link.available ? "" : "bg-caution-stripes",
-          className
+          className,
         )}
         style={disabledStyle(link)}
         aria-disabled={!link.available}
@@ -161,16 +170,13 @@ export function Navigation() {
           Church Cafe
         </Link>
 
-        {/* Desktop links — one pill group, current page filled */}
+        {/* <span className="flex-1" /> */}
         <nav className="hidden gap-1 rounded-full border border-line bg-surface p-1 md:flex">
           {visibleLinks.map((link) =>
-            renderLink(link, "min-h-10 px-4 text-sm")
+            renderLink(link, "min-h-10 px-4 text-sm"),
           )}
         </nav>
 
-        <span className="flex-1" />
-
-        {/* Realtime status — only meaningful once there is a socket to connect */}
         {signedIn && (
           <span
             className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex"
@@ -183,7 +189,7 @@ export function Navigation() {
             <span
               className={cn(
                 "h-[7px] w-[7px] rounded-full",
-                isConnected ? "bg-primary" : "bg-muted-foreground/50"
+                isConnected ? "bg-primary" : "bg-muted-foreground/50",
               )}
             />
             {isConnected ? "Live" : "Offline"}
@@ -215,7 +221,11 @@ export function Navigation() {
           aria-expanded={mobileOpen}
           onClick={() => setMobileOpen((open) => !open)}
         >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {mobileOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
         </Button>
       </div>
 
@@ -223,7 +233,7 @@ export function Navigation() {
       {mobileOpen && (
         <div className="flex flex-col gap-1 border-t border-line px-4 py-2 md:hidden">
           {visibleLinks.map((link) =>
-            renderLink(link, "min-h-12 justify-start px-4 text-base")
+            renderLink(link, "min-h-12 justify-start px-4 text-base"),
           )}
         </div>
       )}
