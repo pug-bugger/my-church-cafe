@@ -131,7 +131,7 @@ function buildDisplayPieces(
   const out: DisplayPiece[] = [];
   for (const { key, rows, subtotal } of entries) {
     let label = key;
-    if (groupBy === "price") label = `$${key}`;
+    if (groupBy === "price") label = `€${key}`;
     if (groupBy === "date") {
       try {
         const [y, mo, d] = key.split("-").map((n) => Number.parseInt(n, 10));
@@ -479,7 +479,7 @@ export function OrdersDataTable({
                           <span>{piece.label}</span>
                           {piece.subtotal != null && (
                             <span className="ml-2 text-muted-foreground font-normal tabular-nums">
-                              (subtotal ${piece.subtotal.toFixed(2)})
+                              (subtotal €{piece.subtotal.toFixed(2)})
                             </span>
                           )}
                         </td>
@@ -514,9 +514,9 @@ export function OrdersDataTable({
                       <td className="p-3 capitalize whitespace-nowrap">{r.status}</td>
                       <td className="p-3 max-w-[200px]">{r.productName}</td>
                       <td className="p-3 text-right tabular-nums">{r.quantity}</td>
-                      <td className="p-3 text-right tabular-nums">${r.unitPrice.toFixed(2)}</td>
+                      <td className="p-3 text-right tabular-nums">€{r.unitPrice.toFixed(2)}</td>
                       <td className="p-3 text-right tabular-nums font-medium">
-                        ${r.lineTotal.toFixed(2)}
+                        €{r.lineTotal.toFixed(2)}
                       </td>
                     </tr>
                   );

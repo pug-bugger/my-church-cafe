@@ -1,21 +1,18 @@
 "use client";
 
 import { getOrderableProducts, useAppStore } from "@/store";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
+import { describeSelectedOptions } from "@/lib/drinkOptions";
 
+/**
+ * The counter's running order: a sticky panel beside the picker on desktop,
+ * stacked underneath it on phones and tablets.
+ */
 export function CurrentOrder() {
   const draftItems = useAppStore((state) => state.draftItems);
   const drinks = useAppStore((state) => state.drinks);
@@ -42,6 +39,8 @@ export function CurrentOrder() {
     const product = getProductById(item.drinkId);
     return sum + (product ? product.price * item.quantity : 0);
   }, 0);
+
+  const itemCount = draftItems.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
     if (draftItems.length === 0) {
@@ -81,8 +80,7 @@ export function CurrentOrder() {
   const resolveProductId = (drinkId: string) => {
     const drink = getProductById(drinkId);
     if (!drink) return null;
-    const normalized = (value?: string) =>
-      (value || "").trim().toLowerCase();
+    const normalized = (value?: string) => (value || "").trim().toLowerCase();
     const byId =
       Number.isFinite(Number(drink.id)) &&
       products.find((item) => item.id === Number(drink.id));
@@ -125,7 +123,7 @@ export function CurrentOrder() {
         },
       });
       clearDraft();
-      toast.success("Order placed");
+      toast.success("Order sent to the barista");
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unable to place order";
@@ -135,117 +133,113 @@ export function CurrentOrder() {
     }
   };
 
+  const isEmpty = draftItems.length === 0;
+
   return (
-    <Card className="flex max-h-[calc(100dvh-4rem-3rem)] flex-col">
-      <CardHeader className="shrink-0">
-        <CardTitle>Current Order</CardTitle>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1 overflow-y-auto scrollbar-hide">
-        {draftItems.length === 0 ? (
-          <Alert>
-            <AlertDescription>
-              No items added yet. Select a drink or dessert to begin.
-            </AlertDescription>
-          </Alert>
+    <aside className="flex max-h-[calc(100dvh-8.5rem)] flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card">
+      <div className="px-5 pb-3 pt-5">
+        <div className="flex items-baseline justify-between gap-2.5">
+          <h3 className="text-lg font-extrabold tracking-[-0.01em]">
+            Current order
+          </h3>
+          <span className="num text-[13px] text-muted-foreground">
+            {itemCount === 0
+              ? "empty"
+              : `${itemCount} ${itemCount === 1 ? "item" : "items"}`}
+          </span>
+        </div>
+      </div>
+
+      <div className="scroll min-h-[120px] flex-1 px-5">
+        {isEmpty ? (
+          <p className="my-2 text-sm leading-relaxed text-muted-foreground">
+            Tap a drink to start. Options open in a sheet so you can confirm
+            with one hand.
+          </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="flex flex-col gap-3.5">
             {draftItems.map((item) => {
               const drink = getProductById(item.drinkId);
               if (!drink) return null;
+              const summary = describeSelectedOptions(
+                drink.availableOptions,
+                item.selectedOptions
+              );
+              const detail = [summary, item.comment]
+                .filter(Boolean)
+                .join(" · ");
               return (
-                <li
-                  key={item.id}
-                  className="flex items-start justify-between gap-3"
-                >
+                <li key={item.id} className="enter flex items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-base">
-                      {drink.name}
-                      <span className="text-sm text-muted-foreground">
-                        {" "}
-                        × {item.quantity}
-                      </span>
+                    <div className="text-base font-bold">
+                      {drink.name}{" "}
+                      <span className="num text-primary">×{item.quantity}</span>
                     </div>
-                    <ul className="text-sm text-muted-foreground">
-                      {Object.entries(item.selectedOptions).map(
-                        ([optionId, value]) => {
-                          const option = drink.availableOptions.find(
-                            (opt) => opt.id === optionId
-                          );
-                          return option ? (
-                            <li key={optionId}>
-                              {option.name}: {value}
-                            </li>
-                          ) : null;
-                        }
-                      )}
-                    </ul>
-                    {item.comment && (
-                      <p className="mt-1 text-sm italic text-muted-foreground">
-                        {item.comment}
-                      </p>
-                    )}
+                    {detail ? (
+                      <div className="text-[13px] leading-snug text-muted-foreground">
+                        {detail}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="whitespace-nowrap font-medium text-base">
-                      ${(drink.price * item.quantity).toFixed(2)}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-14 w-14 shrink-0 rounded-full p-0 text-destructive hover:bg-destructive/10 hover:text-destructive [&_svg]:size-7"
-                      aria-label={`Remove ${drink.name}`}
-                      onClick={() => removeDraftItem(item.id)}
-                    >
-                      <X />
-                    </Button>
-                  </div>
+                  <span className="num whitespace-nowrap text-base font-semibold">
+                    {formatPrice(drink.price * item.quantity)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeDraftItem(item.id)}
+                    aria-label={`Remove ${drink.name}`}
+                    title="Remove from order"
+                    className="press flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
+                  >
+                    <X className="h-[18px] w-[18px]" />
+                  </button>
                 </li>
               );
             })}
           </ul>
         )}
-        {draftItems.length > 0 && (
-          <div className="mt-4 pt-3 border-t space-y-2">
-            <Input
-              placeholder="Customer name..."
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="text-sm"
-            />
-            <Input
-              placeholder="Order note..."
-              value={orderComment}
-              onChange={(e) => setOrderComment(e.target.value)}
-              className="text-sm"
-            />
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex shrink-0 flex-col items-start gap-3">
-        <div className="w-full whitespace-nowrap text-left font-semibold">
-          Total: ${total.toFixed(2)}
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-line bg-surface-sunken px-5 pb-5 pt-4">
+        <Input
+          placeholder="Customer name (optional)"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          aria-label="Customer name"
+        />
+        <Input
+          placeholder="Note for the barista"
+          value={orderComment}
+          onChange={(e) => setOrderComment(e.target.value)}
+          aria-label="Note for the barista"
+        />
+        <div className="flex items-baseline justify-between pt-0.5">
+          <span className="text-[13px] text-muted-foreground">Total</span>
+          <span className="num text-3xl font-extrabold tracking-[-0.02em]">
+            {formatPrice(total)}
+          </span>
         </div>
-        <div className="flex w-full min-w-0 gap-3">
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-14 w-14 shrink-0 rounded-full p-0 [&_svg]:size-6"
-            aria-label="Clear order"
+        <div className="flex gap-2.5">
+          <button
+            type="button"
             onClick={clearDraft}
-            disabled={draftItems.length === 0}
+            disabled={isEmpty}
+            aria-label="Clear order"
+            title="Clear the whole order"
+            className="press flex min-h-14 w-14 flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5 disabled:pointer-events-none disabled:opacity-50"
           >
-            <Trash2 />
-          </Button>
-          <Button
-            size="lg"
-            className="min-w-0 flex-1 text-base"
+            <Trash2 className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
             onClick={handleConfirmOrder}
-            disabled={draftItems.length === 0 || isSubmitting}
+            disabled={isEmpty || isSubmitting}
+            className="press min-h-14 flex-1 rounded-ctl bg-primary text-[17px] font-bold text-primary-foreground hover:bg-ac-dark disabled:pointer-events-none disabled:bg-ac-mid"
           >
-            {isSubmitting ? "Loading..." : "Confirm"}
-          </Button>
+            {isSubmitting ? "Sending…" : "Send to barista"}
+          </button>
         </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </aside>
   );
 }

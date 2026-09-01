@@ -2,11 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ResponsiveGrid } from "@/components/ui/responsive-grid";
 import { DataState } from "@/components/ui/data-state";
-import { DrinkSubtypeSections } from "@/components/drinks/DrinkSubtypeSections";
 import { defaultDrinks } from "@/data/defaultDrinks";
 import {
   groupByDrinkSubtype,
@@ -18,6 +15,7 @@ import {
   PRODUCT_CATEGORY,
   type ProductCategoryName,
 } from "@/lib/productCategories";
+import { formatPrice } from "@/lib/format";
 
 type Product = {
   id: string | number;
@@ -28,6 +26,8 @@ type Product = {
   parent_category_name?: string | null;
   available?: boolean | number | null;
 };
+
+type MenuGroup = { name: string; items: Product[] };
 
 function productTypeName(product: Product): string | null {
   return product.parent_category_name ?? product.category_name ?? null;
@@ -45,45 +45,30 @@ function isAvailable(value: Product["available"]): boolean {
   return value;
 }
 
-function MenuListSkeleton() {
-  return (
-    <ResponsiveGrid>
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-full" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-          </CardContent>
-        </Card>
-      ))}
-    </ResponsiveGrid>
-  );
+/** "Sunday, 1 September" — the day the board is being read. */
+function dateline(): string {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 }
 
-function ProductGrid({ products }: { products: Product[] }) {
+function MenuListSkeleton() {
   return (
-    <ResponsiveGrid>
-      {products.map((product) => (
-        <Card key={String(product.id)} className="h-full">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-lg">{product.name}</CardTitle>
-            {product.description?.trim() ? (
-              <p className="text-sm text-muted-foreground leading-snug">
-                {product.description.trim()}
-              </p>
-            ) : null}
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-xl font-semibold">
-              ${Number(product.base_price ?? 0).toFixed(2)}
-            </p>
-          </CardContent>
-        </Card>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div
+          key={i}
+          className="space-y-3.5 rounded-card border border-line bg-surface p-[22px]"
+        >
+          <Skeleton className="h-5 w-28" />
+          {Array.from({ length: 5 }).map((_, row) => (
+            <Skeleton key={row} className="h-4 w-full" />
+          ))}
+        </div>
       ))}
-    </ResponsiveGrid>
+    </div>
   );
 }
 
@@ -141,39 +126,42 @@ export function MenuList() {
     [products]
   );
 
-  const drinkSubtypeSections = useMemo(() => {
+  /**
+   * One flat list of groups — drink subtypes first (in menu order), then the
+   * other top-level categories, then anything uncategorised. The canvas lays
+   * these out as equal cards rather than nesting drinks under a heading.
+   */
+  const groups = useMemo<MenuGroup[]>(() => {
     const drinkItems = availableProducts.filter((p) =>
       isProductCategory(productTypeName(p), PRODUCT_CATEGORY.DRINK)
     );
-    return groupByDrinkSubtype(
+    const result: MenuGroup[] = groupByDrinkSubtype(
       drinkItems,
       menuProductSubtypeLabel,
       subtypeOrder
-    );
-  }, [availableProducts, subtypeOrder]);
+    ).map((section) => ({ name: section.title, items: section.items }));
 
-  const nonDrinkSections = useMemo(() => {
-    return MENU_SECTIONS.filter(
-      ({ category }) => category !== PRODUCT_CATEGORY.DRINK
-    )
-      .map(({ title, category }) => ({
-        title,
-        items: availableProducts.filter((p) =>
-          isProductCategory(productTypeName(p), category)
-        ),
-      }))
-      .filter((s) => s.items.length > 0);
-  }, [availableProducts]);
+    for (const { title, category } of MENU_SECTIONS) {
+      if (category === PRODUCT_CATEGORY.DRINK) continue;
+      const items = availableProducts.filter((p) =>
+        isProductCategory(productTypeName(p), category)
+      );
+      if (items.length) result.push({ name: title, items });
+    }
 
-  const uncategorized = useMemo(() => {
-    return availableProducts.filter((p) => {
+    const uncategorized = availableProducts.filter((p) => {
       const type = productTypeName(p);
       if (!type) return true;
       return !MENU_SECTIONS.some(({ category }) =>
         isProductCategory(type, category)
       );
     });
-  }, [availableProducts]);
+    if (uncategorized.length) {
+      result.push({ name: "Other", items: uncategorized });
+    }
+
+    return result;
+  }, [availableProducts, subtypeOrder]);
 
   return (
     <DataState
@@ -183,32 +171,42 @@ export function MenuList() {
       loadingFallback={<MenuListSkeleton />}
       emptyMessage="No products are currently available."
     >
-      <div className="space-y-10">
-      {drinkSubtypeSections.length > 0 ? (
-        <section className="space-y-6">
-          <h2 className="text-lg font-semibold">Drinks</h2>
-          <DrinkSubtypeSections
-            variant="nested"
-            sections={drinkSubtypeSections}
-            className="space-y-8 pl-0 sm:pl-1"
-            renderItems={(items) => <ProductGrid products={items} />}
-          />
-        </section>
-      ) : null}
+      <h1 className="mb-1 text-[28px] font-extrabold tracking-[-0.02em]">
+        Today at the cafe
+      </h1>
+      <p className="mb-[22px] text-sm text-muted-foreground">
+        {dateline()} · prices in euro
+      </p>
 
-      {nonDrinkSections.map((section) => (
-        <section key={section.title} className="space-y-4">
-          <h2 className="text-lg font-semibold">{section.title}</h2>
-          <ProductGrid products={section.items} />
-        </section>
-      ))}
-
-        {uncategorized.length > 0 ? (
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold">Other</h2>
-            <ProductGrid products={uncategorized} />
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+        {groups.map((group) => (
+          <section
+            key={group.name}
+            className="rounded-card border border-line bg-surface p-[22px]"
+          >
+            <h2 className="mb-3.5 text-base font-bold text-ac-dark">
+              {group.name}
+            </h2>
+            <ul className="flex flex-col gap-[11px]">
+              {group.items.map((product) => (
+                <li
+                  key={String(product.id)}
+                  className="flex items-baseline gap-2.5"
+                >
+                  <span className="text-[15px]">{product.name}</span>
+                  {/* Dot leader tying the name to its price. */}
+                  <span
+                    aria-hidden="true"
+                    className="h-px flex-1 bg-line"
+                  />
+                  <span className="num text-[15px] font-semibold">
+                    {formatPrice(product.base_price)}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </section>
-        ) : null}
+        ))}
       </div>
     </DataState>
   );

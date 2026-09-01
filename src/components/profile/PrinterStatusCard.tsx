@@ -20,10 +20,13 @@ type LinkState = "connected" | "disconnected" | "unconfigured" | "checking";
 
 const POLL_INTERVAL_MS = 6000;
 
+// The palette has no red; "attention" is the warm warn tone and "not set up
+// yet" is inert neutral. Every badge carries its label, so state is never
+// signalled by colour alone.
 const BADGE_STYLES: Record<LinkState, string> = {
-  connected: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  disconnected: "bg-red-500/15 text-red-600 dark:text-red-400",
-  unconfigured: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  connected: "bg-ac-soft text-ac-dark",
+  disconnected: "bg-warn-soft text-warn",
+  unconfigured: "bg-neutral-soft text-muted-foreground",
   checking: "bg-muted text-muted-foreground",
 };
 

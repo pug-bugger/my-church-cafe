@@ -7,7 +7,7 @@ import { PageContainer } from "@/components/ui/page-container";
 export default function BaristaPage() {
   return (
     <RoleRouteGuard mode="staff">
-      <PageContainer>
+      <PageContainer className="py-5 sm:py-5">
         <OrderQueue />
       </PageContainer>
     </RoleRouteGuard>

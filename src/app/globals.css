@@ -1,84 +1,142 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
+/*
+ * Design tokens follow the "Church cafe app redesign" canvas: a warm off-white
+ * ground (--bg), white cards (--surface), near-black ink, and a single sage
+ * accent (--ac). Everything else — including the shadcn variables below — is
+ * derived from that palette so the whole app reads as one system.
+ */
 @layer base {
   :root {
-    --radius: 0.5rem;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.141 0.005 285.823);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.141 0.005 285.823);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.141 0.005 285.823);
-    --primary: oklch(0.795 0.184 86.047);
-    --primary-foreground: oklch(0.421 0.095 57.708);
-    --secondary: oklch(0.967 0.001 286.375);
-    --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.967 0.001 286.375);
-    --muted-foreground: oklch(0.552 0.016 285.938);
-    --accent: oklch(0.967 0.001 286.375);
-    --accent-foreground: oklch(0.21 0.006 285.885);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.92 0.004 286.32);
-    --input: oklch(0.92 0.004 286.32);
-    --ring: oklch(0.795 0.184 86.047);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.141 0.005 285.823);
-    --sidebar-primary: oklch(0.795 0.184 86.047);
-    --sidebar-primary-foreground: oklch(0.421 0.095 57.708);
-    --sidebar-accent: oklch(0.967 0.001 286.375);
-    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-    --sidebar-border: oklch(0.92 0.004 286.32);
-    --sidebar-ring: oklch(0.795 0.184 86.047);
+    /* Design canvas tokens (used directly for accents the shadcn set has no slot for) */
+    --bg: 247 246 243;
+    --surface: 255 255 255;
+    --surface-sunken: 252 252 251;
+    --ink: 22 26 24;
+    --muted-ink: 110 117 110;
+    --line: 232 230 224;
+    --ac: 46 107 79;
+    --ac-dark: 36 87 65;
+    --ac-soft: 233 241 236;
+    --ac-mid: 143 182 162;
+    --warn: 180 101 14;
+    --warn-soft: 251 241 227;
+    --neutral-soft: 242 241 238;
+    --r-card: 22px;
+    --r-ctl: 16px;
+    --sh: 0 1px 2px rgba(22, 26, 24, 0.04), 0 10px 26px rgba(22, 26, 24, 0.05);
+    --sh-float: 0 20px 60px rgba(22, 26, 24, 0.16);
+
+    /* shadcn slots, mapped onto the tokens above */
+    --radius: 16px;
+    --background: var(--bg);
+    --foreground: var(--ink);
+    --card: var(--surface);
+    --card-foreground: var(--ink);
+    --popover: var(--surface);
+    --popover-foreground: var(--ink);
+    --primary: var(--ac);
+    --primary-foreground: 255 255 255;
+    --secondary: var(--ac-soft);
+    --secondary-foreground: var(--ac-dark);
+    --muted: var(--neutral-soft);
+    --muted-foreground: var(--muted-ink);
+    --accent: var(--ac-soft);
+    --accent-foreground: var(--ac-dark);
+    --destructive: var(--warn);
+    --destructive-foreground: 255 255 255;
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--ac);
+    --chart-1: 46 107 79;
+    --chart-2: 62 127 96;
+    --chart-3: 93 152 120;
+    --chart-4: 127 175 147;
+    --chart-5: 163 198 177;
+    --sidebar: var(--surface);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--ac);
+    --sidebar-primary-foreground: 255 255 255;
+    --sidebar-accent: var(--ac-soft);
+    --sidebar-accent-foreground: var(--ac-dark);
+    --sidebar-border: var(--line);
+    --sidebar-ring: var(--ac);
   }
-  
+
+  /*
+   * The canvas is light-only; this is the same palette rotated into the dark
+   * range (accent lifted so it keeps contrast on a dark ground).
+   */
   .dark {
-    --background: oklch(0.141 0.005 285.823);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.21 0.006 285.885);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.21 0.006 285.885);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.795 0.184 86.047);
-    --primary-foreground: oklch(0.4 0.1478 65.71);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.274 0.006 286.033);
-    --muted-foreground: oklch(0.705 0.015 286.067);
-    --accent: oklch(0.274 0.006 286.033);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.554 0.135 66.442);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.21 0.006 285.885);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.795 0.184 86.047);
-    --sidebar-primary-foreground: oklch(0.421 0.095 57.708);
-    --sidebar-accent: oklch(0.274 0.006 286.033);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.554 0.135 66.442);
+    --bg: 18 21 19;
+    --surface: 25 29 26;
+    --surface-sunken: 21 24 21;
+    --ink: 236 239 234;
+    --muted-ink: 154 163 156;
+    --line: 38 43 39;
+    --ac: 111 175 139;
+    --ac-dark: 143 199 166;
+    --ac-soft: 30 44 36;
+    --ac-mid: 62 107 84;
+    --warn: 228 161 89;
+    --warn-soft: 44 35 24;
+    --neutral-soft: 33 37 31;
+    --sh: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 26px rgba(0, 0, 0, 0.28);
+    --sh-float: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+    --primary-foreground: 16 35 26;
+    --destructive-foreground: 36 22 5;
+    --chart-1: 111 175 139;
+    --chart-2: 130 189 154;
+    --chart-3: 150 202 169;
+    --chart-4: 170 215 185;
+    --chart-5: 191 227 201;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: rgb(var(--ac-soft));
+  }
+}
+
+@layer components {
+  /* Tabular figures for prices, counts, order numbers. */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tap feedback shared by every control in the redesign. */
+  .press {
+    transition: transform 0.12s ease, background-color 0.15s ease,
+      box-shadow 0.18s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .press:active {
+    transform: scale(0.985);
+  }
+
+  /* Product tile: neutral until hovered, then the accent edge picks it out. */
+  .tile:hover {
+    border-color: var(--ac-mid);
+  }
+
+  /* Table rows lift a shade on hover. */
+  .row-hover:hover {
+    background: rgb(var(--ink) / 0.035);
+  }
+
+  .scroll {
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
 }
 
@@ -91,12 +149,35 @@
     display: none;
   }
 
+  /* Order cards entering / leaving a barista column, and the new-order pulse. */
+  .enter {
+    animation: card-in 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  .leave {
+    animation: card-out 0.2s ease-in both;
+  }
+  .fresh {
+    animation: card-in 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both,
+      soft-pulse 2.4s ease-in-out 1;
+  }
+
   /* Tablets/phones: skip heavy motion (dialog open, selects, etc.) */
   @media (hover: none) and (pointer: coarse) {
     .animate-in,
     .animate-out {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .enter,
+    .leave,
+    .fresh {
+      animation: none !important;
+    }
+    .press:active {
+      transform: none;
     }
   }
 
@@ -108,6 +189,35 @@
       #ffffff 6px,
       #ffffff 12px
     );
-    /* background-size: 56px 56px; */
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes card-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+}
+@keyframes soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 107, 79, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(46, 107, 79, 0.1);
   }
 }

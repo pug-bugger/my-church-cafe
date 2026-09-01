@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { WebSocketProvider } from "@/context/WebSocketContext";
 import { Toaster } from "@/components/ui/sonner";
 import { Navigation } from "@/components/Navigation";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const inter = Inter({ subsets: ["latin"] });
+const manrope = Manrope({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-manrope",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Church Cafe",
@@ -23,14 +27,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={manrope.variable}>
       <head />
-      <body className={inter.className}>
+      <body className="font-sans">
         <ThemeProvider>
           <WebSocketProvider>
-            <div className="min-h-screen bg-background flex flex-col overflow-hidden">
+            <div className="flex min-h-screen flex-col overflow-hidden bg-background">
               <Navigation />
-              <main className="flex-1 overflow-hidden relative">{children}</main>
+              <main className="relative flex-1 overflow-hidden">{children}</main>
             </div>
             <Toaster />
           </WebSocketProvider>

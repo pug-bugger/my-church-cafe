@@ -2,14 +2,179 @@
 
 import { useAppStore } from "@/store";
 import { useWebSocket } from "@/context/WebSocketContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { OrderStatus, ServerOrder, ServerOrderItem } from "@/types";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { RotateCcw, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { getAuthToken } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import { relativeAge } from "@/lib/format";
+import { describeServerOptions } from "@/lib/drinkOptions";
+
+/** Ages are rendered as "7 min"; re-render occasionally so they stay honest. */
+const AGE_TICK_MS = 20000;
+
+function orderTitle(order: ServerOrder): string {
+  const name = order.customer_name?.trim();
+  return name || `#${order.order_number ?? order.id}`;
+}
+
+/** Desserts are handed over from the counter, not made on the bar. */
+function drinkItems(order: ServerOrder): ServerOrderItem[] {
+  return order.items.filter((item) => item.category_name !== "Dessert");
+}
+
+type OrderCardProps = {
+  order: ServerOrder;
+  /** `preparing` cards get the accent edge; queue cards stay neutral. */
+  tone: "queue" | "preparing";
+  busy: boolean;
+  onAdvance: () => void;
+  onBack?: () => void;
+  onDelete?: () => void;
+  onRemoveItem?: (item: ServerOrderItem) => void;
+  removingKey: string | null;
+};
+
+function OrderCard({
+  order,
+  tone,
+  busy,
+  onAdvance,
+  onBack,
+  onDelete,
+  onRemoveItem,
+  removingKey,
+}: OrderCardProps) {
+  const items = drinkItems(order);
+  return (
+    <article
+      className={cn(
+        "enter rounded-card border bg-surface p-[18px] shadow-card",
+        tone === "preparing" ? "border-ac-mid" : "border-line"
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-[21px] font-extrabold tracking-[-0.015em]">
+          {orderTitle(order)}
+        </span>
+        <span
+          className={cn(
+            "text-xs font-semibold",
+            tone === "preparing" ? "text-primary" : "text-muted-foreground"
+          )}
+        >
+          {relativeAge(order.created_at)}
+        </span>
+      </div>
+
+      {order.comment ? (
+        <p className="mb-3 rounded-xl bg-warn-soft px-3 py-2.5 text-[13px] font-semibold text-warn">
+          {order.comment}
+        </p>
+      ) : null}
+
+      <ul className="mb-4 flex flex-col gap-2.5">
+        {items.map((item) => {
+          const summary = describeServerOptions(item.product_item_options);
+          const detail = [summary, item.comment].filter(Boolean).join(" · ");
+          return (
+            <li key={item.id} className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-bold">
+                  {item.product_item_name ?? "Item"}{" "}
+                  <span className="num text-primary">×{item.quantity}</span>
+                </div>
+                {detail ? (
+                  <div className="text-[13px] text-muted-foreground">
+                    {detail}
+                  </div>
+                ) : null}
+              </div>
+              {onRemoveItem ? (
+                <button
+                  type="button"
+                  onClick={() => onRemoveItem(item)}
+                  disabled={removingKey === `${order.id}-${item.id}`}
+                  aria-label={`Remove ${item.product_item_name ?? "item"}`}
+                  title="Remove this item from the order"
+                  className="press flex h-8 w-8 flex-none items-center justify-center rounded-[10px] text-muted-foreground hover:bg-ink/5 disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
+        {items.length === 0 && (
+          <li className="text-sm text-muted-foreground">No items</li>
+        )}
+      </ul>
+
+      <div className="flex gap-2.5">
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Put back in the queue"
+            title="Put back in the queue"
+            className="press flex min-h-[52px] w-[52px] flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5"
+          >
+            <RotateCcw className="h-[18px] w-[18px]" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onAdvance}
+          disabled={busy}
+          className="press min-h-[52px] flex-1 rounded-ctl bg-primary text-base font-bold text-primary-foreground hover:bg-ac-dark disabled:pointer-events-none disabled:bg-ac-mid"
+        >
+          {tone === "queue" ? "Start preparing" : "Ready for pickup"}
+        </button>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            aria-label="Cancel this order"
+            title="Cancel this order"
+            className="press flex min-h-[52px] w-[52px] flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5 disabled:opacity-50"
+          >
+            <Trash2 className="h-[18px] w-[18px]" />
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function ColumnHeading({
+  title,
+  count,
+  tone,
+}: {
+  title: string;
+  count: number;
+  tone: "queue" | "preparing";
+}) {
+  return (
+    <div className="mb-3.5 flex items-center gap-2.5">
+      <h2 className="text-lg font-extrabold">{title}</h2>
+      <span
+        className={cn(
+          "num rounded-full px-2.5 py-[3px] text-[13px] font-semibold",
+          tone === "preparing"
+            ? "bg-ac-soft text-ac-dark"
+            : "border border-line bg-surface text-muted-foreground"
+        )}
+      >
+        {count}
+      </span>
+    </div>
+  );
+}
 
 export function OrderQueue() {
   const { isConnected, ordersRefreshKey } = useWebSocket();
@@ -20,11 +185,10 @@ export function OrderQueue() {
   const removeOrder = useAppStore((state) => state.removeOrder);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
+  const [, setAgeTick] = useState(0);
 
   const pendingOrders = orders.filter((order) => order.status === "pending");
-  const preparingOrders = orders.filter(
-    (order) => order.status === "preparing"
-  );
+  const preparingOrders = orders.filter((order) => order.status === "preparing");
   const readyOrders = orders.filter((order) => order.status === "ready");
 
   const fetchOrders = useCallback(async () => {
@@ -43,10 +207,12 @@ export function OrderQueue() {
     fetchOrders();
   }, [fetchOrders, ordersRefreshKey]);
 
-  const handleStatusUpdate = async (
-    orderId: number,
-    status: OrderStatus
-  ) => {
+  useEffect(() => {
+    const timer = setInterval(() => setAgeTick((t) => t + 1), AGE_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleStatusUpdate = async (orderId: number, status: OrderStatus) => {
     try {
       await apiFetch(`/api/orders/${orderId}/status`, {
         method: "PUT",
@@ -108,175 +274,95 @@ export function OrderQueue() {
     }
   };
 
-  const OrderCard = ({ order }: { order: ServerOrder }) => (
-    <Card key={order.id} className="mb-4">
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-        <CardTitle className="leading-tight">
-          {order.customer_name
-            ? order.customer_name
-            : `# ${order.order_number ?? order.id}`}
-        </CardTitle>
-        {order.status === "pending" ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 shrink-0 rounded-full px-3 text-xs text-destructive hover:text-destructive"
-            disabled={deletingOrderId === order.id}
-            onClick={() => handleDeleteOrder(order.id)}
-          >
-            {deletingOrderId === order.id ? "Deleting…" : "Delete order"}
-          </Button>
-        ) : null}
-      </CardHeader>
-      <CardContent>
-        {order.comment && (
-          <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-            {order.comment}
-          </p>
-        )}
-        <ul className="space-y-2 mb-4">
-          {order.items.filter((item) => item.category_name !== "Dessert").map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">
-                  {item.product_item_name ?? "Item"} × {item.quantity}
-                </div>
-                <ul className="mt-1.5 text-sm text-muted-foreground space-y-0.5 list-none pl-0">
-                  {(item.product_item_options ?? [])
-                    .filter(
-                      (opt) =>
-                        opt.option_value_name != null &&
-                        opt.option_value_name !== "" &&
-                        opt.option_value_name !== "false",
-                    )
-                    .map((option) => (
-                      <li key={option.id} className="flex flex-wrap gap-x-1">
-                        <span className="font-medium text-foreground/80">
-                          {option.option_definition_name ?? "Option"}
-                        </span>
-                        <span>: {option.option_value_name}</span>
-                      </li>
-                    ))}
-                </ul>
-                {item.comment && (
-                  <p className="mt-1 text-sm italic text-muted-foreground">
-                    {item.comment}
-                  </p>
-                )}
-              </div>
-              {order.status === "pending" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 shrink-0 rounded-full p-0 text-destructive"
-                  aria-label={`Remove ${item.product_item_name ?? "item"}`}
-                  disabled={removingKey === `${order.id}-${item.id}`}
-                  onClick={() => handleRemoveItem(order.id, item)}
-                >
-                  -
-                </Button>
-              ) : null}
-            </li>
-          ))}
-          {order.items.filter((item) => item.category_name !== "Dessert").length === 0 && (
-            <li className="text-sm text-muted-foreground">No items</li>
-          )}
-        </ul>
-
-        {order.status === "pending" && (
-          <Button
-            className="w-full"
-            disabled={deletingOrderId === order.id}
-            onClick={() => handleStatusUpdate(order.id, "preparing")}
-          >
-            Start Preparing
-          </Button>
-        )}
-
-        {order.status === "preparing" && (
-          <div className="flex flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleStatusUpdate(order.id, "pending")}
-            >
-              Back to Pending
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={() => handleStatusUpdate(order.id, "ready")}
-            >
-              Mark as Ready
-            </Button>
-          </div>
-        )}
-
-        {order.status === "ready" && (
-          <div className="flex flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleStatusUpdate(order.id, "preparing")}
-            >
-              Back to Preparing
-            </Button>
-            <Button
-              className="flex-1"
-              variant="secondary"
-              onClick={() => handleStatusUpdate(order.id, "completed")}
-            >
-              Complete Order
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <div>
+    <div className="flex flex-col gap-5">
       {!isConnected && (
-        <Alert variant="destructive" className="mb-6">
+        <Alert variant="destructive">
           <AlertDescription>
             Login required to update order status.
           </AlertDescription>
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Pending Orders</h2>
-          {pendingOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-          {pendingOrders.length === 0 && (
-            <p className="text-muted-foreground text-center py-4">
-              No pending orders
-            </p>
-          )}
-        </div>
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <section>
+          <ColumnHeading
+            title="In queue"
+            count={pendingOrders.length}
+            tone="queue"
+          />
+          <div className="flex flex-col gap-3.5">
+            {pendingOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                tone="queue"
+                busy={deletingOrderId === order.id}
+                removingKey={removingKey}
+                onAdvance={() => handleStatusUpdate(order.id, "preparing")}
+                onDelete={() => handleDeleteOrder(order.id)}
+                onRemoveItem={(item) => handleRemoveItem(order.id, item)}
+              />
+            ))}
+            {pendingOrders.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nothing waiting. New orders slide in here.
+              </p>
+            )}
+          </div>
+        </section>
 
-        <div>
-          <h2 className="text-lg font-semibold mb-4">In Progress</h2>
-          {preparingOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-          {preparingOrders.length === 0 && (
-            <p className="text-muted-foreground text-center py-4">
-              No orders in progress
-            </p>
-          )}
-        </div>
+        <section>
+          <ColumnHeading
+            title="Preparing"
+            count={preparingOrders.length}
+            tone="preparing"
+          />
+          <div className="flex flex-col gap-3.5">
+            {preparingOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                tone="preparing"
+                busy={false}
+                removingKey={removingKey}
+                onAdvance={() => handleStatusUpdate(order.id, "ready")}
+                onBack={() => handleStatusUpdate(order.id, "pending")}
+              />
+            ))}
+            {preparingOrders.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nothing on the bar right now.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
 
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Ready for Pickup</h2>
+      {/* Handover shelf: tap a name to complete the order. */}
+      <div className="rounded-card border border-line bg-surface px-[18px] py-4 shadow-card">
+        <div className="flex flex-wrap items-center gap-3.5">
+          <span className="text-[13px] font-semibold text-muted-foreground">
+            Ready · awaiting pickup
+          </span>
           {readyOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <button
+              key={order.id}
+              type="button"
+              onClick={() => handleStatusUpdate(order.id, "completed")}
+              title="Tap when handed over — completes the order"
+              className="press enter flex min-h-[54px] items-center gap-2.5 rounded-full border border-ac bg-ac-soft px-5 text-[19px] font-extrabold text-ac-dark hover:bg-ac-mid/40"
+            >
+              {orderTitle(order)}
+              <span className="text-xs font-semibold opacity-70">
+                {relativeAge(order.created_at)}
+              </span>
+            </button>
           ))}
           {readyOrders.length === 0 && (
-            <p className="text-muted-foreground text-center py-4">
-              No orders ready
-            </p>
+            <span className="text-sm text-muted-foreground">
+              Nothing waiting on the counter.
+            </span>
           )}
         </div>
       </div>

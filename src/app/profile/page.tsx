@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,23 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import type { ServerOrder, ServerUser } from "@/types";
 import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 import { PrinterStatusCard } from "@/components/profile/PrinterStatusCard";
@@ -38,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
 import { cn } from "@/lib/utils";
 import { apiFetch, ApiError } from "@/lib/api";
+import { formatPrice, initialsFromName } from "@/lib/format";
 import {
   getAuthToken,
   getStoredUser,
@@ -79,14 +61,6 @@ function formatDate(dateStr: string) {
 }
 
 type TopProductRow = { name: string; total: number };
-
-const CHART_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
 
 // ── Date range helpers ───────────────────────────────────────────────────────
 
@@ -154,7 +128,7 @@ function DateRangeSelector({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select value={preset} onValueChange={(v) => handlePreset(v as Preset)}>
-        <SelectTrigger className="w-[150px] h-8 text-xs">
+        <SelectTrigger className="h-10 w-[150px] text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -170,7 +144,7 @@ function DateRangeSelector({
         <>
           <Input
             type="date"
-            className="h-8 w-[130px] text-xs"
+            className="h-10 w-[140px] text-xs"
             value={toDateInput(value.from)}
             onChange={(e) => {
               const from = e.target.value
@@ -182,7 +156,7 @@ function DateRangeSelector({
           <span className="text-xs text-muted-foreground">–</span>
           <Input
             type="date"
-            className="h-8 w-[130px] text-xs"
+            className="h-10 w-[140px] text-xs"
             value={toDateInput(value.to)}
             onChange={(e) => {
               const to = e.target.value
@@ -198,93 +172,195 @@ function DateRangeSelector({
 }
 
 // ── Charts ───────────────────────────────────────────────────────────────────
+//
+// All three encode one measure, so all three use the single accent hue: bar
+// length carries the magnitude and every row is directly labelled. Colouring by
+// rank instead would repaint the survivors whenever the date filter changes the
+// set, which is exactly what the ranking is not allowed to do.
 
-function HorizontalBarChart({ data }: { data: TopProductRow[] }) {
-  const slice = data.slice(0, 15);
-  const chartHeight = Math.max(160, slice.length * 38 + 40);
-  return (
-    <div style={{ height: chartHeight }} className="w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          layout="vertical"
-          data={slice}
-          margin={{ top: 4, right: 40, left: 8, bottom: 4 }}
-        >
-          <XAxis
-            type="number"
-            tickLine={false}
-            allowDecimals={false}
-            tick={{ fontSize: 11 }}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            width={130}
-            tick={{ fontSize: 11 }}
-            tickLine={false}
-          />
-          <Tooltip
-            formatter={(value) => [`×${value ?? 0}`, "Ordered"]}
-            contentStyle={{ borderRadius: "var(--radius)" }}
-          />
-          <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={24}>
-            {slice.map((_, i) => (
-              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
+const CHART_MAX_ROWS = 15;
 
-function SmallPieChart({ data }: { data: TopProductRow[] }) {
-  const slice = data.slice(0, 8);
+/** "Most ordered" — ranked magnitude, one row per product. */
+function RankedBars({ data }: { data: TopProductRow[] }) {
+  const rows = data.slice(0, CHART_MAX_ROWS);
+  const max = Math.max(1, ...rows.map((r) => r.total));
   return (
-    <div className="w-full space-y-3">
-      <div className="h-[160px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Tooltip
-              formatter={(value, name) => [`×${value ?? 0}`, name]}
-              contentStyle={{ borderRadius: "var(--radius)" }}
+    <div className="flex flex-col gap-3">
+      {rows.map((row) => (
+        <div key={row.name} className="flex items-center gap-3.5">
+          <span className="w-[110px] flex-none truncate text-sm sm:w-[150px]">
+            {row.name}
+          </span>
+          <div className="flex flex-1 items-center gap-2.5">
+            <div
+              className="h-3.5 rounded-full bg-ac"
+              style={{ width: `${Math.max(2, (row.total / max) * 100)}%` }}
+              title={`${row.name}: ×${row.total}`}
             />
-            <Pie
-              data={slice}
-              dataKey="total"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={32}
-              outerRadius={64}
-              paddingAngle={2}
-              stroke="var(--border)"
-              strokeWidth={1}
-            >
-              {slice.map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <ul className="space-y-1">
-        {slice.map((row, i) => (
-          <li key={row.name} className="flex items-center gap-2 text-xs">
-            <span
-              className="shrink-0 h-2.5 w-2.5 rounded-full"
-              style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
-            />
-            <span className="flex-1 min-w-0 truncate">{row.name}</span>
-            <span className="tabular-nums text-muted-foreground shrink-0">
-              ×{row.total}
+            <span className="num text-xs text-muted-foreground">
+              {row.total}
             </span>
-          </li>
-        ))}
-      </ul>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
+
+/** One option definition's value split, as share-of-total tracks. */
+function ShareBars({ data }: { data: TopProductRow[] }) {
+  const rows = data.slice(0, 8);
+  const total = rows.reduce((sum, r) => sum + r.total, 0) || 1;
+  return (
+    <div className="flex flex-col gap-2.5">
+      {rows.map((row) => {
+        const pct = Math.round((row.total / total) * 100);
+        return (
+          <div key={row.name} className="flex items-center gap-2.5">
+            <span className="w-[85px] flex-none truncate text-[13px] sm:w-[105px]">
+              {row.name}
+            </span>
+            <div className="h-2.5 flex-1 rounded-full bg-background">
+              <div
+                className="h-full rounded-full bg-ac"
+                style={{ width: `${pct}%` }}
+                title={`${row.name}: ×${row.total} (${pct}%)`}
+              />
+            </div>
+            <span className="num w-9 flex-none text-right text-xs text-muted-foreground">
+              {pct}%
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+type DayRow = { dateKey: string; count: number; label: string };
+
+/** Orders per day — change over time, counts direct-labelled above each column. */
+function DayColumns({ data }: { data: DayRow[] }) {
+  const max = Math.max(1, ...data.map((d) => d.count));
+  return (
+    <div className="flex h-[180px] items-end gap-2 overflow-x-auto">
+      {data.map((day) => (
+        <div
+          key={day.dateKey}
+          className="flex h-full min-w-[26px] max-w-[56px] flex-1 flex-col items-center justify-end gap-1.5"
+          title={`${day.label}: ${day.count} ${
+            day.count === 1 ? "order" : "orders"
+          }`}
+        >
+          <span className="num text-[11px] text-muted-foreground">
+            {day.count}
+          </span>
+          <div
+            className="w-full rounded-t-lg bg-ac"
+            style={{ height: `${Math.max(2, (day.count / max) * 100)}%` }}
+          />
+          <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+            {day.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Panels ───────────────────────────────────────────────────────────────────
+
+function Panel({
+  title,
+  action,
+  children,
+  className,
+}: {
+  title?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-card border border-line bg-surface p-[22px]",
+        className
+      )}
+    >
+      {(title || action) && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          {title ? <h3 className="text-base font-bold">{title}</h3> : <span />}
+          {action}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function UserTable({
+  users,
+  loading,
+}: {
+  users: ServerUser[];
+  loading: boolean;
+}) {
+  if (loading && users.length === 0) {
+    return <p className="text-sm text-muted-foreground">Loading users…</p>;
+  }
+  if (users.length === 0) {
+    return <p className="text-sm text-muted-foreground">No users found.</p>;
+  }
+  return (
+    <div className="overflow-x-auto rounded-card border border-line bg-surface">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="text-left text-xs font-semibold text-muted-foreground">
+            <th className="p-4">Name</th>
+            <th className="p-4">Email</th>
+            <th className="p-4">Role</th>
+            <th className="hidden p-4 sm:table-cell">Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.id} className="row-hover border-t border-line">
+              <td className="p-4">
+                <span className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-ac-soft text-xs font-bold text-ac-dark">
+                    {initialsFromName(u.name)}
+                  </span>
+                  <span className="font-bold">{u.name}</span>
+                </span>
+              </td>
+              <td className="p-4 text-muted-foreground">{u.email}</td>
+              <td className="p-4">
+                <span
+                  className={cn(
+                    "rounded-full px-2.5 py-[5px] text-xs font-semibold capitalize",
+                    u.role === "admin"
+                      ? "bg-ac-soft text-ac-dark"
+                      : "bg-neutral-soft text-muted-foreground"
+                  )}
+                >
+                  {u.role ?? "—"}
+                </span>
+              </td>
+              <td className="num hidden p-4 text-muted-foreground sm:table-cell">
+                {u.created_at
+                  ? new Date(u.created_at).toLocaleDateString()
+                  : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type SectionId = "account" | "overview" | "analytics" | "orders" | "users";
 
 export default function ProfilePage() {
   const [email, setEmail] = useState("");
@@ -298,6 +374,10 @@ export default function ProfilePage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [section, setSection] = useState<SectionId>("account");
+  const [nameDraft, setNameDraft] = useState("");
+  const [emailDraft, setEmailDraft] = useState("");
+  const [savingAccount, setSavingAccount] = useState(false);
   const [topProductsRange, setTopProductsRange] = useState<DateRange>({
     from: null,
     to: null,
@@ -350,12 +430,19 @@ export default function ProfilePage() {
     if (hasToken) syncProfileFromApi();
   }, [hasToken, syncProfileFromApi]);
 
+  // Keep the editable account fields in step with whoever is signed in.
+  useEffect(() => {
+    setNameDraft(user?.name ?? "");
+    setEmailDraft(user?.email ?? "");
+  }, [user?.id, user?.name, user?.email]);
+
   const clearAuthSession = useCallback(() => {
     clearStoredAuth();
     setHasToken(false);
     setUser(null);
     setOrders([]);
     setDirectoryUsers([]);
+    setSection("account");
   }, []);
 
   const showStaffOrderDashboard = useMemo(
@@ -364,6 +451,26 @@ export default function ProfilePage() {
   );
 
   const isAdminDashboard = user?.role === "admin";
+
+  const sections = useMemo<{ id: SectionId; label: string }[]>(() => {
+    const list: { id: SectionId; label: string }[] = [
+      { id: "account", label: "Account" },
+    ];
+    if (showStaffOrderDashboard) {
+      list.push(
+        { id: "overview", label: "Overview" },
+        { id: "analytics", label: "Analytics" },
+        { id: "orders", label: "Orders" }
+      );
+    }
+    if (isAdminDashboard) list.push({ id: "users", label: "People" });
+    return list;
+  }, [showStaffOrderDashboard, isAdminDashboard]);
+
+  // A role change can retire the open section (e.g. logging out of admin).
+  useEffect(() => {
+    if (!sections.some((s) => s.id === section)) setSection("account");
+  }, [sections, section]);
 
   const readStoredRole = useCallback(
     (): string | null => getStoredUser<{ role?: string }>()?.role ?? null,
@@ -384,9 +491,7 @@ export default function ProfilePage() {
         return;
       }
       setOrders([]);
-      toast.error(
-        err instanceof Error ? err.message : "Unable to load orders"
-      );
+      toast.error(err instanceof Error ? err.message : "Unable to load orders");
     } finally {
       setOrdersLoading(false);
     }
@@ -479,15 +584,29 @@ export default function ProfilePage() {
     toast.success("Logged out");
   };
 
-  function profileInitials(name: string) {
-    return (
-      name
-        .split(/\s+/)
-        .map((p) => p[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() || "?"
-    );
+  async function handleSaveAccount() {
+    if (!apiUrl || !user || !getAuthToken()) return;
+    const name = nameDraft.trim();
+    const nextEmail = emailDraft.trim();
+    if (!name || !nextEmail) {
+      toast.error("Name and email cannot be empty");
+      return;
+    }
+    setSavingAccount(true);
+    try {
+      await apiFetch("/api/users/me", {
+        method: "PUT",
+        body: { name, email: nextEmail },
+        auth: true,
+        authError: "Login required to update your account.",
+      });
+      persistUser({ ...user, name, email: nextEmail });
+      toast.success("Account updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save changes");
+    } finally {
+      setSavingAccount(false);
+    }
   }
 
   async function handleProfilePhoto(file: File) {
@@ -525,9 +644,7 @@ export default function ProfilePage() {
       persistUser({ ...user, picture_url: null });
       toast.success("Profile photo removed");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Could not remove photo"
-      );
+      toast.error(err instanceof Error ? err.message : "Could not remove photo");
     } finally {
       setPhotoUploading(false);
     }
@@ -558,7 +675,9 @@ export default function ProfilePage() {
       for (const item of order.items) {
         for (const opt of item.product_item_options ?? []) {
           const def = opt.option_definition_name ?? "Other";
-          const val = opt.option_value_name ?? "Unknown";
+          const raw = opt.option_value_name ?? "Unknown";
+          // Checkbox options are stored as "true"/"false"; read them as answers.
+          const val = raw === "true" ? "Yes" : raw === "false" ? "No" : raw;
           if (!byDefinition.has(def)) byDefinition.set(def, new Map());
           const inner = byDefinition.get(def)!;
           inner.set(val, (inner.get(val) ?? 0) + 1);
@@ -609,10 +728,7 @@ export default function ProfilePage() {
     const ordersThisMonth = orders.filter(
       (o) => new Date(o.created_at) >= monthAgo
     ).length;
-    const totalSpent = orders.reduce(
-      (sum, o) => sum + Number(o.total ?? 0),
-      0
-    );
+    const totalSpent = orders.reduce((sum, o) => sum + Number(o.total ?? 0), 0);
     return {
       totalOrders,
       totalItems,
@@ -622,87 +738,155 @@ export default function ProfilePage() {
     };
   }, [orders]);
 
-  return (
-    <div
-      className={cn(
-        "mx-auto w-full space-y-8 px-4 py-8 sm:px-6 max-w-2xl md:max-w-4xl",
-        isAdminDashboard && "xl:max-w-6xl"
-      )}
-    >
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Profile{" "}
-            <span className="text-muted-foreground text-sm">
-              {user?.role ? `(${user.role})` : ""}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+  const kpis = useMemo(() => {
+    const list = [
+      {
+        label: isAdminDashboard ? "Orders (all users)" : "Total orders",
+        value: String(stats.totalOrders),
+      },
+      {
+        label: isAdminDashboard ? "Items sold (all)" : "Total items",
+        value: String(stats.totalItems),
+      },
+      { label: "This week", value: String(stats.ordersThisWeek) },
+      {
+        label: isAdminDashboard ? "Revenue (all orders)" : "Total spent",
+        value: formatPrice(stats.totalSpent),
+      },
+    ];
+    if (isAdminDashboard) {
+      list.push({
+        label: "Registered users",
+        value: usersLoading ? "…" : String(directoryUsers.length),
+      });
+    }
+    return list;
+  }, [stats, isAdminDashboard, usersLoading, directoryUsers.length]);
+
+  const lineCountLabel = ordersLoading
+    ? "Loading orders…"
+    : `${stats.totalOrders} ${stats.totalOrders === 1 ? "order" : "orders"} · ${
+        stats.totalItems
+      } items`;
+
+  // ── Signed out: just the sign-in card ──────────────────────────────────────
+  if (!hasToken) {
+    return (
+      <div className="mx-auto w-full max-w-[480px] px-4 py-8 sm:px-6">
+        <div className="rounded-card border border-line bg-surface p-6">
+          <h1 className="mb-5 text-xl font-extrabold">Sign in</h1>
           {!apiUrl && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-4">
               <AlertDescription>
                 Set `NEXT_PUBLIC_API_URL` in `.env.local` to connect.
               </AlertDescription>
             </Alert>
           )}
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-4">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          {!hasToken ? (
-            <form className="space-y-4" onSubmit={handleLogin}>
-              <div className="space-y-2">
-                <Label htmlFor="profile-email">Email</Label>
-                <Input
-                  id="profile-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-password">Password</Label>
-                <Input
-                  id="profile-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Signing in..." : "Sign in"}
-              </Button>
-            </form>
-          ) : (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-                <div className="flex flex-col items-center sm:items-start gap-3">
-                  <Avatar className="h-24 w-24 border-2 border-border">
+          <form className="flex flex-col gap-4" onSubmit={handleLogin}>
+            <div className="space-y-2">
+              <Label htmlFor="profile-email">Email</Label>
+              <Input
+                id="profile-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profile-password">Password</Label>
+              <Input
+                id="profile-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="press min-h-12 rounded-ctl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-ac-dark disabled:opacity-60"
+            >
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[196px_1fr]">
+        <nav
+          aria-label="Profile sections"
+          className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:sticky lg:top-[88px] lg:flex-col lg:overflow-visible lg:px-0"
+        >
+          {sections.map((item) => {
+            const on = section === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={on ? "page" : undefined}
+                onClick={() => setSection(item.id)}
+                className={cn(
+                  "press flex min-h-[46px] flex-none items-center whitespace-nowrap rounded-[14px] px-4 text-[15px] font-semibold lg:w-full",
+                  on
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-ink/5"
+                )}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="min-w-0">
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {section === "account" && (
+            <div className="flex max-w-[560px] flex-col gap-5">
+              <div className="rounded-card border border-line bg-surface p-6">
+                <h1 className="mb-5 text-xl font-extrabold">Account</h1>
+
+                <div className="mb-[22px] flex items-center gap-5">
+                  <Avatar className="h-[88px] w-[88px]">
                     {user?.picture_url && (
-                      <>
-                        <AvatarImage
-                          src={resolveMediaUrl(user?.picture_url ?? undefined)}
-                          alt=""
-                        />
-                      </>
+                      <AvatarImage
+                        src={resolveMediaUrl(user?.picture_url ?? undefined)}
+                        alt=""
+                      />
                     )}
-                    <AvatarFallback className="text-lg">
-                      {user?.name ? profileInitials(user.name) : "?"}
+                    <AvatarFallback className="bg-ac-soft text-[28px] font-extrabold text-ac-dark">
+                      {initialsFromName(user?.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col gap-2 w-full max-w-xs">
-                    <Label htmlFor="profile-photo" className="sr-only">
-                      Profile photo
+                  <div className="flex flex-col items-start gap-2">
+                    <Label
+                      htmlFor="profile-photo"
+                      title="JPEG, PNG, GIF or WebP"
+                      className="press flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-surface px-[18px] text-sm font-semibold hover:bg-ink/5"
+                    >
+                      {photoUploading ? "Uploading…" : "Upload photo"}
                     </Label>
-                    <Input
+                    <input
                       id="profile-photo"
                       type="file"
+                      className="sr-only"
                       accept="image/jpeg,image/png,image/gif,image/webp"
                       disabled={photoUploading}
                       onChange={(e) => {
@@ -712,320 +896,183 @@ export default function ProfilePage() {
                       }}
                     />
                     {user?.picture_url ? (
-                      <Button
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
                         disabled={photoUploading}
                         onClick={() => void handleRemoveProfilePhoto()}
+                        className="press min-h-10 px-1.5 text-left text-sm font-semibold text-muted-foreground hover:text-foreground"
                       >
                         Remove photo
-                      </Button>
+                      </button>
                     ) : null}
                   </div>
                 </div>
-                <div className="space-y-4 flex-1">
-                  <p className="text-muted-foreground text-sm">
-                    <span className="font-medium">Name:</span> {user?.name}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    <span className="font-medium">Email:</span> {user?.email}
-                  </p>
-                  <Button variant="secondary" onClick={handleLogout}>
+
+                <div className="flex flex-col gap-3.5">
+                  <div>
+                    <Label
+                      htmlFor="account-name"
+                      className="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                    >
+                      Name
+                    </Label>
+                    <Input
+                      id="account-name"
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      className="h-[46px] rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="account-email"
+                      className="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                    >
+                      Email
+                    </Label>
+                    <Input
+                      id="account-email"
+                      type="email"
+                      value={emailDraft}
+                      onChange={(e) => setEmailDraft(e.target.value)}
+                      className="h-[46px] rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="account-role"
+                      className="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                    >
+                      Role
+                    </Label>
+                    <Input
+                      id="account-role"
+                      value={user?.role ?? "—"}
+                      disabled
+                      title="Only an admin can change a role"
+                      className="h-[46px] rounded-xl capitalize"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-[22px] flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveAccount()}
+                    disabled={savingAccount}
+                    className="press min-h-[46px] rounded-ctl bg-primary px-5 text-[15px] font-bold text-primary-foreground hover:bg-ac-dark disabled:opacity-60"
+                  >
+                    {savingAccount ? "Saving…" : "Save changes"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="press min-h-[46px] rounded-ctl border border-line bg-surface px-5 text-[15px] font-semibold hover:bg-ink/5"
+                  >
                     Log out
-                  </Button>
+                  </button>
                 </div>
               </div>
+
+              {showStaffOrderDashboard && <PrinterStatusCard />}
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {hasToken && showStaffOrderDashboard && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold">
-              {isAdminDashboard ? "Admin dashboard" : "Your dashboard"}
-            </h2>
-            {isAdminDashboard && (
-              <p className="text-sm text-muted-foreground mt-1">
-                All orders, revenue, and user accounts across the cafe.
-              </p>
-            )}
-          </div>
-
-          <PrinterStatusCard />
-
-          {ordersLoading && !orders.length ? (
-            <p className="text-muted-foreground text-sm">Loading orders…</p>
-          ) : (
-            <>
-              <div
-                className={cn(
-                  "grid gap-4",
-                  isAdminDashboard
-                    ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
-                    : "grid-cols-2 md:grid-cols-4"
-                )}
-              >
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {isAdminDashboard ? "Orders (all users)" : "Total orders"}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold tabular-nums">
-                      {stats.totalOrders}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {isAdminDashboard ? "Items sold (all)" : "Total items"}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold tabular-nums">
-                      {stats.totalItems}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      This week
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold tabular-nums">
-                      {stats.ordersThisWeek}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {isAdminDashboard ? "Revenue (all orders)" : "Total spent"}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold tabular-nums">
-                      ${Number(stats.totalSpent).toFixed(2)}
-                    </p>
-                  </CardContent>
-                </Card>
-                {isAdminDashboard && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        Registered users
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold tabular-nums">
-                        {usersLoading ? "…" : directoryUsers.length}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {isAdminDashboard && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>User directory</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Everyone with an account (name, email, role).
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    {usersLoading && directoryUsers.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">
-                        Loading users…
-                      </p>
-                    ) : directoryUsers.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">
-                        No users found.
-                      </p>
-                    ) : (
-                      <div className="rounded-md border overflow-x-auto max-h-[320px] overflow-y-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b bg-muted/50 text-left">
-                              <th className="p-3 font-medium">Name</th>
-                              <th className="p-3 font-medium">Email</th>
-                              <th className="p-3 font-medium">Role</th>
-                              <th className="p-3 font-medium hidden sm:table-cell">
-                                Joined
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {directoryUsers.map((u) => (
-                              <tr key={u.id} className="border-b last:border-0">
-                                <td className="p-3 font-medium">{u.name}</td>
-                                <td className="p-3 text-muted-foreground">
-                                  {u.email}
-                                </td>
-                                <td className="p-3 capitalize">
-                                  {u.role ?? "—"}
-                                </td>
-                                <td className="p-3 text-muted-foreground hidden sm:table-cell">
-                                  {u.created_at
-                                    ? new Date(u.created_at).toLocaleDateString()
-                                    : "—"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Analytics — tabbed charts */}
-              <Card>
-                <Tabs defaultValue="top-products">
-                  <CardHeader className="pb-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <CardTitle>Analytics</CardTitle>
-                      <TabsList className="w-full sm:w-auto">
-                        <TabsTrigger value="top-products" className="flex-1 sm:flex-none">
-                          Top products
-                        </TabsTrigger>
-                        <TabsTrigger value="option-stats" className="flex-1 sm:flex-none">
-                          Options
-                        </TabsTrigger>
-                        <TabsTrigger value="by-date" className="flex-1 sm:flex-none">
-                          By date
-                        </TabsTrigger>
-                      </TabsList>
+          {section === "overview" && (
+            <div>
+              <h1 className="mb-4 text-xl font-extrabold">Overview</h1>
+              <div className="mb-[22px] grid grid-cols-2 gap-3.5 sm:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
+                {kpis.map((kpi) => (
+                  <div
+                    key={kpi.label}
+                    className="rounded-card border border-line bg-surface p-[18px]"
+                  >
+                    <div className="mb-2 text-[13px] text-muted-foreground">
+                      {kpi.label}
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <TabsContent value="top-products" className="mt-0">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                        <div>
-                          <p className="font-medium text-sm">Most ordered products</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {isAdminDashboard
-                              ? "Top items by quantity across all orders"
-                              : "Your top items by quantity ordered"}
-                          </p>
-                        </div>
-                        <DateRangeSelector
-                          value={topProductsRange}
-                          onChange={setTopProductsRange}
-                          initialPreset="all-time"
-                        />
-                      </div>
-                      {topProducts.length === 0 ? (
-                        <p className="text-muted-foreground text-sm py-8 text-center">
-                          {isAdminDashboard
-                            ? "No orders in this range."
-                            : "No orders yet. Order from the Terminal to see your top products here."}
-                        </p>
-                      ) : (
-                        <HorizontalBarChart data={topProducts} />
-                      )}
-                    </TabsContent>
+                    <div className="num text-3xl font-extrabold leading-none tracking-[-0.02em]">
+                      {kpi.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Panel title="Orders per day · last 14 days">
+                {ordersByDate.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    No orders yet.
+                  </p>
+                ) : (
+                  <DayColumns data={ordersByDate} />
+                )}
+              </Panel>
+            </div>
+          )}
 
-                    <TabsContent value="option-stats" className="mt-0">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                        <div>
-                          <p className="font-medium text-sm">Option statistics</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {isAdminDashboard
-                              ? "Breakdown of drink options chosen across all orders"
-                              : "Breakdown of drink options you have chosen"}
-                          </p>
-                        </div>
-                        <DateRangeSelector
-                          value={optionStatsRange}
-                          onChange={setOptionStatsRange}
-                          initialPreset="last-3-months"
-                        />
-                      </div>
-                      {optionStats.length === 0 ? (
-                        <p className="text-muted-foreground text-sm py-8 text-center">
-                          No option data in this range.
-                        </p>
-                      ) : (
-                        <div className="grid gap-6 sm:grid-cols-2">
-                          {optionStats.map(({ definition, data }) => (
-                            <div key={definition} className="space-y-1">
-                              <p className="text-sm font-medium text-center capitalize">
-                                {definition}
-                              </p>
-                              <SmallPieChart data={data} />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </TabsContent>
+          {section === "analytics" && (
+            <div className="flex flex-col gap-4">
+              <h1 className="text-xl font-extrabold">Analytics</h1>
 
-                    <TabsContent value="by-date" className="mt-0">
-                      <div className="mb-4">
-                        <p className="font-medium text-sm">Orders by date</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {isAdminDashboard
-                            ? "Last 14 days — count of all orders per day"
-                            : "Last 14 days"}
-                        </p>
-                      </div>
-                      {ordersByDate.length === 0 ? (
-                        <p className="text-muted-foreground text-sm py-8 text-center">
-                          No orders yet.
-                        </p>
-                      ) : (
-                        <div className="h-[240px] w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                              data={ordersByDate}
-                              margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
-                            >
-                              <XAxis
-                                dataKey="label"
-                                tick={{ fontSize: 11 }}
-                                tickLine={false}
-                              />
-                              <YAxis
-                                dataKey="count"
-                                allowDecimals={false}
-                                tickLine={false}
-                                width={24}
-                              />
-                              <Tooltip
-                                formatter={(value) => [value ?? 0, "Orders"]}
-                                contentStyle={{ borderRadius: "var(--radius)" }}
-                              />
-                              <Bar
-                                dataKey="count"
-                                fill="var(--primary)"
-                                radius={[4, 4, 0, 0]}
-                                maxBarSize={32}
-                              />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </CardContent>
-                </Tabs>
-              </Card>
+              <Panel
+                title="Most ordered"
+                action={
+                  <DateRangeSelector
+                    value={topProductsRange}
+                    onChange={setTopProductsRange}
+                    initialPreset="all-time"
+                  />
+                }
+              >
+                {topProducts.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    {isAdminDashboard
+                      ? "No orders in this range."
+                      : "No orders yet. Order from the Terminal to see your top products here."}
+                  </p>
+                ) : (
+                  <RankedBars data={topProducts} />
+                )}
+              </Panel>
 
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-base font-bold">Option choices</h2>
+                <DateRangeSelector
+                  value={optionStatsRange}
+                  onChange={setOptionStatsRange}
+                  initialPreset="last-3-months"
+                />
+              </div>
+              {optionStats.length === 0 ? (
+                <Panel>
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    No option data in this range.
+                  </p>
+                </Panel>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+                  {optionStats.map(({ definition, data }) => (
+                    <Panel key={definition} title={definition}>
+                      <ShareBars data={data} />
+                    </Panel>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {section === "orders" && (
+            <div>
+              <div className="mb-4">
+                <h1 className="mb-0.5 text-xl font-extrabold">Orders</h1>
+                <p className="text-sm text-muted-foreground">
+                  {lineCountLabel}
+                </p>
+              </div>
               <OrdersDataTable
                 orders={orders}
                 loading={ordersLoading}
                 showUserColumns={isAdminDashboard}
                 title={
-                  isAdminDashboard
-                    ? "All orders — line items"
-                    : "Your orders data"
+                  isAdminDashboard ? "All orders — line items" : "Your orders"
                 }
                 description={
                   isAdminDashboard
@@ -1033,10 +1080,17 @@ export default function ProfilePage() {
                     : "Line items from your orders. Default range is the last 30 days; change dates, sort, group, and export."
                 }
               />
-            </>
+            </div>
+          )}
+
+          {section === "users" && (
+            <div>
+              <h1 className="mb-4 text-xl font-extrabold">People</h1>
+              <UserTable users={directoryUsers} loading={usersLoading} />
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -403,7 +403,7 @@ export function DrinkOptionManagement() {
                               def.checkbox_extra_price > 0 && (
                                 <span>
                                   {" "}
-                                  · +${def.checkbox_extra_price.toFixed(2)} when
+                                  · +€{def.checkbox_extra_price.toFixed(2)} when
                                   on
                                 </span>
                               )}
@@ -420,7 +420,7 @@ export function DrinkOptionManagement() {
                                     {v.extra_price > 0 && (
                                       <span className="text-muted-foreground">
                                         {" "}
-                                        (+${v.extra_price.toFixed(2)})
+                                        (+€{v.extra_price.toFixed(2)})
                                       </span>
                                     )}
                                   </span>
