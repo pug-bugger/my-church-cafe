@@ -12,12 +12,15 @@ interface WebSocketContextType {
   socket: Socket | null;
   isConnected: boolean;
   ordersRefreshKey: number;
+  /** Bumped whenever a product is created, edited, hidden, or deleted. */
+  productsRefreshKey: number;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>({
   socket: null,
   isConnected: false,
   ordersRefreshKey: 0,
+  productsRefreshKey: 0,
 });
 
 export const useWebSocket = () => useContext(WebSocketContext);
@@ -66,6 +69,7 @@ export const WebSocketProvider = ({
   const [isConnected, setIsConnected] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
+  const [productsRefreshKey, setProductsRefreshKey] = useState(0);
   const { playSound } = useNotificationSound();
 
   useEffect(() => {
@@ -146,6 +150,13 @@ export const WebSocketProvider = ({
       }
     });
 
+    // Menu changes are broadcast to everyone; screens showing the menu just
+    // need to know something changed, not what.
+    const bumpProducts = () => setProductsRefreshKey((prev) => prev + 1);
+    newSocket.on("product:created", bumpProducts);
+    newSocket.on("product:updated", bumpProducts);
+    newSocket.on("product:deleted", bumpProducts);
+
     newSocket.on("connect_error", (err) => {
       setIsConnected(false);
       toast.error(`Socket error: ${err?.message ?? "connect_error"}`);
@@ -160,7 +171,7 @@ export const WebSocketProvider = ({
 
   return (
     <WebSocketContext.Provider
-      value={{ socket, isConnected, ordersRefreshKey }}
+      value={{ socket, isConnected, ordersRefreshKey, productsRefreshKey }}
     >
       {children}
     </WebSocketContext.Provider>

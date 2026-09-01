@@ -61,8 +61,15 @@ function ProductTile({
       onClick={() => onOpen(product.id)}
       className="press tile flex min-h-[126px] flex-col justify-between gap-3 rounded-card border border-line bg-surface p-[18px] text-left text-foreground"
     >
-      <span className="text-[19px] font-bold leading-[1.2] tracking-[-0.01em]">
-        {product.name}
+      <span className="flex flex-col gap-1">
+        <span className="text-[19px] font-bold leading-[1.2] tracking-[-0.01em]">
+          {product.name}
+        </span>
+        {product.description?.trim() ? (
+          <span className="line-clamp-2 text-[13px] leading-snug text-muted-foreground">
+            {product.description.trim()}
+          </span>
+        ) : null}
       </span>
       <span className="flex items-center justify-between gap-2.5">
         <span className="num text-[17px] font-semibold">

@@ -25,6 +25,8 @@ import {
   type ProductCategoryName,
 } from "@/lib/productCategories";
 import { formatPrice } from "@/lib/format";
+import { getAuthToken } from "@/lib/auth";
+import { useWebSocket } from "@/context/WebSocketContext";
 
 type Product = {
   id: string | number;
@@ -132,6 +134,9 @@ const FIT_MIN_VIEWPORT_PX = 640;
 /** Breathing room kept under the board (and clear of the full-screen button). */
 const BOARD_BOTTOM_GUTTER_PX = 28;
 
+/** Guests hold no JWT, so they get no socket — the board polls for them. */
+const GUEST_POLL_INTERVAL_MS = 30000;
+
 function useFitToBox(maxFontPx: number, deps: unknown[]) {
   const boxRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -206,16 +211,24 @@ function MenuListSkeleton() {
   );
 }
 
-/** One priced row: name, dot leader, price. */
+/** One priced row: name over its description, dot leader, price. */
 function MenuRow({ product }: { product: Product }) {
+  const description = product.description?.trim();
   return (
-    <li className="flex break-inside-avoid items-baseline gap-[0.6em]">
-      <span className="text-[1em]">{product.name}</span>
-      {/* Dot leader tying the name to its price. */}
-      <span aria-hidden="true" className="h-px flex-1 bg-line" />
-      <span className="num text-[1em] font-semibold">
-        {formatPrice(product.base_price)}
-      </span>
+    <li className="mb-[0.5em] break-inside-avoid last:mb-0">
+      <div className="flex items-baseline gap-[0.6em]">
+        <span className="text-[1em]">{product.name}</span>
+        {/* Dot leader tying the name to its price. */}
+        <span aria-hidden="true" className="h-px flex-1 bg-line" />
+        <span className="num text-[1em] font-semibold">
+          {formatPrice(product.base_price)}
+        </span>
+      </div>
+      {description ? (
+        <p className="mt-[0.15em] max-w-[34ch] text-[0.8em] leading-snug text-muted-foreground">
+          {description}
+        </p>
+      ) : null}
     </li>
   );
 }
@@ -250,6 +263,8 @@ export function MenuList() {
   const [presenting, setPresenting] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const subtypeOrder = useDrinkSubtypeOrder();
+  const { productsRefreshKey } = useWebSocket();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   /**
    * Presentation mode fills the screen with just the board. The real Fullscreen
@@ -285,32 +300,29 @@ export function MenuList() {
     };
   }, []);
 
-  useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      setProducts(
-        defaultDrinks.map((drink) => ({
-          id: drink.id,
-          name: drink.name,
-          description: drink.description,
-          base_price: drink.price,
-          category_name: drink.subtypeName ?? PRODUCT_CATEGORY.DRINK,
-          parent_category_name: PRODUCT_CATEGORY.DRINK,
-          available: true,
-        })),
-      );
-      setLoading(false);
-      return;
-    }
+  const loadProducts = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!apiUrl) {
+        setProducts(
+          defaultDrinks.map((drink) => ({
+            id: drink.id,
+            name: drink.name,
+            description: drink.description,
+            base_price: drink.price,
+            category_name: drink.subtypeName ?? PRODUCT_CATEGORY.DRINK,
+            parent_category_name: PRODUCT_CATEGORY.DRINK,
+            available: true,
+          })),
+        );
+        setLoading(false);
+        return;
+      }
 
-    const controller = new AbortController();
-    const loadProducts = async () => {
       try {
-        setLoading(true);
         setError(null);
         const data = await apiFetch<Product[]>("/api/products", {
           auth: false,
-          signal: controller.signal,
+          signal,
         });
         if (!Array.isArray(data)) {
           throw new Error("Invalid response while loading menu");
@@ -322,11 +334,31 @@ export function MenuList() {
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [apiUrl],
+  );
 
-    loadProducts();
+  // First load, then again whenever a product is created, edited, hidden or
+  // deleted — `productsRefreshKey` is bumped by the product:* socket events.
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadProducts(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [loadProducts, productsRefreshKey]);
+
+  /**
+   * The board is usually shown signed-out, and the socket needs a JWT — so a
+   * guest never receives product events. Poll instead, exactly as the pickup
+   * board does.
+   */
+  useEffect(() => {
+    // Signed-in screens get the socket; with no API there is nothing to poll.
+    if (!apiUrl || getAuthToken()) return;
+    const timer = setInterval(() => {
+      void loadProducts();
+    }, GUEST_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [apiUrl, loadProducts]);
 
   const availableProducts = useMemo(
     () => products.filter((product) => isAvailable(product.available)),
