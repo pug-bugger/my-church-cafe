@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Drink, OrderItem, ServerOrder, OrderStatus } from '@/types';
 import { defaultDrinks } from '@/data/defaultDrinks';
 import { mapProductApiToDrinkOptions } from '@/lib/drinkOptions';
+import { apiFetch, getApiBaseUrl } from '@/lib/api';
 import {
   fetchCategories,
   findSubtypeByName,
@@ -22,15 +23,6 @@ function areSelectedOptionsEqual(
     if (a[key] !== b[key]) return false;
   }
   return true;
-}
-
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return (
-    localStorage.getItem("token") ??
-    localStorage.getItem("jwt") ??
-    localStorage.getItem("accessToken")
-  );
 }
 
 function mapApiProductToDrink(product: Record<string, unknown>): Drink {
@@ -163,14 +155,10 @@ export const useAppStore = create<AppState>((set) => ({
     try {
       const categories = await fetchCategories(apiUrl);
       const drinkParent = getDrinkParentCategory(categories);
-      const url = drinkParent
-        ? `${apiUrl}/api/products?parent_category_id=${drinkParent.id}`
-        : `${apiUrl}/api/products`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Failed to load products");
-      }
-      const data = await response.json();
+      const path = drinkParent
+        ? `/api/products?parent_category_id=${drinkParent.id}`
+        : `/api/products`;
+      const data = await apiFetch<Record<string, unknown>[]>(path);
       if (!Array.isArray(data) || data.length === 0) {
         set(() => ({ drinks: defaultDrinks, drinksLoading: false }));
         return;
@@ -205,13 +193,9 @@ export const useAppStore = create<AppState>((set) => ({
         set(() => ({ desserts: [], dessertsLoading: false }));
         return;
       }
-      const response = await fetch(
-        `${apiUrl}/api/products?category_id=${dessertCategoryId}`
+      const data = await apiFetch<Record<string, unknown>[]>(
+        `/api/products?category_id=${dessertCategoryId}`
       );
-      if (!response.ok) {
-        throw new Error("Failed to load desserts");
-      }
-      const data = await response.json();
       const mapped = Array.isArray(data)
         ? data.map((product) => mapApiProductToDrink(product))
         : [];
@@ -222,10 +206,7 @@ export const useAppStore = create<AppState>((set) => ({
   },
 
   createDrinkApi: async (drink) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to create drinks");
+    const apiUrl = getApiBaseUrl();
     const categoryId = await resolveDrinkCategoryId(apiUrl, drink);
     if (!categoryId) {
       throw new Error(
@@ -233,18 +214,12 @@ export const useAppStore = create<AppState>((set) => ({
       );
     }
     const body = productToApiBody(drink, categoryId);
-    const response = await fetch(`${apiUrl}/api/products`, {
+    const data = await apiFetch<{ id?: string | number }>("/api/products", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+      body,
+      auth: true,
+      authError: "Login required to create drinks",
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to create drink");
-    }
     const id = String(data?.id ?? "");
     if (!id) throw new Error("Server did not return product id");
     const categories = await fetchCategories(apiUrl);
@@ -261,27 +236,18 @@ export const useAppStore = create<AppState>((set) => ({
   },
 
   updateDrinkApi: async (id, drink) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to update drinks");
+    const apiUrl = getApiBaseUrl();
     const categoryId = await resolveDrinkCategoryId(apiUrl, drink);
     if (!categoryId) {
       throw new Error("Could not resolve drink subtype category.");
     }
     const body = productToApiBody(drink, categoryId);
-    const response = await fetch(`${apiUrl}/api/products/${id}`, {
+    await apiFetch(`/api/products/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+      body,
+      auth: true,
+      authError: "Login required to update drinks",
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to update drink");
-    }
     const categories = await fetchCategories(apiUrl);
     const subtypeRow = categories.find((c) => c.id === categoryId);
     const updated: Drink = {
@@ -297,28 +263,18 @@ export const useAppStore = create<AppState>((set) => ({
   },
 
   deleteDrinkApi: async (id) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to delete drinks");
-    const response = await fetch(`${apiUrl}/api/products/${id}`, {
+    await apiFetch(`/api/products/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      auth: true,
+      authError: "Login required to delete drinks",
     });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data?.error ?? "Failed to delete drink");
-    }
     set((state) => ({
       drinks: state.drinks.filter((d) => d.id !== id),
     }));
   },
 
   createDessertApi: async (dessert) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to create desserts");
+    const apiUrl = getApiBaseUrl();
     const categories = await fetchCategories(apiUrl);
     const map = new Map(
       categories.map((c) => [c.name.trim().toLowerCase(), c.id])
@@ -333,18 +289,12 @@ export const useAppStore = create<AppState>((set) => ({
       { ...dessert, availableOptions: [] },
       categoryId
     );
-    const response = await fetch(`${apiUrl}/api/products`, {
+    const data = await apiFetch<{ id?: string | number }>("/api/products", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+      body,
+      auth: true,
+      authError: "Login required to create desserts",
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to create dessert");
-    }
     const id = String(data?.id ?? "");
     if (!id) throw new Error("Server did not return product id");
     const created: Drink = {
@@ -358,10 +308,7 @@ export const useAppStore = create<AppState>((set) => ({
   },
 
   updateDessertApi: async (id, dessert) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to update desserts");
+    const apiUrl = getApiBaseUrl();
     const categories = await fetchCategories(apiUrl);
     const map = new Map(
       categories.map((c) => [c.name.trim().toLowerCase(), c.id])
@@ -371,18 +318,12 @@ export const useAppStore = create<AppState>((set) => ({
       { ...dessert, availableOptions: [] },
       categoryId
     );
-    const response = await fetch(`${apiUrl}/api/products/${id}`, {
+    await apiFetch(`/api/products/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+      body,
+      auth: true,
+      authError: "Login required to update desserts",
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to update dessert");
-    }
     const updated: Drink = {
       ...dessert,
       id,
@@ -395,39 +336,28 @@ export const useAppStore = create<AppState>((set) => ({
   },
 
   deleteDessertApi: async (id) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to delete desserts");
-    const response = await fetch(`${apiUrl}/api/products/${id}`, {
+    await apiFetch(`/api/products/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      auth: true,
+      authError: "Login required to delete desserts",
     });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data?.error ?? "Failed to delete dessert");
-    }
     set((state) => ({
       desserts: state.desserts.filter((d) => d.id !== id),
     }));
   },
 
   uploadProductImage: async (productId, file) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to upload images");
     const formData = new FormData();
     formData.append("image", file);
-    const response = await fetch(`${apiUrl}/api/products/${productId}/image`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to upload image");
-    }
+    const data = await apiFetch<{ image_url?: string }>(
+      `/api/products/${productId}/image`,
+      {
+        method: "POST",
+        formData,
+        auth: true,
+        authError: "Login required to upload images",
+      }
+    );
     const imageUrl = typeof data?.image_url === "string" ? data.image_url : "";
     if (!imageUrl) throw new Error("Server did not return image_url");
     set((state) => ({
@@ -442,22 +372,11 @@ export const useAppStore = create<AppState>((set) => ({
   },
   
   toggleProductAvailableApi: async (id, active, hideUntilMidnight) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required");
-    const response = await fetch(`${apiUrl}/api/products/${id}/availability`, {
+    await apiFetch(`/api/products/${id}/availability`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ available: active, hide_until_midnight: hideUntilMidnight ?? false }),
+      body: { available: active, hide_until_midnight: hideUntilMidnight ?? false },
+      auth: true,
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to update product availability");
-    }
     // available_until is non-null only for the temporary-hide case (value used only for the label)
     const available_until = !active && hideUntilMidnight ? "scheduled" : null;
     set((state) => ({

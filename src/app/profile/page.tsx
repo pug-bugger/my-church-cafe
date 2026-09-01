@@ -33,9 +33,18 @@ import {
 } from "recharts";
 import type { ServerOrder, ServerUser } from "@/types";
 import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
+import { PrinterStatusCard } from "@/components/profile/PrinterStatusCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
 import { cn } from "@/lib/utils";
+import { apiFetch, ApiError } from "@/lib/api";
+import {
+  getAuthToken,
+  getStoredUser,
+  setAuthSession,
+  setStoredUser,
+  clearAuthSession as clearStoredAuth,
+} from "@/lib/auth";
 
 type SessionUser = {
   id: number;
@@ -300,47 +309,27 @@ export default function ProfilePage() {
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
   const fetchToken = useCallback(() => {
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
+    const token = getAuthToken();
     setHasToken(Boolean(token));
-    const raw = localStorage.getItem("user");
-    if (raw) {
-      try {
-        setUser(JSON.parse(raw) as SessionUser);
-      } catch {
-        setUser(null);
-      }
-    } else setUser(null);
+    setUser(getStoredUser<SessionUser>());
     return Boolean(token);
   }, []);
 
   const persistUser = useCallback((next: SessionUser) => {
     setUser(next);
-    localStorage.setItem("user", JSON.stringify(next));
-    window.dispatchEvent(new Event("auth:token"));
+    setStoredUser(next);
   }, []);
 
   const syncProfileFromApi = useCallback(async () => {
-    if (!apiUrl || !hasToken) return;
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) return;
+    if (!apiUrl || !hasToken || !getAuthToken()) return;
     try {
-      const response = await fetch(`${apiUrl}/api/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) return;
-      const me = (await response.json()) as {
+      const me = await apiFetch<{
         id: number;
         name: string;
         email: string;
         role: string | null;
         picture_url?: string | null;
-      };
+      }>("/api/users/me", { auth: true });
       persistUser({
         id: me.id,
         name: me.name,
@@ -362,11 +351,7 @@ export default function ProfilePage() {
   }, [hasToken, syncProfileFromApi]);
 
   const clearAuthSession = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("jwt");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    window.dispatchEvent(new Event("auth:token"));
+    clearStoredAuth();
     setHasToken(false);
     setUser(null);
     setOrders([]);
@@ -380,43 +365,24 @@ export default function ProfilePage() {
 
   const isAdminDashboard = user?.role === "admin";
 
-  const readStoredRole = useCallback((): string | null => {
-    const raw = localStorage.getItem("user");
-    if (!raw) return null;
-    try {
-      const r = JSON.parse(raw) as { role?: string };
-      return r.role ?? null;
-    } catch {
-      return null;
-    }
-  }, []);
+  const readStoredRole = useCallback(
+    (): string | null => getStoredUser<{ role?: string }>()?.role ?? null,
+    []
+  );
 
   const fetchDashboardOrders = useCallback(async () => {
     if (!apiUrl || !hasToken) return;
     const adminView = readStoredRole() === "admin";
     setOrdersLoading(true);
     try {
-      const token =
-        localStorage.getItem("token") ??
-        localStorage.getItem("jwt") ??
-        localStorage.getItem("accessToken");
       const path = adminView ? "/api/orders" : "/api/orders/me";
-      const response = await fetch(`${apiUrl}${path}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.status === 401) {
+      const data = await apiFetch<ServerOrder[]>(path, { auth: true });
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
         clearAuthSession();
         return;
       }
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(
-          typeof data?.error === "string" ? data.error : "Failed to load orders"
-        );
-      }
-      const data = await response.json();
-      setOrders(Array.isArray(data) ? data : []);
-    } catch (err) {
       setOrders([]);
       toast.error(
         err instanceof Error ? err.message : "Unable to load orders"
@@ -430,26 +396,13 @@ export default function ProfilePage() {
     if (!apiUrl || !hasToken) return;
     setUsersLoading(true);
     try {
-      const token =
-        localStorage.getItem("token") ??
-        localStorage.getItem("jwt") ??
-        localStorage.getItem("accessToken");
-      const response = await fetch(`${apiUrl}/api/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.status === 401) {
+      const data = await apiFetch<ServerUser[]>("/api/users", { auth: true });
+      setDirectoryUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
         clearAuthSession();
         return;
       }
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(
-          typeof data?.error === "string" ? data.error : "Failed to load users"
-        );
-      }
-      const data = await response.json();
-      setDirectoryUsers(Array.isArray(data) ? data : []);
-    } catch (err) {
       setDirectoryUsers([]);
       toast.error(
         err instanceof Error ? err.message : "Unable to load user directory"
@@ -489,30 +442,26 @@ export default function ProfilePage() {
     }
     setLoading(true);
     try {
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
+      const data = await apiFetch<LoginResponse>("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        body: { email, password },
+        auth: false,
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        authError: "Login failed",
       });
-      const data = (await response.json()) as LoginResponse;
-      if (!response.ok) {
-        throw new Error(
-          (data as { error?: string })?.error ?? "Login failed"
-        );
-      }
       const token = getTokenFromResponse(data);
       const loggedIn = data.user;
       if (!token) throw new Error("Login succeeded but no token was returned.");
-      localStorage.setItem("token", token);
       if (loggedIn) {
-        persistUser({
+        const nextUser: SessionUser = {
           ...loggedIn,
           picture_url: loggedIn.picture_url ?? null,
-        });
+        };
+        setAuthSession(token, nextUser);
+        setUser(nextUser);
       } else {
+        setAuthSession(token);
         setUser(null);
-        window.dispatchEvent(new Event("auth:token"));
       }
       setHasToken(true);
       toast.success("Logged in");
@@ -542,29 +491,16 @@ export default function ProfilePage() {
   }
 
   async function handleProfilePhoto(file: File) {
-    if (!apiUrl || !user) return;
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) return;
+    if (!apiUrl || !user || !getAuthToken()) return;
     setPhotoUploading(true);
     try {
       const fd = new FormData();
       fd.append("image", file);
-      const response = await fetch(`${apiUrl}/api/users/me/image`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
-      const data = (await response.json()) as {
-        picture_url?: string;
-        error?: string;
-      };
-      if (!response.ok) {
-        throw new Error(data?.error ?? "Upload failed");
-      }
-      const url = data.picture_url;
+      const data = await apiFetch<{ picture_url?: string }>(
+        "/api/users/me/image",
+        { method: "POST", formData: fd, auth: true, authError: "Upload failed" }
+      );
+      const url = data?.picture_url;
       if (typeof url === "string") {
         persistUser({ ...user, picture_url: url });
         toast.success("Profile photo updated");
@@ -577,26 +513,15 @@ export default function ProfilePage() {
   }
 
   async function handleRemoveProfilePhoto() {
-    if (!apiUrl || !user) return;
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) return;
+    if (!apiUrl || !user || !getAuthToken()) return;
     setPhotoUploading(true);
     try {
-      const response = await fetch(`${apiUrl}/api/users/me`, {
+      await apiFetch("/api/users/me", {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ picture_url: null }),
+        body: { picture_url: null },
+        auth: true,
+        authError: "Could not remove photo",
       });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(data?.error ?? "Could not remove photo");
-      }
       persistUser({ ...user, picture_url: null });
       toast.success("Profile photo removed");
     } catch (err) {
@@ -700,7 +625,7 @@ export default function ProfilePage() {
   return (
     <div
       className={cn(
-        "container mx-auto py-10 max-w-2xl space-y-8 md:max-w-4xl",
+        "mx-auto w-full space-y-8 px-4 py-8 sm:px-6 max-w-2xl md:max-w-4xl",
         isAdminDashboard && "xl:max-w-6xl"
       )}
     >
@@ -828,6 +753,8 @@ export default function ProfilePage() {
               </p>
             )}
           </div>
+
+          <PrinterStatusCard />
 
           {ordersLoading && !orders.length ? (
             <p className="text-muted-foreground text-sm">Loading orders…</p>

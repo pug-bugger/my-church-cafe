@@ -8,6 +8,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { OrderStatus, ServerOrder, ServerOrderItem } from "@/types";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
+import { getAuthToken } from "@/lib/auth";
 
 export function OrderQueue() {
   const { isConnected, ordersRefreshKey } = useWebSocket();
@@ -26,24 +28,9 @@ export function OrderQueue() {
   const readyOrders = orders.filter((order) => order.status === "ready");
 
   const fetchOrders = useCallback(async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) return;
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) return;
+    if (!getAuthToken()) return;
     try {
-      const response = await fetch(`${apiUrl}/api/orders`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.error || "Failed to load orders");
-      }
-      const data = await response.json();
+      const data = await apiFetch<ServerOrder[]>("/api/orders", { auth: true });
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       const message =
@@ -60,32 +47,13 @@ export function OrderQueue() {
     orderId: number,
     status: OrderStatus
   ) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      toast.error("Missing NEXT_PUBLIC_API_URL in your environment.");
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Login required to update order status.");
-      return;
-    }
     try {
-      const response = await fetch(`${apiUrl}/api/orders/${orderId}/status`, {
+      await apiFetch(`/api/orders/${orderId}/status`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
+        body: { status },
+        auth: true,
+        authError: "Login required to update order status.",
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to update order status");
-      }
       updateOrderStatus(orderId, status);
     } catch (err) {
       const message =
@@ -95,36 +63,19 @@ export function OrderQueue() {
   };
 
   const handleRemoveItem = async (orderId: number, item: ServerOrderItem) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      toast.error("Missing NEXT_PUBLIC_API_URL in your environment.");
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Login required to remove order items.");
-      return;
-    }
-
     const key = `${orderId}-${item.id}`;
     setRemovingKey(key);
     try {
-      const response = await fetch(
-        `${apiUrl}/api/orders/${orderId}/items/${item.id}`,
+      const data = await apiFetch<{ status?: string }>(
+        `/api/orders/${orderId}/items/${item.id}`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          auth: true,
+          authError: "Login required to remove order items.",
         }
       );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to remove item");
-      }
       removeOrderItem(orderId, item.id);
-      if (data.status === "cancelled") {
+      if (data?.status === "cancelled") {
         toast.success("Last item removed — order cancelled");
       } else {
         toast.success("Item removed");
@@ -139,30 +90,13 @@ export function OrderQueue() {
   };
 
   const handleDeleteOrder = async (orderId: number) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      toast.error("Missing NEXT_PUBLIC_API_URL in your environment.");
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Login required to delete orders.");
-      return;
-    }
-
     setDeletingOrderId(orderId);
     try {
-      const response = await fetch(`${apiUrl}/api/orders/${orderId}`, {
+      await apiFetch(`/api/orders/${orderId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        auth: true,
+        authError: "Login required to delete orders.",
       });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.error || "Failed to delete order");
-      }
       removeOrder(orderId);
       toast.success("Order deleted");
     } catch (err) {
@@ -309,7 +243,7 @@ export function OrderQueue() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         <div>
           <h2 className="text-lg font-semibold mb-4">Pending Orders</h2>
           {pendingOrders.map((order) => (

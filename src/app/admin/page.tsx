@@ -6,11 +6,12 @@ import { DrinkManagement } from "@/components/admin/DrinkManagement";
 import { DessertManagement } from "@/components/admin/DessertManagement";
 import { OrdersReportSection } from "@/components/admin/OrdersReportSection";
 import { UserManagement } from "@/components/admin/UserManagement";
+import { PageContainer } from "@/components/ui/page-container";
 
 export default function AdminPage() {
   return (
     <RoleRouteGuard mode="admin">
-      <div className="container mx-auto py-6 space-y-10">
+      <PageContainer className="space-y-10">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Menu</h1>
@@ -24,7 +25,7 @@ export default function AdminPage() {
         <DessertManagement />
         <UserManagement />
         <OrdersReportSection />
-      </div>
+      </PageContainer>
     </RoleRouteGuard>
   );
 }

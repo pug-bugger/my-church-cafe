@@ -36,29 +36,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import type { ServerUser } from "@/types";
 import { resolveMediaUrl } from "@/lib/imageUrl";
+import { apiFetch, ApiError } from "@/lib/api";
+import { getAuthToken, getStoredUser } from "@/lib/auth";
 
 const ROLES = ["admin", "personal", "parishioner"] as const;
-
-function getToken(): string | null {
-	if (typeof window === "undefined") return null;
-	return (
-		localStorage.getItem("token") ??
-		localStorage.getItem("jwt") ??
-		localStorage.getItem("accessToken")
-	);
-}
-
-function getStoredRole(): string | null {
-	if (typeof window === "undefined") return null;
-	try {
-		const raw = localStorage.getItem("user");
-		if (!raw) return null;
-		const u = JSON.parse(raw) as { role?: string };
-		return u.role ?? null;
-	} catch {
-		return null;
-	}
-}
 
 function initials(name: string) {
 	return name
@@ -84,23 +65,13 @@ export function UserManagement() {
 
 	const isAdmin = viewerRole === "admin";
 
-	const authHeaders = useCallback((): HeadersInit => {
-		const token = getToken();
-		const h: Record<string, string> = {
-			"Content-Type": "application/json",
-		};
-		if (token) h.Authorization = `Bearer ${token}`;
-		return h;
-	}, []);
-
 	const loadUsers = useCallback(async () => {
 		if (!apiUrl) {
 			setListError("Missing NEXT_PUBLIC_API_URL.");
 			setLoading(false);
 			return;
 		}
-		const token = getToken();
-		if (!token) {
+		if (!getAuthToken()) {
 			setListError("Sign in as staff to view users.");
 			setLoading(false);
 			setUsers([]);
@@ -108,25 +79,16 @@ export function UserManagement() {
 		}
 		setLoading(true);
 		setListError(null);
-		setViewerRole(getStoredRole());
+		setViewerRole(getStoredUser<{ role?: string }>()?.role ?? null);
 		try {
-			const res = await fetch(`${apiUrl}/api/users`, {
-				headers: { Authorization: `Bearer ${token}` },
-			});
-			if (res.status === 403) {
+			const data = await apiFetch<ServerUser[]>("/api/users", { auth: true });
+			setUsers(Array.isArray(data) ? data : []);
+		} catch (e) {
+			if (e instanceof ApiError && e.status === 403) {
 				setListError("You do not have access to the user list.");
 				setUsers([]);
 				return;
 			}
-			if (!res.ok) {
-				const data = await res.json().catch(() => ({}));
-				throw new Error(
-					typeof data?.error === "string" ? data.error : "Failed to load users"
-				);
-			}
-			const data = (await res.json()) as ServerUser[];
-			setUsers(Array.isArray(data) ? data : []);
-		} catch (e) {
 			setListError(e instanceof Error ? e.message : "Failed to load users");
 			setUsers([]);
 		} finally {
@@ -175,8 +137,6 @@ export function UserManagement() {
 							</DialogHeader>
 							<UserForm
 								mode="create"
-								apiUrl={apiUrl}
-								authHeaders={authHeaders}
 								onDone={() => {
 									setAddOpen(false);
 									loadUsers();
@@ -292,8 +252,6 @@ export function UserManagement() {
 							key={editUser.id}
 							mode="edit"
 							initial={editUser}
-							apiUrl={apiUrl}
-							authHeaders={authHeaders}
 							onDone={() => {
 								setEditUser(null);
 								loadUsers();
@@ -325,25 +283,12 @@ export function UserManagement() {
 						<AlertDialogAction
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							onClick={async () => {
-								if (!deleteUser || !apiUrl) return;
-								const token = getToken();
-								if (!token) return;
+								if (!deleteUser) return;
 								try {
-									const res = await fetch(
-										`${apiUrl}/api/users/${deleteUser.id}`,
-										{
-											method: "DELETE",
-											headers: { Authorization: `Bearer ${token}` },
-										}
-									);
-									if (!res.ok) {
-										const data = await res.json().catch(() => ({}));
-										throw new Error(
-											typeof data?.error === "string"
-												? data.error
-												: "Delete failed"
-										);
-									}
+									await apiFetch(`/api/users/${deleteUser.id}`, {
+										method: "DELETE",
+										auth: true,
+									});
 									toast.success("User deleted");
 									setDeleteUser(null);
 									loadUsers();
@@ -366,42 +311,22 @@ export function UserManagement() {
 type UserFormProps = {
 	mode: "create" | "edit";
 	initial?: ServerUser;
-	apiUrl: string;
-	authHeaders: () => HeadersInit;
 	onDone: () => void;
 	onCancel: () => void;
 };
 
-async function postUserAvatar(
-	apiUrl: string,
-	userId: number,
-	file: File
-): Promise<void> {
-	const token = getToken();
-	if (!token) throw new Error("Not signed in");
+async function postUserAvatar(userId: number, file: File): Promise<void> {
 	const fd = new FormData();
 	fd.append("image", file);
-	const res = await fetch(`${apiUrl}/api/users/${userId}/image`, {
+	await apiFetch(`/api/users/${userId}/image`, {
 		method: "POST",
-		headers: { Authorization: `Bearer ${token}` },
-		body: fd,
+		formData: fd,
+		auth: true,
+		authError: "Not signed in",
 	});
-	const data = await res.json().catch(() => ({}));
-	if (!res.ok) {
-		throw new Error(
-			typeof data?.error === "string" ? data.error : "Upload failed"
-		);
-	}
 }
 
-function UserForm({
-	mode,
-	initial,
-	apiUrl,
-	authHeaders,
-	onDone,
-	onCancel,
-}: UserFormProps) {
+function UserForm({ mode, initial, onDone, onCancel }: UserFormProps) {
 	const [name, setName] = useState(initial?.name ?? "");
 	const [email, setEmail] = useState(initial?.email ?? "");
 	const [password, setPassword] = useState("");
@@ -433,10 +358,6 @@ function UserForm({
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		if (!apiUrl) {
-			toast.error("Missing API URL");
-			return;
-		}
 		setSubmitting(true);
 		try {
 			if (mode === "create") {
@@ -444,26 +365,20 @@ function UserForm({
 					toast.error("Password is required for new users");
 					return;
 				}
-				const res = await fetch(`${apiUrl}/api/users`, {
+				const data = await apiFetch<{ id?: number }>("/api/users", {
 					method: "POST",
-					headers: authHeaders(),
-					body: JSON.stringify({
+					body: {
 						name: name.trim(),
 						email: email.trim(),
 						password,
 						role,
-					}),
+					},
+					auth: true,
 				});
-				const data = await res.json().catch(() => ({}));
-				if (!res.ok) {
-					throw new Error(
-						typeof data?.error === "string" ? data.error : "Create failed"
-					);
-				}
-				const id = typeof data.id === "number" ? data.id : null;
+				const id = typeof data?.id === "number" ? data.id : null;
 				if (imageFile && id != null) {
 					try {
-						await postUserAvatar(apiUrl, id, imageFile);
+						await postUserAvatar(id, imageFile);
 					} catch (uploadErr) {
 						toast.error(
 							uploadErr instanceof Error
@@ -482,19 +397,13 @@ function UserForm({
 				};
 				if (password.trim()) body.password = password.trim();
 				if (clearPicture) body.picture_url = null;
-				const res = await fetch(`${apiUrl}/api/users/${initial.id}`, {
+				await apiFetch(`/api/users/${initial.id}`, {
 					method: "PUT",
-					headers: authHeaders(),
-					body: JSON.stringify(body),
+					body,
+					auth: true,
 				});
-				const data = await res.json().catch(() => ({}));
-				if (!res.ok) {
-					throw new Error(
-						typeof data?.error === "string" ? data.error : "Update failed"
-					);
-				}
 				if (imageFile) {
-					await postUserAvatar(apiUrl, initial.id, imageFile);
+					await postUserAvatar(initial.id, imageFile);
 				}
 				toast.success("User updated");
 				onDone();

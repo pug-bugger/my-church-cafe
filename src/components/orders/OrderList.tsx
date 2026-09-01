@@ -3,35 +3,33 @@
 import { useAppStore } from "@/store";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWebSocket } from "@/context/WebSocketContext";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ServerOrder } from "@/types";
 import { Spinner } from "../ui/spinner";
+import { apiFetch } from "@/lib/api";
+import { getAuthToken } from "@/lib/auth";
+
+// Guests have no realtime socket connection (that requires a JWT), so the
+// board polls instead while unauthenticated.
+const GUEST_POLL_INTERVAL_MS = 10000;
 
 export function OrderList() {
   const orders = useAppStore((state) => state.orders);
   const setOrders = useAppStore((state) => state.setOrders);
   const { isConnected, ordersRefreshKey } = useWebSocket();
+  const [isGuest, setIsGuest] = useState(false);
 
   const fetchOrders = useCallback(async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) return;
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) return;
+    const token = getAuthToken();
+    setIsGuest(!token);
     try {
-      const response = await fetch(`${apiUrl}/api/orders`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.error || "Failed to load orders");
-      }
-      const data = await response.json();
+      const path = token
+        ? "/api/orders"
+        : `/api/orders/public?organization=${encodeURIComponent(
+            process.env.NEXT_PUBLIC_ORG_NAME || "Default",
+          )}`;
+      const data = await apiFetch<ServerOrder[]>(path);
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       const message =
@@ -43,6 +41,12 @@ export function OrderList() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders, ordersRefreshKey]);
+
+  useEffect(() => {
+    if (!isGuest) return;
+    const interval = setInterval(fetchOrders, GUEST_POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [isGuest, fetchOrders]);
 
   const readyForPickup = orders.filter((o) => o.status === "ready");
   const preparingOrders = orders.filter(
@@ -60,23 +64,9 @@ export function OrderList() {
   const getLabelTracking = (label: string): string =>
     isNumeric(label) ? "tracking-tighter" : "tracking-wide";
 
-  // const OrderNumberCup = ({ order }: { order: ServerOrder }) => (
-  //   <div className="relative flex items-center justify-center w-[300px] h-[300px] shrink-0">
-  //     <div
-  //       className="absolute inset-0 z-0 bg-contain bg-center bg-no-repeat"
-  //       style={{ backgroundImage: "url('/cup.svg')" }}
-  //     />
-  //     <div className="relative z-10 flex flex-col items-center justify-center pt-4 -mt-[50px] mr-[60px]">
-  //       <span className="text-8xl font-black tracking-tighter text-foreground">
-  //         {order.order_number ?? order.id}
-  //       </span>
-  //     </div>
-  //   </div>
-  // );
-
   return (
     <div className="space-y-4">
-      {!isConnected && (
+      {!isGuest && !isConnected && (
         <div className="text-center text-muted-foreground py-8">
           <Spinner className="mx-auto" />
         </div>
@@ -87,7 +77,7 @@ export function OrderList() {
           No orders yet
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-6 screen-full">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div className="space-y-3 pt-6 md:pt-0 md:pl-6">
             <h2 className="text-4xl font-semibold  text-center pb-4 tracking-tight">
               Preparing

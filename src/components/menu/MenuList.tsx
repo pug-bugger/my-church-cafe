@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ResponsiveGrid } from "@/components/ui/responsive-grid";
+import { DataState } from "@/components/ui/data-state";
 import { DrinkSubtypeSections } from "@/components/drinks/DrinkSubtypeSections";
 import { defaultDrinks } from "@/data/defaultDrinks";
 import {
@@ -44,7 +47,7 @@ function isAvailable(value: Product["available"]): boolean {
 
 function MenuListSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <ResponsiveGrid>
       {Array.from({ length: 6 }).map((_, i) => (
         <Card key={i}>
           <CardHeader className="space-y-2">
@@ -53,17 +56,16 @@ function MenuListSkeleton() {
           </CardHeader>
           <CardContent className="space-y-2">
             <Skeleton className="h-4 w-24" />
-            {/* <Skeleton className="h-4 w-full" /> */}
           </CardContent>
         </Card>
       ))}
-    </div>
+    </ResponsiveGrid>
   );
 }
 
 function ProductGrid({ products }: { products: Product[] }) {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <ResponsiveGrid>
       {products.map((product) => (
         <Card key={String(product.id)} className="h-full">
           <CardHeader className="space-y-1">
@@ -81,7 +83,7 @@ function ProductGrid({ products }: { products: Product[] }) {
           </CardContent>
         </Card>
       ))}
-    </div>
+    </ResponsiveGrid>
   );
 }
 
@@ -114,11 +116,10 @@ export function MenuList() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`${apiUrl}/api/products`, {
+        const data = await apiFetch<Product[]>("/api/products", {
+          auth: false,
           signal: controller.signal,
         });
-        if (!response.ok) throw new Error("Failed to load menu");
-        const data = await response.json();
         if (!Array.isArray(data)) {
           throw new Error("Invalid response while loading menu");
         }
@@ -174,26 +175,15 @@ export function MenuList() {
     });
   }, [availableProducts]);
 
-  if (loading) return <MenuListSkeleton />;
-
-  if (error) {
-    return (
-      <p className="text-sm text-destructive" role="alert">
-        {error}
-      </p>
-    );
-  }
-
-  if (availableProducts.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No products are currently available.
-      </p>
-    );
-  }
-
   return (
-    <div className="space-y-10">
+    <DataState
+      loading={loading}
+      error={error}
+      isEmpty={availableProducts.length === 0}
+      loadingFallback={<MenuListSkeleton />}
+      emptyMessage="No products are currently available."
+    >
+      <div className="space-y-10">
       {drinkSubtypeSections.length > 0 ? (
         <section className="space-y-6">
           <h2 className="text-lg font-semibold">Drinks</h2>
@@ -213,12 +203,13 @@ export function MenuList() {
         </section>
       ))}
 
-      {uncategorized.length > 0 ? (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Other</h2>
-          <ProductGrid products={uncategorized} />
-        </section>
-      ) : null}
-    </div>
+        {uncategorized.length > 0 ? (
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">Other</h2>
+            <ProductGrid products={uncategorized} />
+          </section>
+        ) : null}
+      </div>
+    </DataState>
   );
 }

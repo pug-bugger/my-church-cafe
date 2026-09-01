@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Trash2, X } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 export function CurrentOrder() {
   const draftItems = useAppStore((state) => state.draftItems);
@@ -54,12 +55,10 @@ export function CurrentOrder() {
     let isActive = true;
     const loadProducts = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/products`);
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data?.error || "Failed to load products");
-        }
-        const data = await response.json();
+        const data = await apiFetch<{ id: number; name: string | null }[]>(
+          "/api/products",
+          { auth: false }
+        );
         if (isActive) {
           setProducts(
             Array.isArray(data)
@@ -98,18 +97,6 @@ export function CurrentOrder() {
 
   const handleConfirmOrder = async () => {
     if (draftItems.length === 0) return;
-    if (!apiUrl) {
-      toast.error("Missing NEXT_PUBLIC_API_URL in your environment.");
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Login required to place an order.");
-      return;
-    }
 
     const orderItemsPayload = draftItems.map((item) => ({
       quantity: item.quantity,
@@ -125,24 +112,18 @@ export function CurrentOrder() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${apiUrl}/api/orders`, {
+      await apiFetch("/api/orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+        auth: true,
+        authError: "Login required to place an order.",
+        body: {
           order: {
             comment: orderComment.trim() || null,
             customer_name: customerName.trim() || null,
             order_items: orderItemsPayload,
           },
-        }),
+        },
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to place order");
-      }
       clearDraft();
       toast.success("Order placed");
     } catch (err) {

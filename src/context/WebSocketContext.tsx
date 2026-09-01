@@ -6,6 +6,7 @@ import { OrderStatus } from "@/types";
 import { toast } from "sonner";
 import { createSocket } from "@/app/_lib/socket";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { getAuthToken, AUTH_EVENT } from "@/lib/auth";
 
 interface WebSocketContextType {
   socket: Socket | null;
@@ -68,24 +69,19 @@ export const WebSocketProvider = ({
   const { playSound } = useNotificationSound();
 
   useEffect(() => {
-    const readToken = () =>
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-
-    setToken(readToken());
+    setToken(getAuthToken());
 
     const onStorage = (e: StorageEvent) => {
       if (!e.key || ["token", "jwt", "accessToken"].includes(e.key)) {
-        setToken(readToken());
+        setToken(getAuthToken());
       }
     };
-    const onAuthToken = () => setToken(readToken());
+    const onAuthToken = () => setToken(getAuthToken());
     window.addEventListener("storage", onStorage);
-    window.addEventListener("auth:token", onAuthToken);
+    window.addEventListener(AUTH_EVENT, onAuthToken);
     return () => {
       window.removeEventListener("storage", onStorage);
-      window.removeEventListener("auth:token", onAuthToken);
+      window.removeEventListener(AUTH_EVENT, onAuthToken);
     };
   }, []);
 

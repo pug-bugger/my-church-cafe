@@ -4,36 +4,22 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 import type { ServerOrder } from "@/types";
+import { apiFetch } from "@/lib/api";
+import { getAuthToken } from "@/lib/auth";
 
 export function OrdersReportSection() {
   const [orders, setOrders] = useState<ServerOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      setLoading(false);
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
+    if (!getAuthToken()) {
       setOrders([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const response = await fetch(`${apiUrl}/api/orders`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.error || "Failed to load orders");
-      }
-      const data = await response.json();
+      const data = await apiFetch<ServerOrder[]>("/api/orders", { auth: true });
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       const message =

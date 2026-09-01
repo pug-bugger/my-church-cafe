@@ -25,6 +25,7 @@ import { useAppStore } from "@/store";
 import { Drink, DrinkOption } from "@/types";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 import {
   mapDefinitionToDrinkOption,
   type DrinkOptionDefinitionApi,
@@ -172,8 +173,7 @@ export function ProductForm({
 
   useEffect(() => {
     if (!apiUrl) return;
-    fetch(`${apiUrl}/api/drink-options`)
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<DrinkOptionDefinitionApi[]>("/api/drink-options", { auth: false })
       .then((data) => setCatalog(Array.isArray(data) ? data : []))
       .catch(() => setCatalog([]));
   }, [apiUrl]);

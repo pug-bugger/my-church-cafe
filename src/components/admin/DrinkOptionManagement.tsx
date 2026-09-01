@@ -32,15 +32,7 @@ import type { DrinkOptionDefinitionApi } from "@/lib/drinkOptions";
 import { toast } from "sonner";
 import { ChevronDown, PlusIcon, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return (
-    localStorage.getItem("token") ??
-    localStorage.getItem("jwt") ??
-    localStorage.getItem("accessToken")
-  );
-}
+import { apiFetch } from "@/lib/api";
 
 type NewValueRow = { label: string; extra_price: string };
 
@@ -69,9 +61,10 @@ export function DrinkOptionManagement() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/api/drink-options`);
-      if (!res.ok) throw new Error("Failed to load options");
-      const data = await res.json();
+      const data = await apiFetch<DrinkOptionDefinitionApi[]>(
+        "/api/drink-options",
+        { auth: false }
+      );
       setList(Array.isArray(data) ? data : []);
     } catch {
       toast.error("Could not load drink options");
@@ -86,15 +79,6 @@ export function DrinkOptionManagement() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    const token = getAuthToken();
-    if (!token) {
-      toast.error("Login required");
-      return;
-    }
-    if (!apiUrl) {
-      toast.error("NEXT_PUBLIC_API_URL is not set");
-      return;
-    }
     if (!name.trim()) {
       toast.error("Name is required");
       return;
@@ -122,16 +106,11 @@ export function DrinkOptionManagement() {
             sort_order: i,
           }));
       }
-      const res = await fetch(`${apiUrl}/api/drink-options`, {
+      await apiFetch("/api/drink-options", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
+        body,
+        auth: true,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error ?? "Failed to create");
       toast.success("Option created");
       setName("");
       setCheckboxExtra("0");
@@ -143,24 +122,12 @@ export function DrinkOptionManagement() {
   }
 
   async function handleDelete() {
-    if (!deleteTarget || !apiUrl) return;
-    const token = getAuthToken();
-    if (!token) {
-      toast.error("Login required");
-      return;
-    }
+    if (!deleteTarget) return;
     try {
-      const res = await fetch(
-        `${apiUrl}/api/drink-options/${deleteTarget.id}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? "Failed to delete");
-      }
+      await apiFetch(`/api/drink-options/${deleteTarget.id}`, {
+        method: "DELETE",
+        auth: true,
+      });
       toast.success("Option deleted");
       setDeleteTarget(null);
       await load();
@@ -175,25 +142,15 @@ export function DrinkOptionManagement() {
       toast.error("Enter a label");
       return;
     }
-    const token = getAuthToken();
-    if (!token || !apiUrl) {
-      toast.error("Login required");
-      return;
-    }
     try {
-      const res = await fetch(`${apiUrl}/api/drink-options/${def.id}/values`, {
+      await apiFetch(`/api/drink-options/${def.id}/values`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+        body: {
           label: row.label.trim(),
           extra_price: Number(row.extra_price) || 0,
-        }),
+        },
+        auth: true,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error ?? "Failed to add value");
       toast.success("Choice added");
       setNewValueByDef((prev) => ({
         ...prev,
@@ -206,20 +163,11 @@ export function DrinkOptionManagement() {
   }
 
   async function removeValue(valueId: number) {
-    const token = getAuthToken();
-    if (!token || !apiUrl) {
-      toast.error("Login required");
-      return;
-    }
     try {
-      const res = await fetch(`${apiUrl}/api/drink-options/values/${valueId}`, {
+      await apiFetch(`/api/drink-options/values/${valueId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        auth: true,
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? "Failed to delete");
-      }
       toast.success("Choice removed");
       await load();
     } catch (err) {

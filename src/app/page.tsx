@@ -16,13 +16,8 @@ export default function HomePage() {
             </p>
           </div>
           <div className="space-x-4">
-            <Link href="/terminal">
-              <Button size="lg">Place Order</Button>
-            </Link>
-            <Link href="/barista">
-              <Button variant="outline" size="lg">
-                Barista Station
-              </Button>
+            <Link href="/orders">
+              <Button size="lg">View Orders</Button>
             </Link>
           </div>
         </div>
