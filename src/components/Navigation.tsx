@@ -177,6 +177,8 @@ export function Navigation() {
           )}
         </nav>
 
+        <span className="flex-1" />
+
         {signedIn && (
           <span
             className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex"

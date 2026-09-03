@@ -97,7 +97,12 @@ nginx site, PM2 app and release directories alone. It is idempotent.
 
 It provisions **both** cafe processes, because one nginx site fronts them.
 
+From `my-church-cafe/` — the `deploy/` directory is in the frontend repo, not at
+the top of the workspace, and `server-setup.sh` reads `nginx.conf` from beside
+itself, so copy the whole directory:
+
 ```bash
+cd my-church-cafe
 scp -r deploy ~/.ssh/church-cafe-deploy.pub root@YOUR_SERVER_IP:/tmp/
 ```
 
@@ -121,8 +126,11 @@ Re-running the script leaves an existing `.env` untouched, because rotating
 The SQL lives in the backend repo. From `my-church-cafe-backend/`:
 
 ```bash
-scp -r scripts deploy@YOUR_SERVER_IP:/tmp/cafe-sql
+scp -i ~/.ssh/church-cafe-deploy -r scripts deploy@YOUR_SERVER_IP:/tmp/cafe-sql
 ```
+
+`server-setup.sh` put the deploy public key in `deploy`'s `authorized_keys`,
+so that account has no password — connect with the private key.
 
 Then on the server, **in this order** — the migrations are plain `ALTER TABLE`
 statements and are not idempotent, so run each exactly once:
@@ -148,11 +156,17 @@ happy to run against the database the setup script already made.
 of `schema.sql` and the migrations — the dump already has every column:
 
 ```bash
-# on the OLD server
-mysqldump -u root -p --single-transaction church_cafe_db > cafe.sql
+# on the OLD server (or your local machine)
+mysqldump -u USER -p --single-transaction --no-tablespaces church_cafe_db > cafe.sql
 # on the NEW server, after scp'ing it across
 mysql -u church_cafe -p church_cafe_db < cafe.sql
 ```
+
+`--no-tablespaces` is not optional for a non-root user: MySQL 8+ reads tablespace
+metadata from `INFORMATION_SCHEMA.FILES`, which needs the global `PROCESS`
+privilege, and the dump aborts without it. The flag skips that metadata, which
+InnoDB tables in the default tablespace do not need. The schema has no routines,
+triggers or events, so no extra dump flags are required.
 
 Copy `uploads/` across too, or every product image 404s:
 
