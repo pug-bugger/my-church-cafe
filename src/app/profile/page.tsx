@@ -15,6 +15,7 @@ import {
 import type { ServerOrder, ServerUser } from "@/types";
 import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 import { PrinterStatusCard } from "@/components/profile/PrinterStatusCard";
+import { ThemeSettings } from "@/components/theme/ThemeSettings";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
 import { cn } from "@/lib/utils";
@@ -769,11 +770,13 @@ export default function ProfilePage() {
         stats.totalItems
       } items`;
 
-  // ── Signed out: just the sign-in card ──────────────────────────────────────
+  // ── Signed out: the sign-in card, plus the theme picker ────────────────────
+  // Appearance is a per-device setting, so a guest watching the order board can
+  // still pick a palette without an account.
   if (!hasToken) {
     return (
-      <div className="mx-auto w-full max-w-[480px] px-4 py-8 sm:px-6">
-        <div className="rounded-card border border-line bg-surface p-6">
+      <div className="mx-auto flex w-full max-w-[680px] flex-col gap-5 px-4 py-8 sm:px-6">
+        <div className="mx-auto w-full max-w-[480px] rounded-card border border-line bg-surface p-6">
           <h1 className="mb-5 text-xl font-extrabold">Sign in</h1>
           {!apiUrl && (
             <Alert variant="destructive" className="mb-4">
@@ -819,6 +822,8 @@ export default function ProfilePage() {
             </button>
           </form>
         </div>
+
+        <ThemeSettings />
       </div>
     );
   }
@@ -973,6 +978,8 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </div>
+
+              <ThemeSettings />
 
               {showStaffOrderDashboard && <PrinterStatusCard />}
             </div>

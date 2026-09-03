@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { Menu, X } from "lucide-react";
-import { ModeToggle } from "@/components/mode-toggle";
+import { ThemeMenu } from "@/components/theme/ThemeMenu";
 import { CafeIcon } from "@/components/CafeIcon";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
@@ -198,7 +198,7 @@ export function Navigation() {
           </span>
         )}
 
-        <ModeToggle />
+        <ThemeMenu />
 
         {signedIn && (
           <Link

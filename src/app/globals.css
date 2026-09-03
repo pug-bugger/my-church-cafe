@@ -3,34 +3,52 @@
 @tailwind utilities;
 
 /*
- * Design tokens follow the "Church cafe app redesign" canvas: a warm off-white
- * ground (--bg), white cards (--surface), near-black ink, and a single sage
- * accent (--ac). Everything else — including the shadcn variables below — is
- * derived from that palette so the whole app reads as one system.
+ * ── Theming ────────────────────────────────────────────────────────────────
+ *
+ * Two independent axes:
+ *
+ *   mode    — light / dark, driven by next-themes via the `dark` class.
+ *   palette — the colour family, driven by `data-palette` on <html>
+ *             (see src/lib/themes.ts and src/context/PaletteContext.tsx).
+ *
+ * Every palette declares the same raw token set twice: once light, once dark.
+ * The shadcn slots and the shape/elevation tokens are declared ONCE on :root
+ * and derive from the raw tokens, so a palette never has to restate them.
+ *
+ * Selectors are written so a palette can also be scoped to a *subtree* — a
+ * `<div data-palette="slate" class="dark">` renders in slate-dark regardless of
+ * the page mode, raw tokens and shadcn slots alike. The theme picker previews
+ * rely on this, so a preview can never drift from the theme it advertises.
+ *
+ * Colours are bare "R G B" channel triplets — Tailwind wraps them as
+ * `rgb(var(--x) / <alpha-value>)` so opacity modifiers (`bg-ink/5`) work. Never
+ * store a finished colour here.
  */
+
 @layer base {
-  :root {
-    /* Design canvas tokens (used directly for accents the shadcn set has no slot for) */
-    --bg: 247 246 243;
-    --surface: 255 255 255;
-    --surface-sunken: 252 252 251;
-    --ink: 22 26 24;
-    --muted-ink: 110 117 110;
-    --line: 232 230 224;
-    --ac: 46 107 79;
-    --ac-dark: 36 87 65;
-    --ac-soft: 233 241 236;
-    --ac-mid: 143 182 162;
-    --warn: 180 101 14;
-    --warn-soft: 251 241 227;
-    --neutral-soft: 242 241 238;
+  /* Shape + elevation. Identical in every palette; elevation is tinted with
+     the palette's own ink so shadows sit in the same colour family. */
+  :root,
+  [data-palette] {
+    --radius: 16px;
     --r-card: 22px;
     --r-ctl: 16px;
-    --sh: 0 1px 2px rgba(22, 26, 24, 0.04), 0 10px 26px rgba(22, 26, 24, 0.05);
-    --sh-float: 0 20px 60px rgba(22, 26, 24, 0.16);
+    --sh: 0 1px 2px rgb(var(--ink) / 0.05), 0 10px 26px rgb(var(--ink) / 0.06);
+    --sh-float: 0 20px 60px rgb(var(--ink) / 0.18);
+  }
 
-    /* shadcn slots, mapped onto the tokens above */
-    --radius: 16px;
+  .dark {
+    --sh: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 26px rgb(0 0 0 / 0.28);
+    --sh-float: 0 20px 60px rgb(0 0 0 / 0.5);
+  }
+
+  /* shadcn slots, mapped onto whichever palette is active.
+     Declared on `[data-palette]` as well as `:root` on purpose: a slot like
+     `--background: var(--bg)` is substituted on the element that declares it,
+     so re-declaring it wherever a palette is set is what lets `data-palette`
+     theme a subtree and not just <html>. */
+  :root,
+  [data-palette] {
     --background: var(--bg);
     --foreground: var(--ink);
     --card: var(--surface);
@@ -50,26 +68,139 @@
     --border: var(--line);
     --input: var(--line);
     --ring: var(--ac);
-    --chart-1: 46 107 79;
-    --chart-2: 62 127 96;
-    --chart-3: 93 152 120;
-    --chart-4: 127 175 147;
-    --chart-5: 163 198 177;
     --sidebar: var(--surface);
     --sidebar-foreground: var(--ink);
     --sidebar-primary: var(--ac);
-    --sidebar-primary-foreground: 255 255 255;
+    --sidebar-primary-foreground: var(--primary-foreground);
     --sidebar-accent: var(--ac-soft);
     --sidebar-accent-foreground: var(--ac-dark);
     --sidebar-border: var(--line);
     --sidebar-ring: var(--ac);
   }
 
-  /*
-   * The canvas is light-only; this is the same palette rotated into the dark
-   * range (accent lifted so it keeps contrast on a dark ground).
-   */
-  .dark {
+  /* ── Palettes · light ──────────────────────────────────────────────────── */
+
+  /* Sage — the "Church cafe app redesign" canvas palette, and the default.
+     Warm off-white ground, white cards, a single sage-green accent. */
+  :root,
+  [data-palette="sage"] {
+    --bg: 247 246 243;
+    --surface: 255 255 255;
+    --surface-sunken: 252 252 251;
+    --ink: 22 26 24;
+    --muted-ink: 110 117 110;
+    --line: 232 230 224;
+    --ac: 46 107 79;
+    --ac-dark: 36 87 65;
+    --ac-soft: 233 241 236;
+    --ac-mid: 143 182 162;
+    --warn: 180 101 14;
+    --warn-soft: 251 241 227;
+    --neutral-soft: 242 241 238;
+    --chart-1: 46 107 79;
+    --chart-2: 62 127 96;
+    --chart-3: 93 152 120;
+    --chart-4: 127 175 147;
+    --chart-5: 163 198 177;
+  }
+
+  /* Slate — cool blue-grey neutrals under a deep blue accent. */
+  [data-palette="slate"] {
+    --bg: 246 247 249;
+    --surface: 255 255 255;
+    --surface-sunken: 251 252 253;
+    --ink: 20 24 31;
+    --muted-ink: 105 113 127;
+    --line: 226 230 236;
+    --ac: 45 90 160;
+    --ac-dark: 33 70 130;
+    --ac-soft: 232 238 247;
+    --ac-mid: 148 176 214;
+    --warn: 176 88 20;
+    --warn-soft: 250 240 229;
+    --neutral-soft: 240 242 245;
+    --chart-1: 45 90 160;
+    --chart-2: 63 111 182;
+    --chart-3: 92 137 201;
+    --chart-4: 128 166 217;
+    --chart-5: 168 196 231;
+  }
+
+  /* Stone — warm greige neutrals under a muted plum accent. */
+  [data-palette="stone"] {
+    --bg: 248 246 244;
+    --surface: 255 255 255;
+    --surface-sunken: 252 251 250;
+    --ink: 28 24 24;
+    --muted-ink: 120 111 108;
+    --line: 234 229 225;
+    --ac: 122 71 110;
+    --ac-dark: 98 56 88;
+    --ac-soft: 245 236 243;
+    --ac-mid: 186 150 178;
+    --warn: 172 98 16;
+    --warn-soft: 251 240 228;
+    --neutral-soft: 242 240 237;
+    --chart-1: 122 71 110;
+    --chart-2: 143 92 130;
+    --chart-3: 165 118 152;
+    --chart-4: 189 148 176;
+    --chart-5: 212 181 202;
+  }
+
+  /* Graphite — achromatic greys, near-black accent. The destructive token stays
+     rust so the one dangerous control in a monochrome UI still reads as such. */
+  [data-palette="graphite"] {
+    --bg: 245 245 245;
+    --surface: 255 255 255;
+    --surface-sunken: 250 250 250;
+    --ink: 24 24 24;
+    --muted-ink: 112 112 112;
+    --line: 229 229 229;
+    --ac: 38 38 38;
+    --ac-dark: 10 10 10;
+    --ac-soft: 238 238 238;
+    --ac-mid: 168 168 168;
+    --warn: 178 74 30;
+    --warn-soft: 250 237 231;
+    --neutral-soft: 240 240 240;
+    --chart-1: 38 38 38;
+    --chart-2: 82 82 82;
+    --chart-3: 122 122 122;
+    --chart-4: 163 163 163;
+    --chart-5: 200 200 200;
+  }
+
+  /* Mist — cool grey neutrals under a soft teal accent. */
+  [data-palette="mist"] {
+    --bg: 245 248 248;
+    --surface: 255 255 255;
+    --surface-sunken: 250 252 252;
+    --ink: 19 26 27;
+    --muted-ink: 104 116 118;
+    --line: 224 232 232;
+    --ac: 20 106 110;
+    --ac-dark: 12 82 86;
+    --ac-soft: 229 241 241;
+    --ac-mid: 126 176 178;
+    --warn: 176 96 18;
+    --warn-soft: 251 240 227;
+    --neutral-soft: 238 242 242;
+    --chart-1: 20 106 110;
+    --chart-2: 42 128 132;
+    --chart-3: 78 154 157;
+    --chart-4: 118 180 182;
+    --chart-5: 160 205 206;
+  }
+
+  /* ── Palettes · dark ───────────────────────────────────────────────────────
+     Each palette rotated into the dark range: the ground drops, the ink flips,
+     and the accent lifts so it keeps contrast against a dark surface. A dark
+     block must restate every token its light twin sets — `.dark` (sage) also
+     matches, and only the `[data-palette]`-qualified rule outranks it. */
+
+  .dark,
+  [data-palette="sage"].dark {
     --bg: 18 21 19;
     --surface: 25 29 26;
     --surface-sunken: 21 24 21;
@@ -83,9 +214,6 @@
     --warn: 228 161 89;
     --warn-soft: 44 35 24;
     --neutral-soft: 33 37 31;
-    --sh: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 26px rgba(0, 0, 0, 0.28);
-    --sh-float: 0 20px 60px rgba(0, 0, 0, 0.5);
-
     --primary-foreground: 16 35 26;
     --destructive-foreground: 36 22 5;
     --chart-1: 111 175 139;
@@ -93,6 +221,98 @@
     --chart-3: 150 202 169;
     --chart-4: 170 215 185;
     --chart-5: 191 227 201;
+  }
+
+  [data-palette="slate"].dark {
+    --bg: 16 18 22;
+    --surface: 23 26 31;
+    --surface-sunken: 19 21 26;
+    --ink: 232 236 242;
+    --muted-ink: 150 158 172;
+    --line: 37 41 48;
+    --ac: 122 165 226;
+    --ac-dark: 154 190 240;
+    --ac-soft: 25 36 52;
+    --ac-mid: 60 92 138;
+    --warn: 226 165 96;
+    --warn-soft: 43 34 23;
+    --neutral-soft: 31 35 41;
+    --primary-foreground: 12 24 40;
+    --destructive-foreground: 34 24 8;
+    --chart-1: 122 165 226;
+    --chart-2: 142 180 233;
+    --chart-3: 162 195 239;
+    --chart-4: 182 210 244;
+    --chart-5: 202 224 249;
+  }
+
+  [data-palette="stone"].dark {
+    --bg: 21 19 21;
+    --surface: 28 26 28;
+    --surface-sunken: 24 22 24;
+    --ink: 238 235 236;
+    --muted-ink: 160 152 155;
+    --line: 42 39 42;
+    --ac: 191 143 181;
+    --ac-dark: 213 176 205;
+    --ac-soft: 44 32 42;
+    --ac-mid: 112 80 105;
+    --warn: 226 160 88;
+    --warn-soft: 45 34 22;
+    --neutral-soft: 36 33 35;
+    --primary-foreground: 34 18 30;
+    --destructive-foreground: 36 22 6;
+    --chart-1: 191 143 181;
+    --chart-2: 202 160 191;
+    --chart-3: 213 178 203;
+    --chart-4: 223 195 214;
+    --chart-5: 233 213 226;
+  }
+
+  [data-palette="graphite"].dark {
+    --bg: 18 18 18;
+    --surface: 26 26 26;
+    --surface-sunken: 21 21 21;
+    --ink: 237 237 237;
+    --muted-ink: 158 158 158;
+    --line: 40 40 40;
+    --ac: 230 230 230;
+    --ac-dark: 245 245 245;
+    --ac-soft: 40 40 40;
+    --ac-mid: 105 105 105;
+    --warn: 232 138 96;
+    --warn-soft: 45 30 24;
+    --neutral-soft: 33 33 33;
+    --primary-foreground: 20 20 20;
+    --destructive-foreground: 40 20 12;
+    --chart-1: 230 230 230;
+    --chart-2: 200 200 200;
+    --chart-3: 170 170 170;
+    --chart-4: 140 140 140;
+    --chart-5: 112 112 112;
+  }
+
+  [data-palette="mist"].dark {
+    --bg: 15 20 21;
+    --surface: 22 28 29;
+    --surface-sunken: 18 23 24;
+    --ink: 231 238 238;
+    --muted-ink: 148 161 163;
+    --line: 35 43 44;
+    --ac: 94 186 189;
+    --ac-dark: 134 208 210;
+    --ac-soft: 22 42 43;
+    --ac-mid: 52 106 108;
+    --warn: 228 162 92;
+    --warn-soft: 43 34 22;
+    --neutral-soft: 30 36 37;
+    --primary-foreground: 8 32 33;
+    --destructive-foreground: 34 22 6;
+    --chart-1: 94 186 189;
+    --chart-2: 116 198 200;
+    --chart-3: 138 209 211;
+    --chart-4: 160 220 221;
+    --chart-5: 184 231 232;
   }
 }
 
@@ -126,7 +346,7 @@
 
   /* Product tile: neutral until hovered, then the accent edge picks it out. */
   .tile:hover {
-    border-color: var(--ac-mid);
+    border-color: rgb(var(--ac-mid));
   }
 
   /* Table rows lift a shade on hover. */
@@ -184,10 +404,10 @@
   .bg-caution-stripes {
     background-image: repeating-linear-gradient(
       45deg,
-      #dcdcdc 0px,
-      #dcdcdc 6px,
-      #ffffff 6px,
-      #ffffff 12px
+      rgb(var(--line)) 0px,
+      rgb(var(--line)) 6px,
+      rgb(var(--surface)) 6px,
+      rgb(var(--surface)) 12px
     );
   }
 }
@@ -215,9 +435,9 @@
 @keyframes soft-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(46, 107, 79, 0);
+    box-shadow: 0 0 0 0 rgb(var(--ac) / 0);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(46, 107, 79, 0.1);
+    box-shadow: 0 0 0 6px rgb(var(--ac) / 0.1);
   }
 }

@@ -5,6 +5,7 @@ import { WebSocketProvider } from "@/context/WebSocketContext";
 import { Toaster } from "@/components/ui/sonner";
 import { Navigation } from "@/components/Navigation";
 import { ThemeProvider } from "@/components/theme-provider";
+import { paletteInitScript } from "@/lib/themes";
 
 const manrope = Manrope({
   subsets: ["latin", "latin-ext"],
@@ -28,7 +29,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={manrope.variable}>
-      <head />
+      <head>
+        {/* Applies the saved palette before first paint, so a reload never
+            flashes the default one. next-themes does the same for the mode. */}
+        <script dangerouslySetInnerHTML={{ __html: paletteInitScript }} />
+      </head>
       <body className="font-sans">
         <ThemeProvider>
           <WebSocketProvider>
