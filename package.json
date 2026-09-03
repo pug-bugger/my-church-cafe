@@ -6,7 +6,9 @@
     "clean": "node scripts/clean-next.mjs",
     "dev": "next dev",
     "build": "next build",
+    "build:standalone": "next build && mkdir -p public .next/standalone/public && cp -r public/. .next/standalone/public/ && cp -r .next/static .next/standalone/.next/",
     "start": "next start",
+    "start:standalone": "node .next/standalone/server.js",
     "lint": "next lint",
     "server": "node src/server/websocket.js"
   },
