@@ -16,6 +16,7 @@ import type { ServerOrder, ServerUser } from "@/types";
 import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 import { PrinterStatusCard } from "@/components/profile/PrinterStatusCard";
 import { ThemeSettings } from "@/components/theme/ThemeSettings";
+import { LanguageSettings } from "@/components/profile/LanguageSettings";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
 import { cn } from "@/lib/utils";
@@ -361,7 +362,13 @@ function UserTable({
   );
 }
 
-type SectionId = "account" | "overview" | "analytics" | "orders" | "users";
+type SectionId =
+  | "account"
+  | "preferences"
+  | "overview"
+  | "analytics"
+  | "orders"
+  | "users";
 
 export default function ProfilePage() {
   const [email, setEmail] = useState("");
@@ -456,6 +463,7 @@ export default function ProfilePage() {
   const sections = useMemo<{ id: SectionId; label: string }[]>(() => {
     const list: { id: SectionId; label: string }[] = [
       { id: "account", label: "Account" },
+      { id: "preferences", label: "Preferences" },
     ];
     if (showStaffOrderDashboard) {
       list.push(
@@ -979,9 +987,15 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <ThemeSettings />
-
               {showStaffOrderDashboard && <PrinterStatusCard />}
+            </div>
+          )}
+
+          {section === "preferences" && (
+            <div className="flex max-w-[680px] flex-col gap-5">
+              <h1 className="text-xl font-extrabold">Preferences</h1>
+              <ThemeSettings />
+              <LanguageSettings />
             </div>
           )}
 
