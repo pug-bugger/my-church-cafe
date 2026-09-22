@@ -1,0 +1,36 @@
+{
+  "terminal": { "en": "Terminal", "lt": "Terminalas", "ru": "Терминал" },
+  "barista": { "en": "Barista", "lt": "Baristas", "ru": "Бариста" },
+  "board": { "en": "Board", "lt": "Lenta", "ru": "Табло" },
+  "menu": { "en": "Menu", "lt": "Meniu", "ru": "Меню" },
+  "orders": { "en": "Orders", "lt": "Užsakymai", "ru": "Заказы" },
+  "manage": { "en": "Manage", "lt": "Valdymas", "ru": "Управление" },
+  "profile": { "en": "Profile", "lt": "Profilis", "ru": "Профиль" },
+  "account": { "en": "Account", "lt": "Paskyra", "ru": "Аккаунт" },
+  "live": { "en": "Live", "lt": "Tiesiogiai", "ru": "Онлайн" },
+  "offline": { "en": "Offline", "lt": "Neprisijungta", "ru": "Не в сети" },
+  "liveTooltip": {
+    "en": "Live connection to the order server",
+    "lt": "Tiesioginis ryšys su užsakymų serveriu",
+    "ru": "Прямая связь с сервером заказов"
+  },
+  "offlineTooltip": {
+    "en": "Not connected — orders may be out of date",
+    "lt": "Nėra ryšio — užsakymai gali būti pasenę",
+    "ru": "Нет связи — заказы могут быть устаревшими"
+  },
+  "openMenu": { "en": "Open menu", "lt": "Atidaryti meniu", "ru": "Открыть меню" },
+  "closeMenu": { "en": "Close menu", "lt": "Uždaryti meniu", "ru": "Закрыть меню" },
+  "featureNotAvailable": {
+    "en": "This feature is not available yet.",
+    "lt": "Ši funkcija dar neprieinama.",
+    "ru": "Эта функция пока недоступна."
+  },
+  "unlocked": { "en": "{label} unlocked", "lt": "{label} atrakinta", "ru": "{label} разблокировано" },
+  "checkingAccess": { "en": "Checking access…", "lt": "Tikrinama prieiga…", "ru": "Проверка доступа…" },
+  "redirectingToProfile": {
+    "en": "Redirecting to profile…",
+    "lt": "Nukreipiama į profilį…",
+    "ru": "Переход в профиль…"
+  }
+}

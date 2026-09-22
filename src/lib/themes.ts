@@ -6,9 +6,14 @@
  * any palette × mode combination is valid.
  *
  * The tokens themselves live in `src/app/globals.css` under
- * `[data-palette="<id>"]` / `[data-palette="<id>"].dark`. This module only
- * carries the identity and copy used by the pickers — adding a palette means
- * adding a block there *and* an entry here.
+ * `[data-palette="<id>"]` / `[data-palette="<id>"].dark`. This module carries
+ * only the identity — adding a palette means adding a block there, an entry
+ * here, and its name and description under `settings.palette.<id>` in
+ * `src/i18n/messages/settings.json`.
+ *
+ * The pickers read that copy with
+ * `t(`settings.palette.${id}.label`)`, so a palette is named in whichever
+ * language the device is set to.
  */
 
 export const PALETTE_ATTRIBUTE = "data-palette";
@@ -18,37 +23,14 @@ export type PaletteId = "sage" | "slate" | "stone" | "graphite" | "mist";
 
 export type Palette = {
   id: PaletteId;
-  label: string;
-  /** One line for the picker — names the neutral and the accent. */
-  description: string;
 };
 
 export const PALETTES: Palette[] = [
-  {
-    id: "sage",
-    label: "Sage",
-    description: "Warm off-white with a sage green accent",
-  },
-  {
-    id: "slate",
-    label: "Slate",
-    description: "Cool blue-grey with a deep blue accent",
-  },
-  {
-    id: "stone",
-    label: "Stone",
-    description: "Warm greige with a muted plum accent",
-  },
-  {
-    id: "graphite",
-    label: "Graphite",
-    description: "Pure greyscale with a near-black accent",
-  },
-  {
-    id: "mist",
-    label: "Mist",
-    description: "Cool grey with a soft teal accent",
-  },
+  { id: "sage" },
+  { id: "slate" },
+  { id: "stone" },
+  { id: "graphite" },
+  { id: "mist" },
 ];
 
 export const DEFAULT_PALETTE: PaletteId = "sage";
@@ -63,12 +45,11 @@ export function getPalette(id: PaletteId): Palette {
   return PALETTES.find((p) => p.id === id) ?? PALETTES[0];
 }
 
-/** The three settings the mode switch offers (next-themes `theme` values). */
-export const MODES = [
-  { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
-  { id: "system", label: "System" },
-] as const;
+/**
+ * The three settings the mode switch offers (next-themes `theme` values).
+ * Their labels are `settings.mode.<id>` in the catalogue.
+ */
+export const MODES = [{ id: "light" }, { id: "dark" }, { id: "system" }] as const;
 
 export type ModeId = (typeof MODES)[number]["id"];
 

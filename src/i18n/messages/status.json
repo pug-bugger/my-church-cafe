@@ -1,0 +1,8 @@
+{
+  "pending": { "en": "In queue", "lt": "Eilėje", "ru": "В очереди" },
+  "preparing": { "en": "Preparing", "lt": "Gaminama", "ru": "Готовится" },
+  "ready": { "en": "Ready", "lt": "Paruošta", "ru": "Готово" },
+  "paid": { "en": "Paid", "lt": "Apmokėta", "ru": "Оплачено" },
+  "completed": { "en": "Completed", "lt": "Įvykdyta", "ru": "Выполнено" },
+  "cancelled": { "en": "Cancelled", "lt": "Atšaukta", "ru": "Отменено" }
+}

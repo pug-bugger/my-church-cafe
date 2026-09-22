@@ -1,0 +1,205 @@
+{
+  "save": {
+    "en": "Save",
+    "lt": "Išsaugoti",
+    "ru": "Сохранить"
+  },
+  "saveChanges": {
+    "en": "Save changes",
+    "lt": "Išsaugoti pakeitimus",
+    "ru": "Сохранить изменения"
+  },
+  "saving": {
+    "en": "Saving…",
+    "lt": "Saugoma…",
+    "ru": "Сохранение…"
+  },
+  "cancel": {
+    "en": "Cancel",
+    "lt": "Atšaukti",
+    "ru": "Отмена"
+  },
+  "delete": {
+    "en": "Delete",
+    "lt": "Ištrinti",
+    "ru": "Удалить"
+  },
+  "deleting": {
+    "en": "Deleting…",
+    "lt": "Ištrinama…",
+    "ru": "Удаление…"
+  },
+  "close": {
+    "en": "Close",
+    "lt": "Uždaryti",
+    "ru": "Закрыть"
+  },
+  "retry": {
+    "en": "Try again",
+    "lt": "Bandyti dar kartą",
+    "ru": "Повторить"
+  },
+  "loading": {
+    "en": "Loading…",
+    "lt": "Įkeliama…",
+    "ru": "Загрузка…"
+  },
+  "all": {
+    "en": "All",
+    "lt": "Visi",
+    "ru": "Все"
+  },
+  "show": {
+    "en": "Show",
+    "lt": "Rodyti",
+    "ru": "Показать"
+  },
+  "hide": {
+    "en": "Hide",
+    "lt": "Slėpti",
+    "ru": "Скрыть"
+  },
+  "yes": {
+    "en": "Yes",
+    "lt": "Taip",
+    "ru": "Да"
+  },
+  "no": {
+    "en": "No",
+    "lt": "Ne",
+    "ru": "Нет"
+  },
+  "total": {
+    "en": "Total",
+    "lt": "Iš viso",
+    "ru": "Итого"
+  },
+  "price": {
+    "en": "Price",
+    "lt": "Kaina",
+    "ru": "Цена"
+  },
+  "quantity": {
+    "en": "Quantity",
+    "lt": "Kiekis",
+    "ru": "Количество"
+  },
+  "description": {
+    "en": "Description",
+    "lt": "Aprašymas",
+    "ru": "Описание"
+  },
+  "status": {
+    "en": "Status",
+    "lt": "Būsena",
+    "ru": "Статус"
+  },
+  "name": {
+    "en": "Name",
+    "lt": "Vardas",
+    "ru": "Имя"
+  },
+  "email": {
+    "en": "Email",
+    "lt": "El. paštas",
+    "ru": "Эл. почта"
+  },
+  "password": {
+    "en": "Password",
+    "lt": "Slaptažodis",
+    "ru": "Пароль"
+  },
+  "empty": {
+    "en": "empty",
+    "lt": "tuščia",
+    "ru": "пусто"
+  },
+  "nothingToShow": {
+    "en": "Nothing to show yet.",
+    "lt": "Kol kas nieko nėra.",
+    "ru": "Пока ничего нет."
+  },
+  "deselect": {
+    "en": "Deselect",
+    "lt": "Atžymėti",
+    "ru": "Снять выбор"
+  },
+  "selectedCount": {
+    "en": {
+      "one": "{count} selected",
+      "other": "{count} selected"
+    },
+    "lt": {
+      "one": "pasirinktas {count}",
+      "few": "pasirinkti {count}",
+      "other": "pasirinkta {count}"
+    },
+    "ru": {
+      "one": "выбран {count}",
+      "few": "выбрано {count}",
+      "many": "выбрано {count}"
+    }
+  },
+  "itemCount": {
+    "en": {
+      "one": "{count} item",
+      "other": "{count} items"
+    },
+    "lt": {
+      "one": "{count} prekė",
+      "few": "{count} prekės",
+      "other": "{count} prekių"
+    },
+    "ru": {
+      "one": "{count} позиция",
+      "few": "{count} позиции",
+      "many": "{count} позиций"
+    }
+  },
+  "unknown": {
+    "en": "Unknown",
+    "lt": "Nežinoma",
+    "ru": "Неизвестно"
+  },
+  "orderCount": {
+    "en": {
+      "one": "{count} order",
+      "other": "{count} orders"
+    },
+    "lt": {
+      "one": "{count} užsakymas",
+      "few": "{count} užsakymai",
+      "other": "{count} užsakymų"
+    },
+    "ru": {
+      "one": "{count} заказ",
+      "few": "{count} заказа",
+      "many": "{count} заказов"
+    }
+  },
+  "unnamed": {
+    "en": "Unnamed",
+    "lt": "Be pavadinimo",
+    "ru": "Без названия"
+  },
+  "nothingHereYet": {
+    "en": "Nothing here yet",
+    "lt": "Kol kas čia nieko nėra",
+    "ru": "Здесь пока ничего нет"
+  },
+  "showPassword": {
+    "en": "Show password",
+    "lt": "Rodyti slaptažodį",
+    "ru": "Показать пароль"
+  },
+  "hidePassword": {
+    "en": "Hide password",
+    "lt": "Slėpti slaptažodį",
+    "ru": "Скрыть пароль"
+  },
+  "closeWithoutSaving": {
+    "en": "Close without saving",
+    "lt": "Uždaryti neišsaugojus",
+    "ru": "Закрыть без сохранения"
+  }
+}

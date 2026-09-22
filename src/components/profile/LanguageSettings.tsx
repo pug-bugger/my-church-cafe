@@ -1,79 +1,76 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 /**
- * Scaffold for the language picker — deliberately inert.
+ * The language picker, in the Appearance column of Preferences.
  *
- * Nothing here is wired up yet: the app has no i18n layer, every string is a
- * hard-coded English literal and `layout.tsx` pins `<html lang="en">`. The
- * control is rendered disabled so the Preferences tab shows what is coming
- * without pretending the setting works.
+ * Per-device, exactly like the palette and the mode: a shared counter tablet
+ * keeps its own language and nothing is written to the account. Each language
+ * is named in itself — someone looking for Russian is looking for "Русский",
+ * not for "Russian" — which is also why the list is never translated.
  *
- * TODO: implementing this needs (a) an i18n runtime and extracted message
- * catalogues, (b) a provider storing the choice per-device the way
- * PaletteContext does, and (c) `lang` on <html> following the choice. Until
- * then, leave the buttons disabled — a control that silently does nothing is
- * worse than one that says it is not ready.
+ * Until a choice is made the app follows the browser's own language, and the
+ * note under the picker says so; picking one pins it.
  */
-
-const LANGUAGES = [
-  { id: "en", label: "English", note: "Current" },
-  { id: "lt", label: "Lietuvių", note: "Planned" },
-  { id: "ru", label: "Русский", note: "Planned" },
-] as const;
-
-const ACTIVE_LANGUAGE = "en";
-
 export function LanguageSettings() {
+  const { t, locale, setLocale, locales, mounted, isFromDevice } =
+    useTranslation();
+
   return (
     <Card>
       <CardHeader className="pb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <CardTitle>Language</CardTitle>
-          <span className="inline-flex items-center rounded-full bg-neutral-soft px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-            Coming soon
-          </span>
-        </div>
+        <CardTitle>{t("settings.language.title")}</CardTitle>
         <p className="text-sm text-muted-foreground">
-          The interface is English for now. Lithuanian is planned — this setting
-          is not active yet.
+          {t("settings.language.hint")}
         </p>
       </CardHeader>
 
       <CardContent>
-        <div
-          role="radiogroup"
-          aria-label="Interface language"
-          aria-disabled
-          className="inline-flex w-full max-w-sm gap-1 rounded-ctl border border-line bg-surface-sunken p-1 opacity-60"
-        >
-          {LANGUAGES.map((language) => {
-            const active = language.id === ACTIVE_LANGUAGE;
-            return (
-              <button
-                key={language.id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                disabled
-                title="Language switching is not available yet"
-                className={cn(
-                  "flex min-h-10 flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-[calc(var(--r-ctl)-4px)] px-3 text-sm font-semibold",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {language.label}
-                <span className="text-xs font-normal opacity-75">
-                  · {language.note}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        {mounted ? (
+          <div
+            role="radiogroup"
+            aria-label={t("settings.language.groupLabel")}
+            className="inline-flex w-full max-w-sm gap-1 rounded-ctl border border-line bg-surface-sunken p-1"
+          >
+            {locales.map((option) => {
+              const active = option.id === locale;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  // The button's own text is in the language it selects, so it
+                  // has to declare that language for a screen reader.
+                  lang={option.htmlLang}
+                  onClick={() => setLocale(option.id)}
+                  className={cn(
+                    "press flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-[calc(var(--r-ctl)-4px)] px-3 text-sm font-semibold",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-ink/5 hover:text-foreground",
+                  )}
+                >
+                  {option.nativeLabel}
+                  {active && <Check className="h-3.5 w-3.5" aria-hidden />}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <Skeleton className="h-12 w-full max-w-sm rounded-ctl" />
+        )}
+
+        {mounted && isFromDevice ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            {t("settings.language.systemNote")}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

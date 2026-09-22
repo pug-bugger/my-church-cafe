@@ -1,4 +1,7 @@
+"use client";
+
 import * as React from "react";
+import { useTranslation } from "@/i18n";
 
 /**
  * Renders the right thing for an async list/section: a loading fallback while
@@ -12,7 +15,9 @@ export interface DataStateProps {
   isEmpty?: boolean;
   /** Shown while `loading` (e.g. a <Skeleton/> grid). Defaults to text. */
   loadingFallback?: React.ReactNode;
-  /** Shown when `isEmpty` and not loading/errored. */
+  /** Shown when `isEmpty` and not loading/errored. Defaults to a generic line
+   *  from the catalogue, so a caller with nothing specific to say is still
+   *  translated. */
   emptyMessage?: React.ReactNode;
   children: React.ReactNode;
 }
@@ -22,14 +27,16 @@ export function DataState({
   error = null,
   isEmpty = false,
   loadingFallback,
-  emptyMessage = "Nothing to show yet.",
+  emptyMessage,
   children,
 }: DataStateProps) {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <>
         {loadingFallback ?? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
         )}
       </>
     );
@@ -42,7 +49,11 @@ export function DataState({
     );
   }
   if (isEmpty) {
-    return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        {emptyMessage ?? t("common.nothingToShow")}
+      </p>
+    );
   }
   return <>{children}</>;
 }

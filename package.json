@@ -1,6 +1,6 @@
 {
   "name": "my-church-cafe",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "clean": "node scripts/clean-next.mjs",
@@ -10,7 +10,10 @@
     "start": "next start",
     "start:standalone": "node .next/standalone/server.js",
     "lint": "next lint",
-    "server": "node src/server/websocket.js"
+    "server": "node src/server/websocket.js",
+    "i18n:check": "node scripts/i18n.mjs check",
+    "i18n:sync": "node scripts/i18n.mjs sync",
+    "i18n:sync:check": "node scripts/i18n.mjs sync --check"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

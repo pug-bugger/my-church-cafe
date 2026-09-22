@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+import { useTranslation, type MessageKey, type TranslateFn } from "@/i18n";
 import { getAuthToken } from "@/lib/auth";
 
 type PrinterStatus = {
@@ -30,14 +31,14 @@ const BADGE_STYLES: Record<LinkState, string> = {
   checking: "bg-muted text-muted-foreground",
 };
 
-const BADGE_LABELS: Record<LinkState, string> = {
-  connected: "Connected",
-  disconnected: "Disconnected",
-  unconfigured: "Not configured",
-  checking: "Checking…",
+const BADGE_LABEL_KEYS: Record<LinkState, MessageKey> = {
+  connected: "settings.printer.badge.connected",
+  disconnected: "settings.printer.badge.disconnected",
+  unconfigured: "settings.printer.badge.unconfigured",
+  checking: "settings.printer.badge.checking",
 };
 
-function StatusBadge({ state }: { state: LinkState }) {
+function StatusBadge({ state, t }: { state: LinkState; t: TranslateFn }) {
   return (
     <span
       className={cn(
@@ -45,12 +46,13 @@ function StatusBadge({ state }: { state: LinkState }) {
         BADGE_STYLES[state],
       )}
     >
-      {BADGE_LABELS[state]}
+      {t(BADGE_LABEL_KEYS[state])}
     </span>
   );
 }
 
 export function PrinterStatusCard() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<PrinterStatus | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -86,45 +88,43 @@ export function PrinterStatusCard() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Printer connection</CardTitle>
+        <CardTitle className="text-base">
+          {t("settings.printer.title")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {loadError && (
           <p className="text-sm text-muted-foreground">
-            Couldn&apos;t reach the backend to check printer status.
+            {t("settings.printer.unreachableBackend")}
           </p>
         )}
 
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-sm">Backend ↔ Printer</span>
+            <span className="text-sm">{t("settings.printer.link")}</span>
             {status?.configured && status.host && (
               <span className="text-xs text-muted-foreground">
                 {status.host}:{status.port}
               </span>
             )}
           </div>
-          <StatusBadge state={linkState} />
+          <StatusBadge state={linkState} t={t} />
         </div>
 
         {linkState === "unconfigured" && (
           <details className="rounded-md border bg-muted/40 px-3 py-2 text-sm" open>
             <summary className="cursor-pointer font-medium text-muted-foreground">
-              Set up the printer
+              {t("settings.printer.setup.title")}
             </summary>
+            {/* The identifiers inside these sentences (PRINTER_HOST, .env) are
+                part of the translated string rather than wrapped in <code>:
+                where they fall in a sentence differs by language, and a
+                placeholder that has to be re-wrapped per language is a worse
+                trade than losing the monospace. */}
             <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-              <li>
-                Connect the printer to the same WiFi network as this server and
-                note the IP address it gets (print a self-test page to see it).
-              </li>
-              <li>
-                Set <code>PRINTER_HOST</code> to that IP address in the
-                backend&apos;s <code>.env</code>, then restart the backend.
-              </li>
-              <li>
-                Give the printer a static IP / DHCP reservation on your router
-                so the address doesn&apos;t change on reboot.
-              </li>
+              <li>{t("settings.printer.setup.step1")}</li>
+              <li>{t("settings.printer.setup.step2")}</li>
+              <li>{t("settings.printer.setup.step3")}</li>
             </ul>
           </details>
         )}
@@ -132,24 +132,37 @@ export function PrinterStatusCard() {
         {linkState === "disconnected" && (
           <details className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
             <summary className="cursor-pointer font-medium text-muted-foreground">
-              Fix this
+              {t("settings.printer.fix.title")}
             </summary>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-              <li>Is the printer powered on and out of sleep/error state (paper loaded, cover closed)?</li>
-              <li>Is it connected to the same WiFi network as this server?</li>
+              <li>{t("settings.printer.fix.step1")}</li>
+              <li>{t("settings.printer.fix.step2")}</li>
               <li>
-                Has its IP address changed? Print a self-test page to check, and
-                confirm it matches <code>PRINTER_HOST</code>
-                {status?.host ? ` (currently ${status.host})` : ""}.
+                {t("settings.printer.fix.step3", {
+                  current: status?.host
+                    ? t("settings.printer.fix.currentHost", {
+                        host: status.host,
+                      })
+                    : "",
+                })}
               </li>
-              <li>Can the server reach it? Try <code>ping {status?.host || "<printer-ip>"}</code>.</li>
-              <li>Is TCP port {status?.port ?? 9100} open (not blocked by a firewall/AP isolation)?</li>
+              <li>
+                {t("settings.printer.fix.step4", {
+                  host:
+                    status?.host || t("settings.printer.fix.unknownHost"),
+                })}
+              </li>
+              <li>
+                {t("settings.printer.fix.step5", { port: status?.port ?? 9100 })}
+              </li>
             </ul>
           </details>
         )}
 
         {status?.lastError && linkState !== "connected" && (
-          <p className="text-xs text-muted-foreground">Last error: {status.lastError}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.printer.lastError", { message: status.lastError })}
+          </p>
         )}
       </CardContent>
     </Card>

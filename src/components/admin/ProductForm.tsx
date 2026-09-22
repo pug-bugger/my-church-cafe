@@ -32,6 +32,12 @@ import {
 } from "@/lib/drinkOptions";
 import { CafeIcon } from "@/components/CafeIcon";
 import {
+  categoryName as categoryLabelSingular,
+  subtypeLabel,
+  t as translate,
+  useTranslation,
+} from "@/i18n";
+import {
   DEFAULT_PRODUCT_IMAGE,
   isDefaultProductImageUrl,
   resolveProductImageUrl,
@@ -53,13 +59,21 @@ interface ProductFormProps {
   onSuccess?: () => void;
 }
 
-const formSchema = z.object({
-  category: z.string().min(1, "Category is required"),
-  subtype: z.string().optional(),
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  price: z.string().min(1, "Price is required"),
-});
+/**
+ * Built lazily so the messages are read in the language on screen: a schema
+ * evaluated at module load would freeze whichever language was active when the
+ * bundle was first touched.
+ */
+const buildFormSchema = () =>
+  z.object({
+    category: z.string().min(1, translate("manage.productForm.categoryRequired")),
+    subtype: z.string().optional(),
+    name: z.string().min(1, translate("manage.productForm.nameRequired")),
+    description: z.string().optional(),
+    price: z.string().min(1, translate("manage.productForm.priceRequired")),
+  });
+
+const formSchema = buildFormSchema();
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -108,6 +122,7 @@ export function ProductForm({
   defaultCategory,
   onSuccess,
 }: ProductFormProps) {
+  const { t } = useTranslation();
   const createProductApi = useAppStore((state) => state.createProductApi);
   const updateProductApi = useAppStore((state) => state.updateProductApi);
   const uploadProductImage = useAppStore((state) => state.uploadProductImage);
@@ -126,7 +141,7 @@ export function ProductForm({
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(buildFormSchema()),
     defaultValues: {
       category: initialCategory,
       subtype: "",
@@ -217,7 +232,7 @@ export function ProductForm({
   async function onSubmit(values: FormValues) {
     const price = parseFloat(values.price.toString());
     if (Number.isNaN(price)) {
-      toast.error("Invalid price");
+      toast.error(t("manage.productForm.invalidPrice"));
       return;
     }
 
@@ -227,7 +242,7 @@ export function ProductForm({
       PRODUCT_CATEGORY.DRINK
     );
     if (isDrinkCategory && !values.subtype) {
-      toast.error("Select a drink subtype");
+      toast.error(t("manage.productForm.selectSubtypeFirst"));
       return;
     }
     const subtypeId = values.subtype
@@ -256,7 +271,7 @@ export function ProductForm({
           await uploadProductImage(product.id, imageFile);
           setImageFile(null);
         }
-        toast.success("Item updated");
+        toast.success(t("manage.productForm.itemUpdated"));
       } else {
         const created = await createProductApi(payload);
         if (imageFile) {
@@ -274,19 +289,27 @@ export function ProductForm({
           price: "",
         });
         setSelectedDefIds([]);
-        toast.success(`${selectedCategory} created`);
+        toast.success(
+          t("manage.productForm.itemCreated", {
+            category: categoryLabelSingular(selectedCategory, t),
+          })
+        );
       }
       onSuccess?.();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to save menu item";
+        err instanceof Error ? err.message : t("manage.productForm.saveFailed");
       toast.error(message);
     }
   }
 
   const submitLabel = isEditing
-    ? "Update item"
-    : `Add ${category || "item"}`;
+    ? t("manage.productForm.updateItem")
+    : category
+      ? t("manage.productForm.addCategory", {
+          category: categoryLabelSingular(category, t),
+        })
+      : t("manage.productForm.addItem");
 
   return (
     <Form {...form}>
@@ -296,7 +319,7 @@ export function ProductForm({
           name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>{t("manage.productForm.category")}</FormLabel>
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
@@ -304,20 +327,22 @@ export function ProductForm({
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue
+                      placeholder={t("manage.productForm.selectCategory")}
+                    />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   {ADMIN_CREATABLE_CATEGORIES.map((name) => (
                     <SelectItem key={name} value={name}>
-                      {name}
+                      {categoryLabelSingular(name, t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {isEditing ? (
                 <FormDescription className="text-xs">
-                  Category cannot be changed when editing.
+                  {t("manage.productForm.categoryLocked")}
                 </FormDescription>
               ) : null}
             </FormItem>
@@ -338,7 +363,9 @@ export function ProductForm({
             )}
           </div>
           <div className="space-y-2 flex-1 min-w-0">
-            <FormLabel htmlFor="product-image">Photo</FormLabel>
+            <FormLabel htmlFor="product-image">
+              {t("manage.productForm.photo")}
+            </FormLabel>
             <Input
               id="product-image"
               type="file"
@@ -350,8 +377,7 @@ export function ProductForm({
               }}
             />
             <p className="text-xs text-muted-foreground">
-              JPEG, PNG, GIF, or WebP · max 5 MB. Saved after you submit the
-              form.
+              {t("manage.productForm.photoHint")}
             </p>
           </div>
         </div>
@@ -361,7 +387,7 @@ export function ProductForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>{t("common.name")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -374,7 +400,7 @@ export function ProductForm({
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{t("common.description")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -387,7 +413,7 @@ export function ProductForm({
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Price</FormLabel>
+              <FormLabel>{t("common.price")}</FormLabel>
               <FormControl>
                 <Input type="number" step="0.01" {...field} />
               </FormControl>
@@ -401,7 +427,7 @@ export function ProductForm({
             name="subtype"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Drink subtype</FormLabel>
+                <FormLabel>{t("manage.productForm.drinkSubtype")}</FormLabel>
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
@@ -412,8 +438,8 @@ export function ProductForm({
                       <SelectValue
                         placeholder={
                           drinkSubtypes.length
-                            ? "Select subtype"
-                            : "No subtypes — run DB migration"
+                            ? t("manage.productForm.selectSubtype")
+                            : t("manage.productForm.noSubtypes")
                         }
                       />
                     </SelectTrigger>
@@ -421,13 +447,13 @@ export function ProductForm({
                   <SelectContent>
                     {drinkSubtypes.map((st) => (
                       <SelectItem key={st.id} value={String(st.id)}>
-                        {st.name}
+                        {subtypeLabel(st.name, t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <FormDescription className="text-xs">
-                  e.g. Coffee, Other drinks, Season drinks
+                  {t("manage.productForm.subtypeHint")}
                 </FormDescription>
               </FormItem>
             )}
@@ -437,20 +463,20 @@ export function ProductForm({
         {isDrink ? (
           <div className="space-y-3">
             <div>
-              <FormLabel>Options for this drink</FormLabel>
+              <FormLabel>
+                {t("manage.productForm.optionsForDrink")}
+              </FormLabel>
               <FormDescription className="text-xs">
-                Create reusable options in the catalog above, then tick the ones
-                this drink should offer.
+                {t("manage.productForm.optionsHint")}
               </FormDescription>
             </div>
             {!apiUrl ? (
               <p className="text-sm text-muted-foreground">
-                API URL not configured; options cannot be loaded.
+                {t("manage.productForm.optionsUnavailable")}
               </p>
             ) : catalog.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No catalog options yet. Add some in &quot;Reusable drink
-                options&quot; first.
+                {t("manage.productForm.noCatalogOptions")}
               </p>
             ) : (
               <div className="space-y-2 rounded-lg border p-3">
@@ -468,9 +494,14 @@ export function ProductForm({
                       {def.name}
                       <span className="text-muted-foreground font-normal">
                         {" "}
-                        ({def.type === "checkbox" ? "checkbox" : "picklist"}
+                        (
+                        {def.type === "checkbox"
+                          ? t("manage.productForm.typeCheckbox")
+                          : t("manage.productForm.typePicklist")}
                         {def.type === "select" && def.values.length
-                          ? ` · ${def.values.length} choices`
+                          ? ` · ${t("manage.productForm.choiceCount", {
+                              count: def.values.length,
+                            })}`
                           : ""}
                         )
                       </span>

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useTranslation } from "@/i18n";
 import { formatPrice } from "@/lib/format";
 import { describeSelectedOptions, lineUnitPrice } from "@/lib/drinkOptions";
 
@@ -14,6 +15,7 @@ import { describeSelectedOptions, lineUnitPrice } from "@/lib/drinkOptions";
  * stacked underneath it on phones and tablets.
  */
 export function CurrentOrder() {
+  const { t } = useTranslation();
   const draftItems = useAppStore((state) => state.draftItems);
   // Every category is orderable, meals and "Other" included — the terminal used
   // to see only drinks and desserts because the store held just those two.
@@ -108,7 +110,7 @@ export function CurrentOrder() {
     }));
     const missing = orderItemsPayload.find((item) => !item.productId);
     if (missing) {
-      toast.error("Some items could not be matched to backend products.");
+      toast.error(t("terminal.unmatchedItems"));
       return;
     }
 
@@ -117,7 +119,7 @@ export function CurrentOrder() {
       await apiFetch("/api/orders", {
         method: "POST",
         auth: true,
-        authError: "Login required to place an order.",
+        authError: t("errors.loginRequiredToOrder"),
         body: {
           order: {
             comment: orderComment.trim() || null,
@@ -127,10 +129,10 @@ export function CurrentOrder() {
         },
       });
       clearDraft();
-      toast.success("Order sent to the barista");
+      toast.success(t("terminal.orderSent"));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to place order";
+        err instanceof Error ? err.message : t("errors.placeOrder");
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -144,12 +146,12 @@ export function CurrentOrder() {
       <div className="px-5 pb-3 pt-5">
         <div className="flex items-baseline justify-between gap-2.5">
           <h3 className="text-lg font-extrabold tracking-[-0.01em]">
-            Current order
+            {t("terminal.currentOrder")}
           </h3>
           <span className="num text-[13px] text-muted-foreground">
             {itemCount === 0
-              ? "empty"
-              : `${itemCount} ${itemCount === 1 ? "item" : "items"}`}
+              ? t("common.empty")
+              : t("common.itemCount", { count: itemCount })}
           </span>
         </div>
       </div>
@@ -157,8 +159,7 @@ export function CurrentOrder() {
       <div className="scroll min-h-[120px] flex-1 px-5">
         {isEmpty ? (
           <p className="my-2 text-sm leading-relaxed text-muted-foreground">
-            Tap a drink to start. Options open in a sheet so you can confirm
-            with one hand.
+            {t("terminal.emptyHint")}
           </p>
         ) : (
           <ul className="flex flex-col gap-3.5">
@@ -197,8 +198,10 @@ export function CurrentOrder() {
                   <button
                     type="button"
                     onClick={() => removeDraftItem(item.id)}
-                    aria-label={`Remove ${drink.name}`}
-                    title="Remove from order"
+                    aria-label={t("terminal.removeNamed", {
+                      name: drink.name,
+                    })}
+                    title={t("terminal.removeFromOrder")}
                     className="press flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
                   >
                     <X className="h-[18px] w-[18px]" />
@@ -212,19 +215,21 @@ export function CurrentOrder() {
 
       <div className="flex flex-col gap-3 border-t border-line bg-surface-sunken px-5 pb-5 pt-4">
         <Input
-          placeholder="Customer name (optional)"
+          placeholder={t("terminal.customerNamePlaceholder")}
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
-          aria-label="Customer name"
+          aria-label={t("terminal.customerName")}
         />
         <Input
-          placeholder="Note for the barista"
+          placeholder={t("terminal.noteForBarista")}
           value={orderComment}
           onChange={(e) => setOrderComment(e.target.value)}
-          aria-label="Note for the barista"
+          aria-label={t("terminal.noteForBarista")}
         />
         <div className="flex items-baseline justify-between pt-0.5">
-          <span className="text-[13px] text-muted-foreground">Total</span>
+          <span className="text-[13px] text-muted-foreground">
+            {t("common.total")}
+          </span>
           <span className="num text-3xl font-extrabold tracking-[-0.02em]">
             {formatPrice(total)}
           </span>
@@ -234,8 +239,8 @@ export function CurrentOrder() {
             type="button"
             onClick={clearDraft}
             disabled={isEmpty}
-            aria-label="Clear order"
-            title="Clear the whole order"
+            aria-label={t("terminal.clearOrder")}
+            title={t("terminal.clearOrderTooltip")}
             className="press flex min-h-14 w-14 flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5 disabled:pointer-events-none disabled:opacity-50"
           >
             <Trash2 className="h-5 w-5" />
@@ -246,7 +251,7 @@ export function CurrentOrder() {
             disabled={isEmpty || isSubmitting}
             className="press min-h-14 flex-1 rounded-ctl bg-primary text-[17px] font-bold text-primary-foreground hover:bg-ac-dark disabled:pointer-events-none disabled:bg-ac-mid"
           >
-            {isSubmitting ? "Sending…" : "Send to barista"}
+            {isSubmitting ? t("terminal.sending") : t("terminal.sendToBarista")}
           </button>
         </div>
       </div>

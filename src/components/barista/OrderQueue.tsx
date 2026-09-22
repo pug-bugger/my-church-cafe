@@ -3,11 +3,22 @@
 import { useAppStore } from "@/store";
 import { useWebSocket } from "@/context/WebSocketContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { OrderStatus, ServerOrder, ServerOrderItem } from "@/types";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useTranslation, type TranslateFn } from "@/i18n";
 import { getAuthToken } from "@/lib/auth";
 import { relativeAge } from "@/lib/format";
 import { describeServerOptions } from "@/lib/drinkOptions";
@@ -32,6 +43,7 @@ type OrderCardProps = {
   onDelete?: () => void;
   onRemoveItem?: (item: ServerOrderItem) => void;
   removingKey: string | null;
+  t: TranslateFn;
 };
 
 function OrderCard({
@@ -41,6 +53,7 @@ function OrderCard({
   onDelete,
   onRemoveItem,
   removingKey,
+  t,
 }: OrderCardProps) {
   const items = drinkItems(order);
   return (
@@ -68,7 +81,7 @@ function OrderCard({
             <li key={item.id} className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <div className="text-base font-bold">
-                  {item.product_item_name ?? "Item"}{" "}
+                  {item.product_item_name ?? t("orders.queue.itemFallback")}{" "}
                   <span className="num text-primary">×{item.quantity}</span>
                 </div>
                 {detail ? (
@@ -82,8 +95,11 @@ function OrderCard({
                   type="button"
                   onClick={() => onRemoveItem(item)}
                   disabled={removingKey === `${order.id}-${item.id}`}
-                  aria-label={`Remove ${item.product_item_name ?? "item"}`}
-                  title="Remove this item from the order"
+                  aria-label={t("orders.queue.removeNamed", {
+                    name:
+                      item.product_item_name ?? t("orders.queue.itemFallback"),
+                  })}
+                  title={t("orders.queue.removeItemTooltip")}
                   className="press flex h-8 w-8 flex-none items-center justify-center rounded-[10px] text-muted-foreground hover:bg-ink/5 disabled:opacity-50"
                 >
                   <X className="h-4 w-4" />
@@ -93,7 +109,9 @@ function OrderCard({
           );
         })}
         {items.length === 0 && (
-          <li className="text-sm text-muted-foreground">No items</li>
+          <li className="text-sm text-muted-foreground">
+            {t("orders.queue.noItems")}
+          </li>
         )}
       </ul>
 
@@ -104,15 +122,15 @@ function OrderCard({
           disabled={busy}
           className="press min-h-[52px] flex-1 rounded-ctl bg-primary text-base font-bold text-primary-foreground hover:bg-ac-dark disabled:pointer-events-none disabled:bg-ac-mid"
         >
-          Ready for pickup
+          {t("orders.queue.readyForPickup")}
         </button>
         {onDelete ? (
           <button
             type="button"
             onClick={onDelete}
             disabled={busy}
-            aria-label="Cancel this order"
-            title="Cancel this order"
+            aria-label={t("orders.queue.cancelOrder")}
+            title={t("orders.queue.cancelOrder")}
             className="press flex min-h-[52px] w-[52px] flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5 disabled:opacity-50"
           >
             <Trash2 className="h-[18px] w-[18px]" />
@@ -135,6 +153,7 @@ function ColumnHeading({ title, count }: { title: string; count: number }) {
 }
 
 export function OrderQueue() {
+  const { t } = useTranslation();
   const { isConnected, ordersRefreshKey } = useWebSocket();
   const orders = useAppStore((state) => state.orders);
   const setOrders = useAppStore((state) => state.setOrders);
@@ -143,6 +162,13 @@ export function OrderQueue() {
   const removeOrder = useAppStore((state) => state.removeOrder);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
+  // Deleting an order, or taking a line off one, is not undoable and the
+  // buttons sit next to the ones a barista hits all shift — both ask first.
+  const [orderToDelete, setOrderToDelete] = useState<ServerOrder | null>(null);
+  const [itemToRemove, setItemToRemove] = useState<{
+    orderId: number;
+    item: ServerOrderItem;
+  } | null>(null);
   const [, setAgeTick] = useState(0);
 
   // One step: an order waits here until it is handed to the shelf or removed.
@@ -160,10 +186,10 @@ export function OrderQueue() {
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to load orders";
+        err instanceof Error ? err.message : t("errors.loadOrders");
       toast.error(message);
     }
-  }, [setOrders]);
+  }, [setOrders, t]);
 
   useEffect(() => {
     fetchOrders();
@@ -180,12 +206,12 @@ export function OrderQueue() {
         method: "PUT",
         body: { status },
         auth: true,
-        authError: "Login required to update order status.",
+        authError: t("errors.loginRequiredForStatus"),
       });
       updateOrderStatus(orderId, status);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to update order status";
+        err instanceof Error ? err.message : t("errors.updateStatus");
       toast.error(message);
     }
   };
@@ -193,24 +219,25 @@ export function OrderQueue() {
   const handleRemoveItem = async (orderId: number, item: ServerOrderItem) => {
     const key = `${orderId}-${item.id}`;
     setRemovingKey(key);
+    setItemToRemove(null);
     try {
       const data = await apiFetch<{ status?: string }>(
         `/api/orders/${orderId}/items/${item.id}`,
         {
           method: "DELETE",
           auth: true,
-          authError: "Login required to remove order items.",
+          authError: t("errors.loginRequiredToRemoveItems"),
         }
       );
       removeOrderItem(orderId, item.id);
       if (data?.status === "cancelled") {
-        toast.success("Last item removed — order cancelled");
+        toast.success(t("orders.toast.lastItemRemoved"));
       } else {
-        toast.success("Item removed");
+        toast.success(t("orders.toast.itemRemoved"));
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to remove item";
+        err instanceof Error ? err.message : t("errors.removeItem");
       toast.error(message);
     } finally {
       setRemovingKey(null);
@@ -219,17 +246,18 @@ export function OrderQueue() {
 
   const handleDeleteOrder = async (orderId: number) => {
     setDeletingOrderId(orderId);
+    setOrderToDelete(null);
     try {
       await apiFetch(`/api/orders/${orderId}`, {
         method: "DELETE",
         auth: true,
-        authError: "Login required to delete orders.",
+        authError: t("errors.loginRequiredToDeleteOrders"),
       });
       removeOrder(orderId);
-      toast.success("Order deleted");
+      toast.success(t("orders.toast.orderDeleted"));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to delete order";
+        err instanceof Error ? err.message : t("errors.deleteOrder");
       toast.error(message);
     } finally {
       setDeletingOrderId(null);
@@ -241,13 +269,16 @@ export function OrderQueue() {
       {!isConnected && (
         <Alert variant="destructive">
           <AlertDescription>
-            Login required to update order status.
+            {t("errors.loginRequiredForStatus")}
           </AlertDescription>
         </Alert>
       )}
 
       <section>
-        <ColumnHeading title="In queue" count={queueOrders.length} />
+        <ColumnHeading
+          title={t("orders.queue.inQueue")}
+          count={queueOrders.length}
+        />
         {/* One column on a phone, two once there is width — the queue owns the
             full page now that "preparing" no longer takes half of it. */}
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
@@ -262,15 +293,18 @@ export function OrderQueue() {
               // `preparing` one is advanced or emptied item by item, not removed.
               onDelete={
                 order.status === "pending"
-                  ? () => handleDeleteOrder(order.id)
+                  ? () => setOrderToDelete(order)
                   : undefined
               }
-              onRemoveItem={(item) => handleRemoveItem(order.id, item)}
+              onRemoveItem={(item) =>
+                setItemToRemove({ orderId: order.id, item })
+              }
+              t={t}
             />
           ))}
           {queueOrders.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              Nothing waiting. New orders slide in here.
+              {t("orders.queue.nothingWaiting")}
             </p>
           )}
         </div>
@@ -280,14 +314,14 @@ export function OrderQueue() {
       <div className="rounded-card border border-line bg-surface px-[18px] py-4 shadow-card">
         <div className="flex flex-wrap items-center gap-3.5">
           <span className="text-[13px] font-semibold text-muted-foreground">
-            Ready · awaiting pickup
+            {t("orders.queue.readyAwaitingPickup")}
           </span>
           {readyOrders.map((order) => (
             <button
               key={order.id}
               type="button"
               onClick={() => handleStatusUpdate(order.id, "completed")}
-              title="Tap when handed over — completes the order"
+              title={t("orders.queue.handoverTooltip")}
               className="press enter flex min-h-[54px] items-center gap-2.5 rounded-full border border-ac bg-ac-soft px-5 text-[19px] font-extrabold text-ac-dark hover:bg-ac-mid/40"
             >
               {orderTitle(order)}
@@ -298,11 +332,73 @@ export function OrderQueue() {
           ))}
           {readyOrders.length === 0 && (
             <span className="text-sm text-muted-foreground">
-              Nothing waiting on the counter.
+              {t("orders.queue.nothingOnCounter")}
             </span>
           )}
         </div>
       </div>
+
+      <AlertDialog
+        open={!!orderToDelete}
+        onOpenChange={(open) => !open && setOrderToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("orders.queue.deleteOrderTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("orders.queue.deleteOrderBody", {
+                name: orderToDelete ? orderTitle(orderToDelete) : "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletingOrderId === orderToDelete?.id}
+              onClick={() =>
+                orderToDelete && handleDeleteOrder(orderToDelete.id)
+              }
+            >
+              {t("orders.queue.cancelOrder")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!itemToRemove}
+        onOpenChange={(open) => !open && setItemToRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("orders.queue.removeItemTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("orders.queue.removeItemBody", {
+                name:
+                  itemToRemove?.item.product_item_name ??
+                  t("orders.queue.itemFallback"),
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() =>
+                itemToRemove &&
+                handleRemoveItem(itemToRemove.orderId, itemToRemove.item)
+              }
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

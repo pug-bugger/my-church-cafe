@@ -5,6 +5,7 @@ import { WebSocketProvider } from "@/context/WebSocketContext";
 import { Toaster } from "@/components/ui/sonner";
 import { Navigation } from "@/components/Navigation";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LanguageProvider, languageInitScript } from "@/i18n";
 import { paletteInitScript } from "@/lib/themes";
 
 const manrope = Manrope({
@@ -33,16 +34,24 @@ export default function RootLayout({
         {/* Applies the saved palette before first paint, so a reload never
             flashes the default one. next-themes does the same for the mode. */}
         <script dangerouslySetInnerHTML={{ __html: paletteInitScript }} />
+        {/* Puts the saved language on <html lang> before first paint, so
+            hyphenation and screen-reader pronunciation are right immediately.
+            The strings themselves are swapped by React on mount. */}
+        <script dangerouslySetInnerHTML={{ __html: languageInitScript }} />
       </head>
       <body className="font-sans">
         <ThemeProvider>
-          <WebSocketProvider>
-            <div className="flex min-h-screen flex-col overflow-hidden bg-background">
-              <Navigation />
-              <main className="relative flex-1 overflow-hidden">{children}</main>
-            </div>
-            <Toaster />
-          </WebSocketProvider>
+          <LanguageProvider>
+            <WebSocketProvider>
+              <div className="flex min-h-screen flex-col overflow-hidden bg-background">
+                <Navigation />
+                <main className="relative flex-1 overflow-hidden">
+                  {children}
+                </main>
+              </div>
+              <Toaster />
+            </WebSocketProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

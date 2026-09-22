@@ -10,6 +10,7 @@ import { ThemeMenu } from "@/components/theme/ThemeMenu";
 import { CafeIcon } from "@/components/CafeIcon";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
+import { useTranslation, type MessageKey } from "@/i18n";
 import { getAuthToken, getStoredUser } from "@/lib/auth";
 import { initialsFromName } from "@/lib/format";
 import { useWebSocket } from "@/context/WebSocketContext";
@@ -19,7 +20,9 @@ type NavVisibility = "public" | "staff" | "admin";
 
 type NavLink = {
   href: string;
-  label: string;
+  /** Catalogue key rather than a string — the nav is rebuilt on a language
+   *  switch, and `BASE_LINKS` is module scope, evaluated once. */
+  labelKey: MessageKey;
   available: boolean;
   visibility: NavVisibility;
 };
@@ -27,15 +30,35 @@ type NavLink = {
 const BASE_LINKS: NavLink[] = [
   {
     href: "/terminal",
-    label: "Terminal",
+    labelKey: "nav.terminal",
     available: true,
     visibility: "staff",
   },
-  { href: "/barista", label: "Barista", available: true, visibility: "staff" },
-  { href: "/orders", label: "Board", available: true, visibility: "public" },
-  { href: "/menu", label: "Menu", available: true, visibility: "public" },
-  { href: "/admin", label: "Manage", available: true, visibility: "admin" },
-  { href: "/profile", label: "Profile", available: true, visibility: "public" },
+  {
+    href: "/barista",
+    labelKey: "nav.barista",
+    available: true,
+    visibility: "staff",
+  },
+  {
+    href: "/orders",
+    labelKey: "nav.board",
+    available: true,
+    visibility: "public",
+  },
+  { href: "/menu", labelKey: "nav.menu", available: true, visibility: "public" },
+  {
+    href: "/admin",
+    labelKey: "nav.manage",
+    available: true,
+    visibility: "admin",
+  },
+  {
+    href: "/profile",
+    labelKey: "nav.profile",
+    available: true,
+    visibility: "public",
+  },
 ];
 
 function navLinkVisible(
@@ -52,6 +75,7 @@ type SessionUser = { name?: string; role?: string };
 export function Navigation() {
   const pathname = usePathname();
   const { isConnected } = useWebSocket();
+  const { t } = useTranslation();
   /** Role from session; null when not signed in (nav treats like parishioner). */
   const [navRole, setNavRole] = useState<string | null>(null);
   const [navName, setNavName] = useState<string | null>(null);
@@ -116,12 +140,13 @@ export function Navigation() {
     setLinks((prev) =>
       prev.map((l) => (l.href === href ? { ...l, available: true } : l)),
     );
-    toast.success(`${label} unlocked`);
+    toast.success(t("nav.unlocked", { label }));
   };
 
   /** Pill-shaped nav item: filled with the accent when it is the current page. */
   const renderLink = (link: NavLink, className: string) => {
     const active = pathname === link.href;
+    const label = t(link.labelKey);
     return (
       <Link
         key={link.href}
@@ -141,18 +166,18 @@ export function Navigation() {
           if (!link.available) {
             e.preventDefault();
             e.stopPropagation();
-            toast.info("This feature is not available yet.");
+            toast.info(t("nav.featureNotAvailable"));
           }
         }}
         onDoubleClick={(e) => {
           if (!link.available) {
             e.preventDefault();
             e.stopPropagation();
-            unlockLink(link.href, link.label);
+            unlockLink(link.href, label);
           }
         }}
       >
-        {link.label}
+        {label}
       </Link>
     );
   };
@@ -183,9 +208,7 @@ export function Navigation() {
           <span
             className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex"
             title={
-              isConnected
-                ? "Live connection to the order server"
-                : "Not connected — orders may be out of date"
+              isConnected ? t("nav.liveTooltip") : t("nav.offlineTooltip")
             }
           >
             <span
@@ -194,7 +217,7 @@ export function Navigation() {
                 isConnected ? "bg-primary" : "bg-muted-foreground/50",
               )}
             />
-            {isConnected ? "Live" : "Offline"}
+            {isConnected ? t("nav.live") : t("nav.offline")}
           </span>
         )}
 
@@ -209,7 +232,7 @@ export function Navigation() {
               {initialsFromName(navName)}
             </span>
             <span className="max-w-[10ch] truncate">
-              {navName?.split(" ")[0] ?? "Account"}
+              {navName?.split(" ")[0] ?? t("nav.account")}
             </span>
           </Link>
         )}
@@ -219,7 +242,7 @@ export function Navigation() {
           variant="outline"
           size="icon"
           className="md:hidden"
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
           aria-expanded={mobileOpen}
           onClick={() => setMobileOpen((open) => !open)}
         >

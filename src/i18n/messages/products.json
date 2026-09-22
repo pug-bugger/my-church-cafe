@@ -1,0 +1,26 @@
+{
+  "category": {
+    "drink": { "en": "Drinks", "lt": "Gėrimai", "ru": "Напитки" },
+    "meal": { "en": "Meals", "lt": "Patiekalai", "ru": "Блюда" },
+    "dessert": { "en": "Desserts", "lt": "Desertai", "ru": "Десерты" },
+    "other": { "en": "Other", "lt": "Kita", "ru": "Другое" }
+  },
+  "categorySingular": {
+    "drink": { "en": "Drink", "lt": "Gėrimas", "ru": "Напиток" },
+    "meal": { "en": "Meal", "lt": "Patiekalas", "ru": "Блюдо" },
+    "dessert": { "en": "Dessert", "lt": "Desertas", "ru": "Десерт" },
+    "other": { "en": "Other", "lt": "Kita", "ru": "Другое" }
+  },
+  "subtype": {
+    "coffee": { "en": "Coffee", "lt": "Kava", "ru": "Кофе" },
+    "seasonDrinks": { "en": "Season drinks", "lt": "Sezoniniai gėrimai", "ru": "Сезонные напитки" },
+    "otherDrinks": { "en": "Other drinks", "lt": "Kiti gėrimai", "ru": "Другие напитки" }
+  },
+  "uncategorized": { "en": "Uncategorized", "lt": "Be kategorijos", "ru": "Без категории" },
+  "noOptions": { "en": "no options", "lt": "be pasirinkimų", "ru": "без опций" },
+  "optionCount": {
+    "en": { "one": "{count} option", "other": "{count} options" },
+    "lt": { "one": "{count} pasirinkimas", "few": "{count} pasirinkimai", "other": "{count} pasirinkimų" },
+    "ru": { "one": "{count} опция", "few": "{count} опции", "many": "{count} опций" }
+  }
+}

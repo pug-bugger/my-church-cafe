@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store";
 import type { Drink, DrinkOption } from "@/types";
 import { cn, generateId } from "@/lib/utils";
+import { useTranslation, type TranslateFn } from "@/i18n";
 import { formatPrice } from "@/lib/format";
 import { lineUnitPrice } from "@/lib/drinkOptions";
 
@@ -39,11 +40,17 @@ function defaultValueFor(option: DrinkOption): string {
 
 type Choice = { label: string; value: string; extraPrice: number };
 
-function choicesFor(option: DrinkOption): Choice[] {
+function choicesFor(option: DrinkOption, t: TranslateFn): Choice[] {
   if (option.type === "checkbox") {
+    // The only two choices the app words itself; every other label is an
+    // option value an admin typed, and stays as typed.
     return [
-      { label: "No", value: CHECKBOX_OFF, extraPrice: 0 },
-      { label: "Yes", value: CHECKBOX_ON, extraPrice: option.checkboxExtraPrice ?? 0 },
+      { label: t("common.no"), value: CHECKBOX_OFF, extraPrice: 0 },
+      {
+        label: t("common.yes"),
+        value: CHECKBOX_ON,
+        extraPrice: option.checkboxExtraPrice ?? 0,
+      },
     ];
   }
   return option.values.map((v) => ({
@@ -54,6 +61,7 @@ function choicesFor(option: DrinkOption): Choice[] {
 }
 
 export function ProductSheet({ product, onClose }: ProductSheetProps) {
+  const { t } = useTranslation();
   const addDraftItem = useAppStore((state) => state.addDraftItem);
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
@@ -113,10 +121,12 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
                 {product.name}
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="num text-[15px] text-muted-foreground">
-                {formatPrice(unitPrice)} each
+                {t("terminal.eachPrice", { price: formatPrice(unitPrice) })}
                 {unitPrice !== product.price ? (
                   <span className="ml-1.5 text-[13px]">
-                    ({formatPrice(product.price)} + options)
+                    {t("terminal.basePlusOptions", {
+                      price: formatPrice(product.price),
+                    })}
                   </span>
                 ) : null}
               </DialogPrimitive.Description>
@@ -124,7 +134,7 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close without adding"
+              aria-label={t("terminal.closeWithoutAdding")}
               className="press flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
             >
               <X className="h-5 w-5" />
@@ -138,7 +148,7 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
                   {option.name}
                 </div>
                 <div className="flex flex-wrap gap-2.5">
-                  {choicesFor(option).map((choice) => {
+                  {choicesFor(option, t).map((choice) => {
                     const selected = picks[option.id] === choice.value;
                     return (
                       <button
@@ -179,12 +189,12 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
             <div className="flex flex-wrap items-end gap-6">
               <div>
                 <div className="mb-2.5 text-[13px] font-semibold text-muted-foreground">
-                  Quantity
+                  {t("common.quantity")}
                 </div>
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
-                    aria-label="Decrease quantity"
+                    aria-label={t("terminal.decreaseQuantity")}
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                     className="press flex h-14 w-14 items-center justify-center rounded-ctl border border-line bg-surface hover:bg-ink/5"
                   >
@@ -198,7 +208,7 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
                   </span>
                   <button
                     type="button"
-                    aria-label="Increase quantity"
+                    aria-label={t("terminal.increaseQuantity")}
                     onClick={() => setQuantity((q) => q + 1)}
                     className="press flex h-14 w-14 items-center justify-center rounded-ctl border border-line bg-surface hover:bg-ink/5"
                   >
@@ -211,11 +221,11 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
                   htmlFor="sheet-note"
                   className="mb-2.5 block text-[13px] font-semibold text-muted-foreground"
                 >
-                  Note for this item
+                  {t("terminal.noteForItem")}
                 </label>
                 <Input
                   id="sheet-note"
-                  placeholder="e.g. extra hot"
+                  placeholder={t("terminal.notePlaceholder")}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   className="h-[50px]"
@@ -228,7 +238,7 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
               onClick={handleAdd}
               className="press min-h-[60px] rounded-ctl bg-primary text-lg font-bold text-primary-foreground hover:bg-ac-dark"
             >
-              Add to order · {formatPrice(lineTotal)}
+              {t("terminal.addToOrder", { price: formatPrice(lineTotal) })}
             </button>
           </div>
         </DialogPrimitive.Content>

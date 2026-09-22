@@ -20,6 +20,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { formatDateTime, formatPrice } from "@/lib/format";
+import { statusLabel, useTranslation } from "@/i18n";
 import type { ServerOrder } from "@/types";
 
 export type FlatOrderRow = {
@@ -175,6 +177,12 @@ function escapeCsvCell(v: string | number): string {
   return s;
 }
 
+/**
+ * CSV column names stay English snake_case on purpose: this is a machine
+ * format, and a spreadsheet or script that reads the export must not break
+ * because the person who downloaded it had the app in Lithuanian. The .xlsx
+ * export, which is read by people, uses translated headers.
+ */
 function rowsToCsv(rows: FlatOrderRow[], includeUser: boolean): string {
   const headers = includeUser
     ? [
@@ -235,6 +243,7 @@ type OrdersDataTableProps = {
   loading?: boolean;
   /** Show customer name / email columns (all-orders / admin view). */
   showUserColumns?: boolean;
+  /** Defaults to `manage.table.defaultTitle` / `…defaultDescription`. */
   title?: string;
   description?: string;
 };
@@ -243,9 +252,10 @@ export function OrdersDataTable({
   orders,
   loading,
   showUserColumns = false,
-  title = "Orders data",
-  description = "Filter by date, sort columns, group rows, and export the current range.",
+  title,
+  description,
 }: OrdersDataTableProps) {
+  const { t } = useTranslation();
   const initial = useMemo(() => defaultRange(), []);
   const [exportOpen, setExportOpen] = useState(false);
   const [fromStr, setFromStr] = useState(initial.fromStr);
@@ -266,8 +276,8 @@ export function OrdersDataTable({
   const flatRows = useMemo(() => {
     const rows: FlatOrderRow[] = [];
     for (const order of orders) {
-      const t = new Date(order.created_at).getTime();
-      if (t < fromTime || t > toTime) continue;
+      const at = new Date(order.created_at).getTime();
+      if (at < fromTime || at > toTime) continue;
       const orderDate = new Date(order.created_at);
       const orderDateKey = toInputDate(orderDate);
       for (const item of order.items) {
@@ -281,7 +291,7 @@ export function OrdersDataTable({
           status: order.status,
           userName: order.user_name,
           userEmail: order.user_email,
-          productName: item.product_item_name ?? "Unknown",
+          productName: item.product_item_name ?? t("common.unknown"),
           quantity: qty,
           unitPrice: unit,
           lineTotal: unit * qty,
@@ -289,7 +299,7 @@ export function OrdersDataTable({
       }
     }
     return rows;
-  }, [orders, fromTime, toTime]);
+  }, [orders, fromTime, toTime, t]);
 
   const displayPieces = useMemo(
     () => buildDisplayPieces(flatRows, sortKey, sortDir, groupBy),
@@ -352,28 +362,29 @@ export function OrdersDataTable({
 
   const downloadExcel = useCallback(async () => {
     const XLSX = await import("xlsx");
+    // Read by people, so translated — unlike the CSV's machine column names.
     const headers = showUserColumns
       ? [
-          "Order ID",
-          "Order #",
-          "Date",
-          "Status",
-          "Customer",
-          "Email",
-          "Product",
-          "Qty",
-          "Unit price",
-          "Line total",
+          t("manage.table.columnOrderId"),
+          t("manage.table.columnOrderNumber"),
+          t("manage.table.columnDate"),
+          t("common.status"),
+          t("manage.table.columnCustomer"),
+          t("common.email"),
+          t("manage.table.columnProduct"),
+          t("manage.table.columnQty"),
+          t("manage.table.columnUnitPrice"),
+          t("manage.table.columnLineTotal"),
         ]
       : [
-          "Order ID",
-          "Order #",
-          "Date",
-          "Status",
-          "Product",
-          "Qty",
-          "Unit price",
-          "Line total",
+          t("manage.table.columnOrderId"),
+          t("manage.table.columnOrderNumber"),
+          t("manage.table.columnDate"),
+          t("common.status"),
+          t("manage.table.columnProduct"),
+          t("manage.table.columnQty"),
+          t("manage.table.columnUnitPrice"),
+          t("manage.table.columnLineTotal"),
         ];
     const data = exportRowsOrdered.map((r) => {
       const base = [
@@ -405,17 +416,21 @@ export function OrdersDataTable({
     const aoa = [headers, ...data];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Orders");
+    // Sheet names are ASCII-only in practice across spreadsheet apps, so the
+    // catalogue carries a transliterated name rather than a localised one.
+    XLSX.utils.book_append_sheet(wb, ws, t("manage.table.sheetName"));
     XLSX.writeFile(wb, `orders-${fromStr}_to_${toStr}.xlsx`);
-  }, [exportRowsOrdered, showUserColumns, fromStr, toStr]);
+  }, [exportRowsOrdered, showUserColumns, fromStr, toStr, t]);
 
   const colCount = showUserColumns ? 9 : 7;
 
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle>{title}</CardTitle>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <CardTitle>{title ?? t("manage.table.defaultTitle")}</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {description ?? t("manage.table.defaultDescription")}
+        </p>
         {/* One row of equal-height controls; each field keeps its label directly
             above it and every control lines up on the same baseline. */}
         <div className="flex flex-wrap items-end gap-3 pt-4">
@@ -424,7 +439,7 @@ export function OrdersDataTable({
               htmlFor="orders-from"
               className="text-xs font-semibold text-muted-foreground"
             >
-              From
+              {t("manage.table.from")}
             </Label>
             <Input
               id="orders-from"
@@ -439,7 +454,7 @@ export function OrdersDataTable({
               htmlFor="orders-to"
               className="text-xs font-semibold text-muted-foreground"
             >
-              To
+              {t("manage.table.to")}
             </Label>
             <Input
               id="orders-to"
@@ -454,20 +469,28 @@ export function OrdersDataTable({
               htmlFor="orders-group-by"
               className="text-xs font-semibold text-muted-foreground"
             >
-              Group by
+              {t("manage.table.groupBy")}
             </Label>
             <Select
               value={groupBy}
               onValueChange={(v) => setGroupBy(v as GroupBy)}
             >
               <SelectTrigger id="orders-group-by" className="h-11 rounded-ctl">
-                <SelectValue placeholder="Group by" />
+                <SelectValue placeholder={t("manage.table.groupBy")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                <SelectItem value="product">Product name</SelectItem>
-                <SelectItem value="date">Order date</SelectItem>
-                <SelectItem value="price">Unit price</SelectItem>
+                <SelectItem value="none">
+                  {t("manage.table.groupNone")}
+                </SelectItem>
+                <SelectItem value="product">
+                  {t("manage.table.groupProduct")}
+                </SelectItem>
+                <SelectItem value="date">
+                  {t("manage.table.groupDate")}
+                </SelectItem>
+                <SelectItem value="price">
+                  {t("manage.table.groupPrice")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -480,7 +503,7 @@ export function OrdersDataTable({
                   variant="outline"
                   className="h-11 w-full rounded-ctl sm:w-auto"
                 >
-                  Export
+                  {t("manage.table.export")}
                   <ChevronDown
                     className={cn(
                       "transition-transform duration-200 motion-reduce:transition-none",
@@ -491,28 +514,30 @@ export function OrdersDataTable({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => downloadCsv()}>
-                  CSV (.csv)
+                  {t("manage.table.exportCsv")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => void downloadExcel()}>
-                  Excel (.xlsx)
+                  {t("manage.table.exportExcel")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
         <p className="text-xs text-muted-foreground pt-1">
-          Showing {flatRows.length} line item{flatRows.length === 1 ? "" : "s"}{" "}
-          in range ({orders.length} order{orders.length === 1 ? "" : "s"}{" "}
-          loaded).
+          {t("manage.table.showing", {
+            lines: t("manage.table.lineItemCount", { count: flatRows.length }),
+            orders: t("common.orderCount", { count: orders.length }),
+          })}
         </p>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading orders…</p>
+          <p className="text-sm text-muted-foreground">
+            {t("profile.orders.loadingOrders")}
+          </p>
         ) : flatRows.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">
-            No line items in this date range. Widen the range or place orders to
-            see data here.
+            {t("manage.table.noRows")}
           </p>
         ) : (
           <div className="rounded-md border overflow-x-auto">
@@ -522,31 +547,33 @@ export function OrdersDataTable({
                   {showUserColumns && (
                     <>
                       <th className="p-3 font-medium whitespace-nowrap">
-                        Customer
+                        {t("manage.table.columnCustomer")}
                       </th>
                       <th className="p-3 font-medium whitespace-nowrap">
-                        Email
+                        {t("common.email")}
                       </th>
                     </>
                   )}
                   <th className="p-3 font-medium whitespace-nowrap">
-                    {headerBtn("Order", "orderId")}
+                    {headerBtn(t("manage.table.columnOrder"), "orderId")}
                   </th>
                   <th className="p-3 font-medium whitespace-nowrap">
-                    {headerBtn("Date", "date")}
+                    {headerBtn(t("manage.table.columnDate"), "date")}
                   </th>
-                  <th className="p-3 font-medium whitespace-nowrap">Status</th>
                   <th className="p-3 font-medium whitespace-nowrap">
-                    {headerBtn("Product", "product")}
+                    {t("common.status")}
+                  </th>
+                  <th className="p-3 font-medium whitespace-nowrap">
+                    {headerBtn(t("manage.table.columnProduct"), "product")}
                   </th>
                   <th className="p-3 font-medium text-right whitespace-nowrap">
-                    Qty
+                    {t("manage.table.columnQty")}
                   </th>
                   <th className="p-3 font-medium text-right whitespace-nowrap">
-                    {headerBtn("Unit price", "price")}
+                    {headerBtn(t("manage.table.columnUnitPrice"), "price")}
                   </th>
                   <th className="p-3 font-medium text-right whitespace-nowrap">
-                    Line total
+                    {t("manage.table.columnLineTotal")}
                   </th>
                 </tr>
               </thead>
@@ -562,7 +589,9 @@ export function OrdersDataTable({
                           <span>{piece.label}</span>
                           {piece.subtotal != null && (
                             <span className="ml-2 text-muted-foreground font-normal tabular-nums">
-                              (subtotal €{piece.subtotal.toFixed(2)})
+                              {t("manage.table.subtotal", {
+                                amount: formatPrice(piece.subtotal),
+                              })}
                             </span>
                           )}
                         </td>
@@ -592,7 +621,7 @@ export function OrdersDataTable({
                         #{r.orderNumber ?? r.orderId}
                       </td>
                       <td className="p-3 whitespace-nowrap text-muted-foreground">
-                        {r.orderDate.toLocaleString(undefined, {
+                        {formatDateTime(r.orderDate, {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
@@ -600,18 +629,18 @@ export function OrdersDataTable({
                           minute: "2-digit",
                         })}
                       </td>
-                      <td className="p-3 capitalize whitespace-nowrap">
-                        {r.status}
+                      <td className="p-3 whitespace-nowrap">
+                        {statusLabel(r.status, t)}
                       </td>
                       <td className="p-3 max-w-[200px]">{r.productName}</td>
                       <td className="p-3 text-right tabular-nums">
                         {r.quantity}
                       </td>
                       <td className="p-3 text-right tabular-nums">
-                        €{r.unitPrice.toFixed(2)}
+                        {formatPrice(r.unitPrice)}
                       </td>
                       <td className="p-3 text-right tabular-nums font-medium">
-                        €{r.lineTotal.toFixed(2)}
+                        {formatPrice(r.lineTotal)}
                       </td>
                     </tr>
                   );

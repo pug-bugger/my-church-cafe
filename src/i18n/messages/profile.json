@@ -1,0 +1,355 @@
+{
+  "title": {
+    "en": "Profile",
+    "lt": "Profilis",
+    "ru": "Профиль"
+  },
+  "sectionsLabel": {
+    "en": "Profile sections",
+    "lt": "Profilio skiltys",
+    "ru": "Разделы профиля"
+  },
+  "section": {
+    "account": {
+      "en": "Account",
+      "lt": "Paskyra",
+      "ru": "Аккаунт"
+    },
+    "preferences": {
+      "en": "Preferences",
+      "lt": "Nuostatos",
+      "ru": "Настройки"
+    },
+    "overview": {
+      "en": "Overview",
+      "lt": "Apžvalga",
+      "ru": "Обзор"
+    },
+    "analytics": {
+      "en": "Analytics",
+      "lt": "Analitika",
+      "ru": "Аналитика"
+    },
+    "orders": {
+      "en": "Orders",
+      "lt": "Užsakymai",
+      "ru": "Заказы"
+    },
+    "users": {
+      "en": "People",
+      "lt": "Žmonės",
+      "ru": "Люди"
+    }
+  },
+  "account": {
+    "editProfile": {
+      "en": "Edit profile",
+      "lt": "Redaguoti profilį",
+      "ru": "Изменить профиль"
+    },
+    "uploadPhoto": {
+      "en": "Upload photo",
+      "lt": "Įkelti nuotrauką",
+      "ru": "Загрузить фото"
+    },
+    "uploading": {
+      "en": "Uploading…",
+      "lt": "Įkeliama…",
+      "ru": "Загрузка…"
+    },
+    "changePhoto": {
+      "en": "Change photo",
+      "lt": "Pakeisti nuotrauką",
+      "ru": "Изменить фото"
+    },
+    "removePhoto": {
+      "en": "Remove photo",
+      "lt": "Pašalinti nuotrauką",
+      "ru": "Удалить фото"
+    },
+    "photoTypes": {
+      "en": "JPEG, PNG, GIF or WebP",
+      "lt": "JPEG, PNG, GIF arba WebP",
+      "ru": "JPEG, PNG, GIF или WebP"
+    },
+    "role": {
+      "en": "Role",
+      "lt": "Rolė",
+      "ru": "Роль"
+    },
+    "roleLocked": {
+      "en": "Only an admin can change a role",
+      "lt": "Rolę gali pakeisti tik administratorius",
+      "ru": "Роль может изменить только администратор"
+    },
+    "newPassword": {
+      "en": "New password (leave blank to keep)",
+      "lt": "Naujas slaptažodis (palikite tuščią, kad nesikeistų)",
+      "ru": "Новый пароль (оставьте пустым, чтобы не менять)"
+    },
+    "updated": {
+      "en": "Account updated",
+      "lt": "Paskyra atnaujinta",
+      "ru": "Аккаунт обновлён"
+    },
+    "profileUpdated": {
+      "en": "Profile updated",
+      "lt": "Profilis atnaujintas",
+      "ru": "Профиль обновлён"
+    },
+    "nameEmailRequired": {
+      "en": "Name and email cannot be empty",
+      "lt": "Vardas ir el. paštas negali būti tušti",
+      "ru": "Имя и эл. почта не могут быть пустыми"
+    },
+    "couldNotSave": {
+      "en": "Could not save changes",
+      "lt": "Nepavyko išsaugoti pakeitimų",
+      "ru": "Не удалось сохранить изменения"
+    },
+    "couldNotSaveProfile": {
+      "en": "Could not save your profile",
+      "lt": "Nepavyko išsaugoti jūsų profilio",
+      "ru": "Не удалось сохранить профиль"
+    },
+    "photoUpdated": {
+      "en": "Profile photo updated",
+      "lt": "Profilio nuotrauka atnaujinta",
+      "ru": "Фото профиля обновлено"
+    },
+    "photoRemoved": {
+      "en": "Profile photo removed",
+      "lt": "Profilio nuotrauka pašalinta",
+      "ru": "Фото профиля удалено"
+    },
+    "uploadFailed": {
+      "en": "Upload failed",
+      "lt": "Įkelti nepavyko",
+      "ru": "Загрузка не удалась"
+    },
+    "couldNotUploadPhoto": {
+      "en": "Could not upload the photo",
+      "lt": "Nepavyko įkelti nuotraukos",
+      "ru": "Не удалось загрузить фото"
+    },
+    "photoWasSize": {
+      "en": "{message} (photo was {size})",
+      "lt": "{message} (nuotrauka buvo {size})",
+      "ru": "{message} (размер фото — {size})"
+    },
+    "couldNotRemovePhoto": {
+      "en": "Could not remove photo",
+      "lt": "Nepavyko pašalinti nuotraukos",
+      "ru": "Не удалось удалить фото"
+    },
+    "loginRequiredToUpdate": {
+      "en": "Login required to update your account.",
+      "lt": "Norint atnaujinti paskyrą reikia prisijungti.",
+      "ru": "Чтобы изменить аккаунт, нужно войти."
+    }
+  },
+  "role": {
+    "admin": {
+      "en": "Admin",
+      "lt": "Administratorius",
+      "ru": "Администратор"
+    },
+    "personal": {
+      "en": "Staff",
+      "lt": "Darbuotojas",
+      "ru": "Сотрудник"
+    },
+    "parishioner": {
+      "en": "Customer",
+      "lt": "Klientas",
+      "ru": "Клиент"
+    }
+  },
+  "roleCopy": {
+    "admin": {
+      "en": "Admin · full access",
+      "lt": "Administratorius · visos teisės",
+      "ru": "Администратор · полный доступ"
+    },
+    "personal": {
+      "en": "Staff · terminal and orders",
+      "lt": "Darbuotojas · terminalas ir užsakymai",
+      "ru": "Сотрудник · терминал и заказы"
+    },
+    "parishioner": {
+      "en": "Customer",
+      "lt": "Klientas",
+      "ru": "Клиент"
+    }
+  },
+  "overview": {
+    "ordersAllUsers": {
+      "en": "Orders (all users)",
+      "lt": "Užsakymai (visi naudotojai)",
+      "ru": "Заказы (все пользователи)"
+    },
+    "totalOrders": {
+      "en": "Total orders",
+      "lt": "Iš viso užsakymų",
+      "ru": "Всего заказов"
+    },
+    "itemsSoldAll": {
+      "en": "Items sold (all)",
+      "lt": "Parduota prekių (visos)",
+      "ru": "Продано позиций (всего)"
+    },
+    "totalItems": {
+      "en": "Total items",
+      "lt": "Iš viso prekių",
+      "ru": "Всего позиций"
+    },
+    "thisWeek": {
+      "en": "This week",
+      "lt": "Ši savaitė",
+      "ru": "На этой неделе"
+    },
+    "revenueAllOrders": {
+      "en": "Revenue (all orders)",
+      "lt": "Pajamos (visi užsakymai)",
+      "ru": "Выручка (все заказы)"
+    },
+    "totalSpent": {
+      "en": "Total spent",
+      "lt": "Iš viso išleista",
+      "ru": "Всего потрачено"
+    },
+    "registeredUsers": {
+      "en": "Registered users",
+      "lt": "Registruoti naudotojai",
+      "ru": "Зарегистрированные пользователи"
+    },
+    "ordersPerDay": {
+      "en": "Orders per day · last 14 days",
+      "lt": "Užsakymai per dieną · paskutinės 14 dienų",
+      "ru": "Заказы по дням · последние 14 дней"
+    },
+    "noOrders": {
+      "en": "No orders yet.",
+      "lt": "Užsakymų dar nėra.",
+      "ru": "Заказов пока нет."
+    },
+    "dayTooltip": {
+      "en": "{label}: {orders}",
+      "lt": "{label}: {orders}",
+      "ru": "{label}: {orders}"
+    }
+  },
+  "analytics": {
+    "mostOrdered": {
+      "en": "Most ordered",
+      "lt": "Dažniausiai užsakoma",
+      "ru": "Чаще всего заказывают"
+    },
+    "optionChoices": {
+      "en": "Option choices",
+      "lt": "Pasirinktos opcijos",
+      "ru": "Выбор опций"
+    },
+    "noOrdersInRange": {
+      "en": "No orders in this range.",
+      "lt": "Šiame intervale užsakymų nėra.",
+      "ru": "В этом диапазоне заказов нет."
+    },
+    "noOrdersYetOwn": {
+      "en": "No orders yet. Order from the Terminal to see your top products here.",
+      "lt": "Užsakymų dar nėra. Užsisakykite terminale ir čia pamatysite populiariausias prekes.",
+      "ru": "Заказов пока нет. Оформите заказ в терминале — и здесь появятся ваши любимые позиции."
+    },
+    "noOptionData": {
+      "en": "No option data in this range.",
+      "lt": "Šiame intervale opcijų duomenų nėra.",
+      "ru": "В этом диапазоне нет данных по опциям."
+    }
+  },
+  "range": {
+    "allTime": {
+      "en": "All time",
+      "lt": "Visas laikas",
+      "ru": "За всё время"
+    },
+    "lastSunday": {
+      "en": "Last Sunday",
+      "lt": "Paskutinį sekmadienį",
+      "ru": "Прошлое воскресенье"
+    },
+    "last2Weeks": {
+      "en": "Last 2 weeks",
+      "lt": "Paskutinės 2 savaitės",
+      "ru": "Последние 2 недели"
+    },
+    "lastMonth": {
+      "en": "Last month",
+      "lt": "Paskutinis mėnuo",
+      "ru": "Последний месяц"
+    },
+    "last3Months": {
+      "en": "Last 3 months",
+      "lt": "Paskutiniai 3 mėnesiai",
+      "ru": "Последние 3 месяца"
+    },
+    "custom": {
+      "en": "Custom range",
+      "lt": "Pasirinktas intervalas",
+      "ru": "Свой диапазон"
+    }
+  },
+  "orders": {
+    "loadingOrders": {
+      "en": "Loading orders…",
+      "lt": "Įkeliami užsakymai…",
+      "ru": "Загрузка заказов…"
+    },
+    "summary": {
+      "en": "{orders} · {items}",
+      "lt": "{orders} · {items}",
+      "ru": "{orders} · {items}"
+    },
+    "titleAll": {
+      "en": "All orders — line items",
+      "lt": "Visi užsakymai — prekių eilutės",
+      "ru": "Все заказы — позиции"
+    },
+    "titleMine": {
+      "en": "Your orders",
+      "lt": "Jūsų užsakymai",
+      "ru": "Ваши заказы"
+    },
+    "descAll": {
+      "en": "Every customer's line items. Default range is the last 30 days; filter, sort, group, and export.",
+      "lt": "Visų klientų prekių eilutės. Numatytasis intervalas — paskutinės 30 dienų; filtruokite, rikiuokite, grupuokite ir eksportuokite.",
+      "ru": "Позиции заказов всех клиентов. По умолчанию — последние 30 дней; фильтруйте, сортируйте, группируйте и экспортируйте."
+    },
+    "descMine": {
+      "en": "Line items from your orders. Default range is the last 30 days; change dates, sort, group, and export.",
+      "lt": "Jūsų užsakymų prekių eilutės. Numatytasis intervalas — paskutinės 30 dienų; keiskite datas, rikiuokite, grupuokite ir eksportuokite.",
+      "ru": "Позиции ваших заказов. По умолчанию — последние 30 дней; меняйте даты, сортируйте, группируйте и экспортируйте."
+    }
+  },
+  "users": {
+    "loadingUsers": {
+      "en": "Loading users…",
+      "lt": "Įkeliami naudotojai…",
+      "ru": "Загрузка пользователей…"
+    },
+    "noUsers": {
+      "en": "No users found.",
+      "lt": "Naudotojų nerasta.",
+      "ru": "Пользователей не найдено."
+    },
+    "joined": {
+      "en": "Joined",
+      "lt": "Prisijungė",
+      "ru": "Зарегистрирован"
+    },
+    "loadDirectoryFailed": {
+      "en": "Unable to load user directory",
+      "lt": "Nepavyko įkelti naudotojų sąrašo",
+      "ru": "Не удалось загрузить список пользователей"
+    }
+  }
+}

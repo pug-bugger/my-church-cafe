@@ -5,9 +5,11 @@ import { toast } from "sonner";
 import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 import type { ServerOrder } from "@/types";
 import { apiFetch } from "@/lib/api";
+import { useTranslation } from "@/i18n";
 import { getAuthToken } from "@/lib/auth";
 
 export function OrdersReportSection() {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<ServerOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,13 +25,13 @@ export function OrdersReportSection() {
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to load orders";
+        err instanceof Error ? err.message : t("errors.loadOrders");
       toast.error(message);
       setOrders([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void fetchAll();
@@ -40,8 +42,8 @@ export function OrdersReportSection() {
       orders={orders}
       loading={loading}
       showUserColumns
-      title="All orders"
-      description="Line items from every customer. Default range is the last 30 days; adjust dates, sort, group, then export."
+      title={t("manage.report.allOrders")}
+      description={t("manage.report.allOrdersDescription")}
     />
   );
 }

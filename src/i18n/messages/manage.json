@@ -1,0 +1,1314 @@
+{
+  "sectionsLabel": {
+    "en": "Manage sections",
+    "lt": "Valdymo skiltys",
+    "ru": "Разделы управления"
+  },
+  "tab": {
+    "products": {
+      "en": "Products",
+      "lt": "Prekės",
+      "ru": "Товары"
+    },
+    "productsTip": {
+      "en": "Prices, visibility, which options each item offers",
+      "lt": "Kainos, matomumas, kokias opcijas turi kiekviena prekė",
+      "ru": "Цены, видимость и опции каждой позиции"
+    },
+    "options": {
+      "en": "Options",
+      "lt": "Opcijos",
+      "ru": "Опции"
+    },
+    "optionsTip": {
+      "en": "Reusable questions like Milk or Take away",
+      "lt": "Pakartotinai naudojami klausimai, pvz., Pienas ar Išsinešti",
+      "ru": "Повторно используемые вопросы: молоко, с собой и т. п."
+    },
+    "users": {
+      "en": "People",
+      "lt": "Žmonės",
+      "ru": "Люди"
+    },
+    "usersTip": {
+      "en": "Accounts and roles",
+      "lt": "Paskyros ir rolės",
+      "ru": "Аккаунты и роли"
+    },
+    "reports": {
+      "en": "Reports",
+      "lt": "Ataskaitos",
+      "ru": "Отчёты"
+    },
+    "reportsTip": {
+      "en": "Export line items",
+      "lt": "Eksportuoti prekių eilutes",
+      "ru": "Экспорт позиций"
+    },
+    "stats": {
+      "en": "Stats",
+      "lt": "Statistika",
+      "ru": "Статистика"
+    }
+  },
+  "product": {
+    "title": {
+      "en": "Products",
+      "lt": "Prekės",
+      "ru": "Товары"
+    },
+    "subtitle": {
+      "en": "Search, then edit in the panel beside the list.",
+      "lt": "Ieškokite, tada redaguokite šone esančiame skydelyje.",
+      "ru": "Найдите товар и правьте его в панели рядом со списком."
+    },
+    "searchPlaceholder": {
+      "en": "Search products…",
+      "lt": "Ieškoti prekių…",
+      "ru": "Поиск товаров…"
+    },
+    "searchLabel": {
+      "en": "Search products",
+      "lt": "Ieškoti prekių",
+      "ru": "Поиск товаров"
+    },
+    "addMenuItem": {
+      "en": "Add menu item",
+      "lt": "Pridėti prekę",
+      "ru": "Добавить позицию"
+    },
+    "addDialogDescription": {
+      "en": "Choose a category and fill in the product details.",
+      "lt": "Pasirinkite kategoriją ir užpildykite prekės duomenis.",
+      "ru": "Выберите категорию и заполните данные товара."
+    },
+    "columnProduct": {
+      "en": "Product",
+      "lt": "Prekė",
+      "ru": "Товар"
+    },
+    "columnGroup": {
+      "en": "Group",
+      "lt": "Grupė",
+      "ru": "Группа"
+    },
+    "columnOptions": {
+      "en": "Options",
+      "lt": "Opcijos",
+      "ru": "Опции"
+    },
+    "filterLive": {
+      "en": "Live",
+      "lt": "Rodoma",
+      "ru": "В продаже"
+    },
+    "filterHidden": {
+      "en": "Hidden",
+      "lt": "Paslėpta",
+      "ru": "Скрыто"
+    },
+    "statusLive": {
+      "en": "Live",
+      "lt": "Rodoma",
+      "ru": "В продаже"
+    },
+    "statusHidden": {
+      "en": "Hidden",
+      "lt": "Paslėpta",
+      "ru": "Скрыто"
+    },
+    "statusBackAtMidnight": {
+      "en": "Back at midnight",
+      "lt": "Grįš vidurnaktį",
+      "ru": "Вернётся в полночь"
+    },
+    "selectAllInView": {
+      "en": "Select everything in view",
+      "lt": "Pažymėti viską, kas matoma",
+      "ru": "Выбрать всё, что видно"
+    },
+    "selectNamed": {
+      "en": "Select {name}",
+      "lt": "Pažymėti: {name}",
+      "ru": "Выбрать: {name}"
+    },
+    "editNamed": {
+      "en": "Edit {name}",
+      "lt": "Redaguoti: {name}",
+      "ru": "Изменить: {name}"
+    },
+    "toggleVisibilityNamed": {
+      "en": "Toggle visibility for {name}",
+      "lt": "Perjungti matomumą: {name}",
+      "ru": "Переключить видимость: {name}"
+    },
+    "showTooltip": {
+      "en": "Put back on the menu",
+      "lt": "Grąžinti į meniu",
+      "ru": "Вернуть в меню"
+    },
+    "hideTooltip": {
+      "en": "Hide from menu and terminal",
+      "lt": "Paslėpti iš meniu ir terminalo",
+      "ru": "Скрыть из меню и терминала"
+    },
+    "hideTillMidnight": {
+      "en": "Hide till midnight",
+      "lt": "Slėpti iki vidurnakčio",
+      "ru": "Скрыть до полуночи"
+    },
+    "hideTillMidnightTooltip": {
+      "en": "Comes back automatically at midnight",
+      "lt": "Automatiškai grįš vidurnaktį",
+      "ru": "Вернётся автоматически в полночь"
+    },
+    "editDetails": {
+      "en": "Edit details",
+      "lt": "Redaguoti duomenis",
+      "ru": "Изменить данные"
+    },
+    "closePanel": {
+      "en": "Close panel",
+      "lt": "Uždaryti skydelį",
+      "ru": "Закрыть панель"
+    },
+    "deletePermanently": {
+      "en": "Delete permanently",
+      "lt": "Ištrinti negrįžtamai",
+      "ru": "Удалить навсегда"
+    },
+    "noMatches": {
+      "en": "Nothing matches those filters.",
+      "lt": "Pagal šiuos filtrus nieko nerasta.",
+      "ru": "По этим фильтрам ничего нет."
+    },
+    "deleteTitle": {
+      "en": "Delete product",
+      "lt": "Ištrinti prekę",
+      "ru": "Удалить товар"
+    },
+    "deleteBody": {
+      "en": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+      "lt": "Tikrai ištrinti „{name}“? Šio veiksmo negalima atšaukti.",
+      "ru": "Точно удалить «{name}»? Это действие нельзя отменить."
+    },
+    "deleted": {
+      "en": "\"{name}\" deleted",
+      "lt": "„{name}“ ištrinta",
+      "ru": "«{name}» удалено"
+    },
+    "deleteFailed": {
+      "en": "Failed to delete product",
+      "lt": "Nepavyko ištrinti prekės",
+      "ru": "Не удалось удалить товар"
+    },
+    "visibilityUpdated": {
+      "en": "Visibility updated",
+      "lt": "Matomumas atnaujintas",
+      "ru": "Видимость обновлена"
+    },
+    "visibilityUpdatedMany": {
+      "en": {
+        "one": "{count} product updated",
+        "other": "{count} products updated"
+      },
+      "lt": {
+        "one": "atnaujinta {count} prekė",
+        "few": "atnaujintos {count} prekės",
+        "other": "atnaujinta {count} prekių"
+      },
+      "ru": {
+        "one": "обновлён {count} товар",
+        "few": "обновлено {count} товара",
+        "many": "обновлено {count} товаров"
+      }
+    },
+    "visibilityFailed": {
+      "en": "Failed to update visibility",
+      "lt": "Nepavyko atnaujinti matomumo",
+      "ru": "Не удалось обновить видимость"
+    },
+    "add": {
+      "en": "Add",
+      "lt": "Pridėti",
+      "ru": "Добавить"
+    },
+    "actions": {
+      "en": "Product actions",
+      "lt": "Prekės veiksmai",
+      "ru": "Действия с товаром"
+    },
+    "moreActionsFor": {
+      "en": "More actions for {name}",
+      "lt": "Daugiau veiksmų: {name}",
+      "ru": "Другие действия: {name}"
+    },
+    "hideNamed": {
+      "en": "Hide {name} from the menu",
+      "lt": "Paslėpti iš meniu: {name}",
+      "ru": "Скрыть из меню: {name}"
+    },
+    "showNamed": {
+      "en": "Put {name} back on the menu",
+      "lt": "Grąžinti į meniu: {name}",
+      "ru": "Вернуть в меню: {name}"
+    },
+    "backOnMenu": {
+      "en": "Back on the menu",
+      "lt": "Grąžinta į meniu",
+      "ru": "Снова в меню"
+    },
+    "hiddenFromMenu": {
+      "en": "Hidden from the menu",
+      "lt": "Paslėpta iš meniu",
+      "ru": "Скрыто из меню"
+    },
+    "hideFromMenu": {
+      "en": "Hide from the menu",
+      "lt": "Paslėpti iš meniu",
+      "ru": "Скрыть из меню"
+    },
+    "showOnMenu": {
+      "en": "Put back on the menu",
+      "lt": "Grąžinti į meniu",
+      "ru": "Вернуть в меню"
+    },
+    "noneYet": {
+      "en": "No products yet",
+      "lt": "Prekių dar nėra",
+      "ru": "Товаров пока нет"
+    },
+    "noneYetHint": {
+      "en": "Add the first item with the button above.",
+      "lt": "Pridėkite pirmą prekę viršuje esančiu mygtuku.",
+      "ru": "Добавьте первый товар кнопкой выше."
+    },
+    "nothingMatches": {
+      "en": "Nothing matches",
+      "lt": "Nieko nerasta",
+      "ru": "Ничего не найдено"
+    },
+    "nothingMatchesHint": {
+      "en": "Try a different search or filter.",
+      "lt": "Pabandykite kitą paieškos žodį ar filtrą.",
+      "ru": "Попробуйте другой запрос или фильтр."
+    },
+    "deleteBodyMobile": {
+      "en": "Delete \"{name}\"? This cannot be undone. To take it off the menu temporarily, hide it instead.",
+      "lt": "Ištrinti „{name}“? Šio veiksmo negalima atšaukti. Jei norite laikinai išimti iš meniu, verčiau paslėpkite.",
+      "ru": "Удалить «{name}»? Это нельзя отменить. Чтобы временно убрать из меню, лучше скройте."
+    },
+    "deleteFailedShort": {
+      "en": "Failed to delete",
+      "lt": "Nepavyko ištrinti",
+      "ru": "Не удалось удалить"
+    },
+    "columnArrange": {
+      "en": "Arrange",
+      "lt": "Tvarka",
+      "ru": "Порядок"
+    },
+    "orderHint": {
+      "en": "The arrows set the order products are listed in on the terminal and the menu board. A product moves within its own group.",
+      "lt": "Rodyklės nustato, kokia tvarka prekės rodomos terminale ir meniu lentoje. Prekė keičia vietą tik savo grupėje.",
+      "ru": "Стрелки задают порядок, в котором товары показываются в терминале и на доске меню. Товар перемещается только внутри своей группы."
+    },
+    "moveUp": {
+      "en": "Move up",
+      "lt": "Pakelti aukščiau",
+      "ru": "Переместить выше"
+    },
+    "moveDown": {
+      "en": "Move down",
+      "lt": "Nuleisti žemiau",
+      "ru": "Переместить ниже"
+    },
+    "moveUpNamed": {
+      "en": "Move {name} up",
+      "lt": "Pakelti aukščiau: {name}",
+      "ru": "Переместить выше: {name}"
+    },
+    "moveDownNamed": {
+      "en": "Move {name} down",
+      "lt": "Nuleisti žemiau: {name}",
+      "ru": "Переместить ниже: {name}"
+    },
+    "reorderFailed": {
+      "en": "Could not save the new order",
+      "lt": "Nepavyko išsaugoti naujos tvarkos",
+      "ru": "Не удалось сохранить новый порядок"
+    }
+  },
+  "productForm": {
+    "category": {
+      "en": "Category",
+      "lt": "Kategorija",
+      "ru": "Категория"
+    },
+    "selectCategory": {
+      "en": "Select category",
+      "lt": "Pasirinkite kategoriją",
+      "ru": "Выберите категорию"
+    },
+    "categoryLocked": {
+      "en": "Category cannot be changed when editing.",
+      "lt": "Redaguojant kategorijos pakeisti negalima.",
+      "ru": "При редактировании категорию изменить нельзя."
+    },
+    "photo": {
+      "en": "Photo",
+      "lt": "Nuotrauka",
+      "ru": "Фото"
+    },
+    "photoHint": {
+      "en": "JPEG, PNG, GIF, or WebP · max 5 MB. Saved after you submit the form.",
+      "lt": "JPEG, PNG, GIF arba WebP · iki 5 MB. Išsaugoma pateikus formą.",
+      "ru": "JPEG, PNG, GIF или WebP · до 5 МБ. Сохраняется после отправки формы."
+    },
+    "drinkSubtype": {
+      "en": "Drink subtype",
+      "lt": "Gėrimo potipis",
+      "ru": "Подтип напитка"
+    },
+    "selectSubtype": {
+      "en": "Select subtype",
+      "lt": "Pasirinkite potipį",
+      "ru": "Выберите подтип"
+    },
+    "noSubtypes": {
+      "en": "No subtypes — run DB migration",
+      "lt": "Potipių nėra — įvykdykite DB migraciją",
+      "ru": "Подтипов нет — выполните миграцию БД"
+    },
+    "subtypeHint": {
+      "en": "e.g. Coffee, Other drinks, Season drinks",
+      "lt": "pvz., Kava, Kiti gėrimai, Sezoniniai gėrimai",
+      "ru": "напр., кофе, другие напитки, сезонные напитки"
+    },
+    "optionsForDrink": {
+      "en": "Options for this drink",
+      "lt": "Šio gėrimo opcijos",
+      "ru": "Опции этого напитка"
+    },
+    "optionsHint": {
+      "en": "Create reusable options in the catalog above, then tick the ones this drink should offer.",
+      "lt": "Sukurkite pakartotinai naudojamas opcijas kataloge, tada pažymėkite tas, kurias turi turėti šis gėrimas.",
+      "ru": "Создайте повторно используемые опции в каталоге, затем отметьте нужные этому напитку."
+    },
+    "optionsUnavailable": {
+      "en": "API URL not configured; options cannot be loaded.",
+      "lt": "API adresas nesukonfigūruotas; opcijų įkelti negalima.",
+      "ru": "Адрес API не настроен, опции загрузить нельзя."
+    },
+    "noCatalogOptions": {
+      "en": "No catalog options yet. Add some under Options first.",
+      "lt": "Kataloge dar nėra opcijų. Pirma pridėkite jų skiltyje Opcijos.",
+      "ru": "В каталоге пока нет опций. Сначала добавьте их в разделе «Опции»."
+    },
+    "typeCheckbox": {
+      "en": "checkbox",
+      "lt": "žymimasis langelis",
+      "ru": "флажок"
+    },
+    "typePicklist": {
+      "en": "picklist",
+      "lt": "sąrašas",
+      "ru": "список"
+    },
+    "choiceCount": {
+      "en": {
+        "one": "{count} choice",
+        "other": "{count} choices"
+      },
+      "lt": {
+        "one": "{count} pasirinkimas",
+        "few": "{count} pasirinkimai",
+        "other": "{count} pasirinkimų"
+      },
+      "ru": {
+        "one": "{count} вариант",
+        "few": "{count} варианта",
+        "many": "{count} вариантов"
+      }
+    },
+    "updateItem": {
+      "en": "Update item",
+      "lt": "Atnaujinti prekę",
+      "ru": "Обновить позицию"
+    },
+    "addCategory": {
+      "en": "Add {category}",
+      "lt": "Pridėti: {category}",
+      "ru": "Добавить: {category}"
+    },
+    "addItem": {
+      "en": "Add item",
+      "lt": "Pridėti prekę",
+      "ru": "Добавить позицию"
+    },
+    "itemUpdated": {
+      "en": "Item updated",
+      "lt": "Prekė atnaujinta",
+      "ru": "Позиция обновлена"
+    },
+    "itemCreated": {
+      "en": "{category} created",
+      "lt": "{category} sukurta",
+      "ru": "{category} создано"
+    },
+    "invalidPrice": {
+      "en": "Invalid price",
+      "lt": "Neteisinga kaina",
+      "ru": "Неверная цена"
+    },
+    "selectSubtypeFirst": {
+      "en": "Select a drink subtype",
+      "lt": "Pasirinkite gėrimo potipį",
+      "ru": "Выберите подтип напитка"
+    },
+    "saveFailed": {
+      "en": "Failed to save menu item",
+      "lt": "Nepavyko išsaugoti prekės",
+      "ru": "Не удалось сохранить позицию"
+    },
+    "nameRequired": {
+      "en": "Name is required",
+      "lt": "Vardas yra būtinas",
+      "ru": "Название обязательно"
+    },
+    "priceRequired": {
+      "en": "Price is required",
+      "lt": "Kaina yra būtina",
+      "ru": "Цена обязательна"
+    },
+    "categoryRequired": {
+      "en": "Category is required",
+      "lt": "Kategorija yra būtina",
+      "ru": "Категория обязательна"
+    },
+    "newProduct": {
+      "en": "New product",
+      "lt": "Nauja prekė",
+      "ru": "Новый товар"
+    },
+    "newProductSubtitle": {
+      "en": "Add something to the menu",
+      "lt": "Pridėkite ką nors į meniu",
+      "ru": "Добавьте что-нибудь в меню"
+    },
+    "createProduct": {
+      "en": "Create product",
+      "lt": "Sukurti prekę",
+      "ru": "Создать товар"
+    },
+    "productCreated": {
+      "en": "Product created",
+      "lt": "Prekė sukurta",
+      "ru": "Товар создан"
+    },
+    "productUpdated": {
+      "en": "Product updated",
+      "lt": "Prekė atnaujinta",
+      "ru": "Товар обновлён"
+    },
+    "categoryLockedShort": {
+      "en": "Category can’t be changed after a product is created.",
+      "lt": "Sukūrus prekę kategorijos pakeisti nebegalima.",
+      "ru": "После создания товара категорию изменить нельзя."
+    },
+    "choosePhoto": {
+      "en": "Choose a photo",
+      "lt": "Pasirinkti nuotrauką",
+      "ru": "Выбрать фото"
+    },
+    "photoHintMobile": {
+      "en": "Tap the square to choose one. It uploads when you save.",
+      "lt": "Paspauskite kvadratą, kad pasirinktumėte. Įkeliama išsaugojus.",
+      "ru": "Нажмите на квадрат, чтобы выбрать. Загрузится при сохранении."
+    },
+    "removeSelection": {
+      "en": "Remove selection",
+      "lt": "Pašalinti pasirinkimą",
+      "ru": "Убрать выбор"
+    },
+    "namePlaceholder": {
+      "en": "Flat white",
+      "lt": "Flat white",
+      "ru": "Флэт уайт"
+    },
+    "descriptionPlaceholder": {
+      "en": "Optional — shown on the menu",
+      "lt": "Neprivaloma — rodoma meniu",
+      "ru": "Необязательно — показывается в меню"
+    },
+    "pricePlaceholder": {
+      "en": "2.50",
+      "lt": "2,50",
+      "ru": "2,50"
+    },
+    "noSubtypesFound": {
+      "en": "No subtypes found — run migration_drink_subtypes.sql.",
+      "lt": "Potipių nerasta — įvykdykite migration_drink_subtypes.sql.",
+      "ru": "Подтипы не найдены — выполните migration_drink_subtypes.sql."
+    },
+    "optionsOffered": {
+      "en": "Options this drink offers",
+      "lt": "Šio gėrimo opcijos",
+      "ru": "Опции этого напитка"
+    },
+    "optionsOfferedHint": {
+      "en": "Reusable questions from the Options tab. Tick the ones to ask at the terminal.",
+      "lt": "Pakartotinai naudojami klausimai iš skilties Opcijos. Pažymėkite tuos, kurių klausti terminale.",
+      "ru": "Повторно используемые вопросы из раздела «Опции». Отметьте те, что задавать в терминале."
+    },
+    "noCatalogOptionsShort": {
+      "en": "No options in the catalog yet.",
+      "lt": "Kataloge dar nėra opcijų.",
+      "ru": "В каталоге пока нет опций."
+    },
+    "enterValidPrice": {
+      "en": "Enter a valid price",
+      "lt": "Įveskite teisingą kainą",
+      "ru": "Введите корректную цену"
+    },
+    "selectSubtypeMigration": {
+      "en": "Select a drink subtype — run the subtype migration if there are none",
+      "lt": "Pasirinkite gėrimo potipį — jei jų nėra, įvykdykite potipių migraciją",
+      "ru": "Выберите подтип напитка — если их нет, выполните миграцию подтипов"
+    },
+    "saveFailedShort": {
+      "en": "Failed to save the product",
+      "lt": "Nepavyko išsaugoti prekės",
+      "ru": "Не удалось сохранить товар"
+    }
+  },
+  "option": {
+    "title": {
+      "en": "Options",
+      "lt": "Opcijos",
+      "ru": "Опции"
+    },
+    "subtitle": {
+      "en": "An option is a question the barista answers when adding a drink — a toggle like Take away, or a picklist like Milk. Build it once here, then tick it on any product.",
+      "lt": "Opcija — tai klausimas, į kurį baristas atsako pridėdamas gėrimą: perjungiklis, pvz., Išsinešti, arba sąrašas, pvz., Pienas. Sukurkite ją čia vieną kartą ir pažymėkite bet kuriai prekei.",
+      "ru": "Опция — это вопрос, на который бариста отвечает при добавлении напитка: переключатель («с собой») или список («молоко»). Создайте её здесь один раз и отмечайте у любого товара."
+    },
+    "unavailable": {
+      "en": "Set NEXT_PUBLIC_API_URL to manage catalog options.",
+      "lt": "Norėdami valdyti katalogo opcijas, nustatykite NEXT_PUBLIC_API_URL.",
+      "ru": "Чтобы управлять опциями каталога, задайте NEXT_PUBLIC_API_URL."
+    },
+    "label": {
+      "en": "Option label",
+      "lt": "Opcijos pavadinimas",
+      "ru": "Название опции"
+    },
+    "labelPlaceholder": {
+      "en": "e.g. Take away, Milk",
+      "lt": "pvz., Išsinešti, Pienas",
+      "ru": "напр., с собой, молоко"
+    },
+    "type": {
+      "en": "Type",
+      "lt": "Tipas",
+      "ru": "Тип"
+    },
+    "typeCheckbox": {
+      "en": "Checkbox (on / off)",
+      "lt": "Žymimasis langelis (įjungta / išjungta)",
+      "ru": "Флажок (вкл. / выкл.)"
+    },
+    "typeSelect": {
+      "en": "Picklist",
+      "lt": "Sąrašas",
+      "ru": "Список"
+    },
+    "checkboxExtra": {
+      "en": "Extra price when checked",
+      "lt": "Papildoma kaina, kai pažymėta",
+      "ru": "Надбавка при включении"
+    },
+    "extraWhenOn": {
+      "en": "Extra when on",
+      "lt": "Papildomai, kai įjungta",
+      "ru": "Надбавка, когда включено"
+    },
+    "choices": {
+      "en": "Choices",
+      "lt": "Pasirinkimai",
+      "ru": "Варианты"
+    },
+    "choiceLabelPlaceholder": {
+      "en": "Label (e.g. Oat milk)",
+      "lt": "Pavadinimas (pvz., Avižų pienas)",
+      "ru": "Название (напр., овсяное молоко)"
+    },
+    "extraPlaceholder": {
+      "en": "Extra €",
+      "lt": "Papildomai €",
+      "ru": "Надбавка €"
+    },
+    "extraShort": {
+      "en": "Extra",
+      "lt": "Papildomai",
+      "ru": "Надбавка"
+    },
+    "newChoicePlaceholder": {
+      "en": "New choice label",
+      "lt": "Naujo pasirinkimo pavadinimas",
+      "ru": "Название нового варианта"
+    },
+    "addChoice": {
+      "en": "Add choice",
+      "lt": "Pridėti pasirinkimą",
+      "ru": "Добавить вариант"
+    },
+    "createOption": {
+      "en": "Create option",
+      "lt": "Sukurti opciją",
+      "ru": "Создать опцию"
+    },
+    "catalog": {
+      "en": "Catalog",
+      "lt": "Katalogas",
+      "ru": "Каталог"
+    },
+    "noOptionsYet": {
+      "en": "No options yet. Create one above.",
+      "lt": "Opcijų dar nėra. Sukurkite vieną viršuje.",
+      "ru": "Опций пока нет. Создайте одну выше."
+    },
+    "noExtra": {
+      "en": "no extra",
+      "lt": "be papildomos kainos",
+      "ru": "без надбавки"
+    },
+    "extraPriceFor": {
+      "en": "Extra price for {label}",
+      "lt": "Papildoma kaina: {label}",
+      "ru": "Надбавка за {label}"
+    },
+    "removeNamed": {
+      "en": "Remove {label}",
+      "lt": "Pašalinti: {label}",
+      "ru": "Убрать: {label}"
+    },
+    "created": {
+      "en": "Option created",
+      "lt": "Opcija sukurta",
+      "ru": "Опция создана"
+    },
+    "deleted": {
+      "en": "Option deleted",
+      "lt": "Opcija ištrinta",
+      "ru": "Опция удалена"
+    },
+    "choiceAdded": {
+      "en": "Choice added",
+      "lt": "Pasirinkimas pridėtas",
+      "ru": "Вариант добавлен"
+    },
+    "choiceRemoved": {
+      "en": "Choice removed",
+      "lt": "Pasirinkimas pašalintas",
+      "ru": "Вариант убран"
+    },
+    "priceUpdated": {
+      "en": "Price updated",
+      "lt": "Kaina atnaujinta",
+      "ru": "Цена обновлена"
+    },
+    "nameRequired": {
+      "en": "Name is required",
+      "lt": "Pavadinimas yra būtinas",
+      "ru": "Название обязательно"
+    },
+    "needOneChoice": {
+      "en": "Add at least one choice for a picklist option",
+      "lt": "Sąrašo opcijai pridėkite bent vieną pasirinkimą",
+      "ru": "Для списка добавьте хотя бы один вариант"
+    },
+    "enterLabel": {
+      "en": "Enter a label",
+      "lt": "Įveskite pavadinimą",
+      "ru": "Введите название"
+    },
+    "enterValidPrice": {
+      "en": "Enter a price of 0 or more",
+      "lt": "Įveskite 0 arba didesnę kainą",
+      "ru": "Введите цену 0 или больше"
+    },
+    "loginRequiredForPrices": {
+      "en": "Login required to change option prices",
+      "lt": "Norint keisti opcijų kainas reikia prisijungti",
+      "ru": "Чтобы менять цены опций, нужно войти"
+    },
+    "loadFailed": {
+      "en": "Could not load drink options",
+      "lt": "Nepavyko įkelti gėrimų opcijų",
+      "ru": "Не удалось загрузить опции напитков"
+    },
+    "createFailed": {
+      "en": "Failed to create",
+      "lt": "Nepavyko sukurti",
+      "ru": "Не удалось создать"
+    },
+    "deleteFailed": {
+      "en": "Failed to delete",
+      "lt": "Nepavyko ištrinti",
+      "ru": "Не удалось удалить"
+    },
+    "actionFailed": {
+      "en": "Action failed",
+      "lt": "Veiksmas nepavyko",
+      "ru": "Действие не выполнено"
+    },
+    "deleteTitle": {
+      "en": "Delete option",
+      "lt": "Ištrinti opciją",
+      "ru": "Удалить опцию"
+    },
+    "deleteBody": {
+      "en": "Remove \"{name}\" from the catalog? Products that use it will lose this assignment.",
+      "lt": "Pašalinti „{name}“ iš katalogo? Prekės, kurios ją naudoja, šio priskyrimo nebeturės.",
+      "ru": "Убрать «{name}» из каталога? Товары, где она используется, потеряют эту привязку."
+    },
+    "yesNo": {
+      "en": "Yes / No",
+      "lt": "Taip / Ne",
+      "ru": "Да / Нет"
+    },
+    "whenOn": {
+      "en": " · +{price} when on",
+      "lt": " · +{price} kai įjungta",
+      "ru": " · +{price} когда включено"
+    },
+    "noneYet": {
+      "en": "No options yet",
+      "lt": "Opcijų dar nėra",
+      "ru": "Опций пока нет"
+    },
+    "noneYetHint": {
+      "en": "Create one, then tick it on the drinks that should ask it.",
+      "lt": "Sukurkite vieną ir pažymėkite ją gėrimams, kurie turi jos klausti.",
+      "ru": "Создайте одну и отметьте её у напитков, которые должны её спрашивать."
+    },
+    "newOption": {
+      "en": "New option",
+      "lt": "Nauja opcija",
+      "ru": "Новая опция"
+    },
+    "newOptionSubtitle": {
+      "en": "A question drinks can ask",
+      "lt": "Klausimas, kurio gali klausti gėrimai",
+      "ru": "Вопрос, который могут задавать напитки"
+    },
+    "namePlaceholder": {
+      "en": "Milk",
+      "lt": "Pienas",
+      "ru": "Молоко"
+    },
+    "picklistNeedsChoices": {
+      "en": "A picklist needs its choices added afterwards.",
+      "lt": "Sąrašui pasirinkimus reikia pridėti vėliau.",
+      "ru": "Для списка варианты добавляются потом."
+    },
+    "checkboxExtraHint": {
+      "en": "Added to the price of every drink that asks this and is answered Yes.",
+      "lt": "Pridedama prie kiekvieno gėrimo kainos, kai į šį klausimą atsakoma Taip.",
+      "ru": "Добавляется к цене каждого напитка, где на этот вопрос ответили «Да»."
+    },
+    "editChoicesOf": {
+      "en": "Edit the choices and prices of {name}",
+      "lt": "Redaguoti pasirinkimus ir kainas: {name}",
+      "ru": "Изменить варианты и цены: {name}"
+    },
+    "deleteNamed": {
+      "en": "Delete {name}",
+      "lt": "Ištrinti: {name}",
+      "ru": "Удалить: {name}"
+    },
+    "choicesSubtitle": {
+      "en": "Each choice and what it adds to the price",
+      "lt": "Kiekvienas pasirinkimas ir kiek jis prideda prie kainos",
+      "ru": "Каждый вариант и сколько он добавляет к цене"
+    },
+    "valueExtraPrice": {
+      "en": "{label} · extra price",
+      "lt": "{label} · papildoma kaina",
+      "ru": "{label} · надбавка"
+    },
+    "newChoice": {
+      "en": "New choice",
+      "lt": "Naujas pasirinkimas",
+      "ru": "Новый вариант"
+    },
+    "newChoicePlaceholderShort": {
+      "en": "Oat",
+      "lt": "Avižų",
+      "ru": "Овсяное"
+    },
+    "giveOptionName": {
+      "en": "Give the option a name",
+      "lt": "Suteikite opcijai pavadinimą",
+      "ru": "Дайте опции название"
+    },
+    "giveChoiceLabel": {
+      "en": "Give the choice a label",
+      "lt": "Suteikite pasirinkimui pavadinimą",
+      "ru": "Дайте варианту название"
+    },
+    "createFailedShort": {
+      "en": "Failed to create option",
+      "lt": "Nepavyko sukurti opcijos",
+      "ru": "Не удалось создать опцию"
+    },
+    "addChoiceFailed": {
+      "en": "Failed to add choice",
+      "lt": "Nepavyko pridėti pasirinkimo",
+      "ru": "Не удалось добавить вариант"
+    },
+    "updatePriceFailed": {
+      "en": "Failed to update price",
+      "lt": "Nepavyko atnaujinti kainos",
+      "ru": "Не удалось обновить цену"
+    },
+    "removeFailed": {
+      "en": "Failed to remove",
+      "lt": "Nepavyko pašalinti",
+      "ru": "Не удалось убрать"
+    },
+    "loadFailedShort": {
+      "en": "Could not load options",
+      "lt": "Nepavyko įkelti opcijų",
+      "ru": "Не удалось загрузить опции"
+    },
+    "deleteBodyMobile": {
+      "en": "Delete \"{name}\"? Drinks that ask it will stop asking.",
+      "lt": "Ištrinti „{name}“? Gėrimai, kurie jos klausia, nustos klausti.",
+      "ru": "Удалить «{name}»? Напитки, где она спрашивается, перестанут её спрашивать."
+    },
+    "opensTicked": {
+      "en": "Opens ticked",
+      "lt": "Iš karto pažymėta",
+      "ru": "Сразу отмечена"
+    },
+    "opensTickedHint": {
+      "en": "The terminal shows this question already answered Yes.",
+      "lt": "Terminale šis klausimas iš karto atsakytas „Taip“.",
+      "ru": "В терминале на этот вопрос сразу стоит ответ «Да»."
+    },
+    "defaultChoice": {
+      "en": "Default",
+      "lt": "Numatytasis",
+      "ru": "По умолчанию"
+    },
+    "defaultChoiceHint": {
+      "en": "Mark the choice the terminal should open on. Leave every choice unmarked and it opens on the first one.",
+      "lt": "Pažymėkite pasirinkimą, kurį terminalas siūlo iš karto. Nieko nepažymėjus, siūlomas pirmasis.",
+      "ru": "Отметьте вариант, который терминал предлагает сразу. Если не отметить ни один, предлагается первый."
+    },
+    "defaultChoiceFor": {
+      "en": "Open on {label}",
+      "lt": "Siūlyti iš karto: {label}",
+      "ru": "Предлагать сразу: {label}"
+    },
+    "defaultUpdated": {
+      "en": "Default choice updated",
+      "lt": "Numatytasis pasirinkimas atnaujintas",
+      "ru": "Вариант по умолчанию обновлён"
+    },
+    "newChoiceHeading": {
+      "en": "New choice",
+      "lt": "Naujas pasirinkimas",
+      "ru": "Новый вариант"
+    },
+    "deleteChoiceTitle": {
+      "en": "Remove this choice?",
+      "lt": "Pašalinti šį pasirinkimą?",
+      "ru": "Удалить этот вариант?"
+    },
+    "deleteChoiceBody": {
+      "en": "\"{label}\" will be removed from {name}. Orders already placed keep what they were charged.",
+      "lt": "„{label}“ bus pašalintas iš „{name}“. Jau pateiktų užsakymų kaina nesikeis.",
+      "ru": "«{label}» будет удалён из «{name}». В уже оформленных заказах цена не изменится."
+    },
+    "removeRow": {
+      "en": "Remove this row",
+      "lt": "Pašalinti šią eilutę",
+      "ru": "Удалить эту строку"
+    }
+  },
+  "user": {
+    "title": {
+      "en": "Users",
+      "lt": "Naudotojai",
+      "ru": "Пользователи"
+    },
+    "subtitle": {
+      "en": "Admins can create, edit, and delete users. Personal staff can view the directory.",
+      "lt": "Administratoriai gali kurti, redaguoti ir ištrinti naudotojus. Darbuotojai gali matyti sąrašą.",
+      "ru": "Администраторы могут создавать, изменять и удалять пользователей. Сотрудники видят список."
+    },
+    "unavailable": {
+      "en": "Set NEXT_PUBLIC_API_URL to use user management.",
+      "lt": "Norėdami naudoti naudotojų valdymą, nustatykite NEXT_PUBLIC_API_URL.",
+      "ru": "Чтобы управлять пользователями, задайте NEXT_PUBLIC_API_URL."
+    },
+    "missingApiUrl": {
+      "en": "Missing NEXT_PUBLIC_API_URL.",
+      "lt": "Nenustatytas NEXT_PUBLIC_API_URL.",
+      "ru": "Не задан NEXT_PUBLIC_API_URL."
+    },
+    "signInAsStaff": {
+      "en": "Sign in as staff to view users.",
+      "lt": "Norėdami matyti naudotojus, prisijunkite kaip darbuotojas.",
+      "ru": "Чтобы видеть пользователей, войдите как сотрудник."
+    },
+    "noAccess": {
+      "en": "You do not have access to the user list.",
+      "lt": "Neturite prieigos prie naudotojų sąrašo.",
+      "ru": "У вас нет доступа к списку пользователей."
+    },
+    "loadFailed": {
+      "en": "Failed to load users",
+      "lt": "Nepavyko įkelti naudotojų",
+      "ru": "Не удалось загрузить пользователей"
+    },
+    "none": {
+      "en": "No users to show.",
+      "lt": "Nėra naudotojų.",
+      "ru": "Пользователей нет."
+    },
+    "addUser": {
+      "en": "Add user",
+      "lt": "Pridėti naudotoją",
+      "ru": "Добавить пользователя"
+    },
+    "newUser": {
+      "en": "New user",
+      "lt": "Naujas naudotojas",
+      "ru": "Новый пользователь"
+    },
+    "newUserDescription": {
+      "en": "Creates an account with a temporary password you share securely.",
+      "lt": "Sukuriama paskyra su laikinu slaptažodžiu, kurį perduosite saugiai.",
+      "ru": "Создаётся аккаунт с временным паролем, который вы передадите безопасно."
+    },
+    "editUser": {
+      "en": "Edit user",
+      "lt": "Redaguoti naudotoją",
+      "ru": "Изменить пользователя"
+    },
+    "editUserDescription": {
+      "en": "Update profile, role, or set a new password (optional).",
+      "lt": "Atnaujinkite profilį, rolę arba nustatykite naują slaptažodį (neprivaloma).",
+      "ru": "Обновите профиль, роль или задайте новый пароль (необязательно)."
+    },
+    "actions": {
+      "en": "Actions",
+      "lt": "Veiksmai",
+      "ru": "Действия"
+    },
+    "editNamed": {
+      "en": "Edit {name}",
+      "lt": "Redaguoti: {name}",
+      "ru": "Изменить: {name}"
+    },
+    "deleteNamed": {
+      "en": "Delete {name}",
+      "lt": "Ištrinti: {name}",
+      "ru": "Удалить: {name}"
+    },
+    "deleteTitle": {
+      "en": "Delete user?",
+      "lt": "Ištrinti naudotoją?",
+      "ru": "Удалить пользователя?"
+    },
+    "deleteBody": {
+      "en": "This removes {name} permanently. Orders history may still reference this user where applicable.",
+      "lt": "Naudotojas {name} bus ištrintas negrįžtamai. Užsakymų istorijoje jis vis dar gali būti nurodytas.",
+      "ru": "Пользователь {name} будет удалён навсегда. В истории заказов он может остаться упомянутым."
+    },
+    "deleted": {
+      "en": "User deleted",
+      "lt": "Naudotojas ištrintas",
+      "ru": "Пользователь удалён"
+    },
+    "deleteFailed": {
+      "en": "Delete failed",
+      "lt": "Ištrinti nepavyko",
+      "ru": "Не удалось удалить"
+    },
+    "created": {
+      "en": "User created",
+      "lt": "Naudotojas sukurtas",
+      "ru": "Пользователь создан"
+    },
+    "updated": {
+      "en": "User updated",
+      "lt": "Naudotojas atnaujintas",
+      "ru": "Пользователь обновлён"
+    },
+    "passwordRequired": {
+      "en": "Password is required for new users",
+      "lt": "Naujiems naudotojams slaptažodis yra būtinas",
+      "ru": "Для новых пользователей пароль обязателен"
+    },
+    "photoUploadFailed": {
+      "en": "User created but photo upload failed",
+      "lt": "Naudotojas sukurtas, bet nuotraukos įkelti nepavyko",
+      "ru": "Пользователь создан, но фото не загрузилось"
+    },
+    "notSignedIn": {
+      "en": "Not signed in",
+      "lt": "Neprisijungta",
+      "ru": "Вы не вошли"
+    },
+    "newPasswordOptional": {
+      "en": "New password (optional)",
+      "lt": "Naujas slaptažodis (neprivaloma)",
+      "ru": "Новый пароль (необязательно)"
+    },
+    "keepCurrentPassword": {
+      "en": "Leave blank to keep current",
+      "lt": "Palikite tuščią, kad nesikeistų",
+      "ru": "Оставьте пустым, чтобы не менять"
+    },
+    "create": {
+      "en": "Create",
+      "lt": "Sukurti",
+      "ru": "Создать"
+    },
+    "roleHintAdmin": {
+      "en": "Everything, including Manage",
+      "lt": "Viskas, įskaitant Valdymą",
+      "ru": "Всё, включая «Управление»"
+    },
+    "roleHintStaff": {
+      "en": "Terminal and the order queue",
+      "lt": "Terminalas ir užsakymų eilė",
+      "ru": "Терминал и очередь заказов"
+    },
+    "roleHintCustomer": {
+      "en": "Menu and the pickup board",
+      "lt": "Meniu ir atsiėmimo lenta",
+      "ru": "Меню и табло выдачи"
+    },
+    "loadFailedShort": {
+      "en": "Could not load people",
+      "lt": "Nepavyko įkelti žmonių",
+      "ru": "Не удалось загрузить людей"
+    },
+    "accountUpdated": {
+      "en": "Account updated",
+      "lt": "Paskyra atnaujinta",
+      "ru": "Аккаунт обновлён"
+    },
+    "accountCreated": {
+      "en": "Account created",
+      "lt": "Paskyra sukurta",
+      "ru": "Аккаунт создан"
+    },
+    "accountDeleted": {
+      "en": "Account deleted",
+      "lt": "Paskyra ištrinta",
+      "ru": "Аккаунт удалён"
+    },
+    "needPassword": {
+      "en": "A new account needs a password",
+      "lt": "Naujai paskyrai reikia slaptažodžio",
+      "ru": "Новому аккаунту нужен пароль"
+    },
+    "saveFailedShort": {
+      "en": "Failed to save the account",
+      "lt": "Nepavyko išsaugoti paskyros",
+      "ru": "Не удалось сохранить аккаунт"
+    },
+    "deleteAccount": {
+      "en": "Delete account",
+      "lt": "Ištrinti paskyrą",
+      "ru": "Удалить аккаунт"
+    },
+    "deleteAccountBody": {
+      "en": "Delete {name}? This cannot be undone.",
+      "lt": "Ištrinti {name}? Šio veiksmo negalima atšaukti.",
+      "ru": "Удалить {name}? Это действие нельзя отменить."
+    },
+    "newAccount": {
+      "en": "New account",
+      "lt": "Nauja paskyra",
+      "ru": "Новый аккаунт"
+    },
+    "editAccount": {
+      "en": "Edit account",
+      "lt": "Redaguoti paskyrą",
+      "ru": "Изменить аккаунт"
+    },
+    "noAccounts": {
+      "en": "No accounts",
+      "lt": "Paskyrų nėra",
+      "ru": "Аккаунтов нет"
+    },
+    "you": {
+      "en": "you",
+      "lt": "jūs",
+      "ru": "вы"
+    }
+  },
+  "report": {
+    "allOrders": {
+      "en": "All orders",
+      "lt": "Visi užsakymai",
+      "ru": "Все заказы"
+    },
+    "allOrdersDescription": {
+      "en": "Line items from every customer. Default range is the last 30 days; adjust dates, sort, group, then export.",
+      "lt": "Visų klientų prekių eilutės. Numatytasis intervalas — paskutinės 30 dienų; keiskite datas, rikiuokite, grupuokite ir eksportuokite.",
+      "ru": "Позиции заказов всех клиентов. По умолчанию — последние 30 дней; меняйте даты, сортируйте, группируйте и экспортируйте."
+    }
+  },
+  "table": {
+    "defaultTitle": {
+      "en": "Orders data",
+      "lt": "Užsakymų duomenys",
+      "ru": "Данные заказов"
+    },
+    "defaultDescription": {
+      "en": "Filter by date, sort columns, group rows, and export the current range.",
+      "lt": "Filtruokite pagal datą, rikiuokite stulpelius, grupuokite eilutes ir eksportuokite intervalą.",
+      "ru": "Фильтруйте по дате, сортируйте столбцы, группируйте строки и экспортируйте диапазон."
+    },
+    "from": {
+      "en": "From",
+      "lt": "Nuo",
+      "ru": "С"
+    },
+    "to": {
+      "en": "To",
+      "lt": "Iki",
+      "ru": "По"
+    },
+    "groupBy": {
+      "en": "Group by",
+      "lt": "Grupuoti pagal",
+      "ru": "Группировать по"
+    },
+    "groupNone": {
+      "en": "None",
+      "lt": "Negrupuoti",
+      "ru": "Без группировки"
+    },
+    "groupProduct": {
+      "en": "Product name",
+      "lt": "Prekės pavadinimą",
+      "ru": "Названию товара"
+    },
+    "groupDate": {
+      "en": "Order date",
+      "lt": "Užsakymo datą",
+      "ru": "Дате заказа"
+    },
+    "groupPrice": {
+      "en": "Unit price",
+      "lt": "Vieneto kainą",
+      "ru": "Цене за штуку"
+    },
+    "export": {
+      "en": "Export",
+      "lt": "Eksportuoti",
+      "ru": "Экспорт"
+    },
+    "exportCsv": {
+      "en": "CSV (.csv)",
+      "lt": "CSV (.csv)",
+      "ru": "CSV (.csv)"
+    },
+    "exportExcel": {
+      "en": "Excel (.xlsx)",
+      "lt": "Excel (.xlsx)",
+      "ru": "Excel (.xlsx)"
+    },
+    "showing": {
+      "en": "Showing {lines} in range ({orders} loaded).",
+      "lt": "Rodoma {lines} intervale (įkelta {orders}).",
+      "ru": "Показано {lines} в диапазоне (загружено {orders})."
+    },
+    "lineItemCount": {
+      "en": {
+        "one": "{count} line item",
+        "other": "{count} line items"
+      },
+      "lt": {
+        "one": "{count} prekės eilutė",
+        "few": "{count} prekių eilutės",
+        "other": "{count} prekių eilučių"
+      },
+      "ru": {
+        "one": "{count} позиция",
+        "few": "{count} позиции",
+        "many": "{count} позиций"
+      }
+    },
+    "noRows": {
+      "en": "No line items in this date range. Widen the range or place orders to see data here.",
+      "lt": "Šiame datų intervale prekių eilučių nėra. Praplėskite intervalą arba pateikite užsakymų.",
+      "ru": "В этом диапазоне дат позиций нет. Расширьте диапазон или оформите заказы."
+    },
+    "subtotal": {
+      "en": "(subtotal {amount})",
+      "lt": "(tarpinė suma {amount})",
+      "ru": "(подытог {amount})"
+    },
+    "columnCustomer": {
+      "en": "Customer",
+      "lt": "Klientas",
+      "ru": "Клиент"
+    },
+    "columnOrder": {
+      "en": "Order",
+      "lt": "Užsakymas",
+      "ru": "Заказ"
+    },
+    "columnOrderId": {
+      "en": "Order ID",
+      "lt": "Užsakymo ID",
+      "ru": "ID заказа"
+    },
+    "columnOrderNumber": {
+      "en": "Order #",
+      "lt": "Užsakymo Nr.",
+      "ru": "№ заказа"
+    },
+    "columnDate": {
+      "en": "Date",
+      "lt": "Data",
+      "ru": "Дата"
+    },
+    "columnProduct": {
+      "en": "Product",
+      "lt": "Prekė",
+      "ru": "Товар"
+    },
+    "columnQty": {
+      "en": "Qty",
+      "lt": "Kiekis",
+      "ru": "Кол-во"
+    },
+    "columnUnitPrice": {
+      "en": "Unit price",
+      "lt": "Vieneto kaina",
+      "ru": "Цена за шт."
+    },
+    "columnLineTotal": {
+      "en": "Line total",
+      "lt": "Eilutės suma",
+      "ru": "Сумма строки"
+    },
+    "sheetName": {
+      "en": "Orders",
+      "lt": "Uzsakymai",
+      "ru": "Zakazy"
+    }
+  }
+}

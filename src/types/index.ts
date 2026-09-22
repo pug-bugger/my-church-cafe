@@ -33,6 +33,12 @@ export type Drink = {
   availableOptions: DrinkOption[];
   /** false means hidden from menu and terminal (soft-deleted) */
   active?: boolean;
+  /**
+   * Position in the cafe's hand-picked running order (`products.sort_order`).
+   * The API already returns rows in it, so this is here for the Manage table's
+   * move up / move down, not for re-sorting on the client.
+   */
+  sortOrder?: number;
   /** ISO datetime until which the product is hidden; null means permanent or not hidden */
   available_until?: string | null;
 };

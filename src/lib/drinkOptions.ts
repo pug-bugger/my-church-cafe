@@ -1,13 +1,23 @@
 import type { DrinkOption } from "@/types";
 
+export type DrinkOptionValueApi = {
+  id: number;
+  label: string;
+  extra_price: number;
+  /** The choice this option opens on; at most one per definition. */
+  is_default?: boolean;
+};
+
 export type DrinkOptionDefinitionApi = {
   id: number;
   name: string;
   option_key: string;
   type: "checkbox" | "select";
   checkbox_extra_price: number;
+  /** Whether a checkbox option opens ticked. */
+  checkbox_default?: boolean;
   sort_order?: number;
-  values: { id: number; label: string; extra_price: number }[];
+  values: DrinkOptionValueApi[];
 };
 
 export function mapDefinitionToDrinkOption(
@@ -25,7 +35,12 @@ export function mapDefinitionToDrinkOption(
       extraPrice: Number(v.extra_price ?? 0),
     })),
     checkboxExtraPrice: Number(d.checkbox_extra_price ?? 0),
-    defaultValue: d.type === "checkbox" ? false : undefined,
+    // The answer the sheet opens on. A picklist with no default falls back to
+    // its first choice, which is what every option did before defaults existed.
+    defaultValue:
+      d.type === "checkbox"
+        ? Boolean(d.checkbox_default)
+        : (d.values ?? []).find((v) => v.is_default)?.label,
   };
 }
 

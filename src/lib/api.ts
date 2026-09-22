@@ -7,6 +7,7 @@
  * non-2xx response. Behaviour is intentionally identical to the hand-rolled
  * versions it replaces.
  */
+import { t } from "@/i18n";
 import { getAuthToken } from "./auth";
 
 /** Error thrown for any non-2xx response; carries the HTTP status + body. */
@@ -24,7 +25,7 @@ export class ApiError extends Error {
 /** Backend base URL (trailing slash trimmed), or throw if not configured. */
 export function getApiBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_API_URL;
-  if (!url) throw new ApiError("NEXT_PUBLIC_API_URL is not set", 0);
+  if (!url) throw new ApiError(t("errors.apiNotConfigured"), 0);
   return url.replace(/\/$/, "");
 }
 
@@ -41,7 +42,8 @@ export interface ApiFetchOptions {
    *  - omitted → attach the token only if one is present
    */
   auth?: boolean;
-  /** Message thrown when `auth: true` and no token is present. */
+  /** Message thrown when `auth: true` and no token is present. Pass a
+   *  translated string — these surface in toasts. */
   authError?: string;
   signal?: AbortSignal;
   headers?: Record<string, string>;
@@ -63,7 +65,7 @@ export async function apiFetch<T = unknown>(
     body,
     formData,
     auth,
-    authError = "Login required",
+    authError,
     signal,
     headers = {},
     credentials,
@@ -73,7 +75,7 @@ export async function apiFetch<T = unknown>(
 
   const token = getAuthToken();
   if (auth === true && !token) {
-    throw new ApiError(authError, 401);
+    throw new ApiError(authError ?? t("errors.loginRequired"), 401);
   }
   if (token && auth !== false) {
     finalHeaders.Authorization = `Bearer ${token}`;
@@ -103,7 +105,7 @@ export async function apiFetch<T = unknown>(
     const message =
       data && typeof data === "object" && typeof (data as { error?: unknown }).error === "string"
         ? (data as { error: string }).error
-        : `Request failed (${response.status})`;
+        : t("errors.requestFailed", { status: response.status });
     throw new ApiError(message, response.status, data);
   }
   return data as T;

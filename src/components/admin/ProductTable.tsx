@@ -18,15 +18,20 @@ import { ProductForm } from "./ProductForm";
 import { AddProductDialog } from "./AddProductDialog";
 import type { Drink } from "@/types";
 import { toast } from "sonner";
-import { Eye, EyeOff, Pencil, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, EyeOff, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  groupLabel,
+  useTranslation,
+  type MessageKey,
+  type TranslateFn,
+} from "@/i18n";
 import { formatPrice } from "@/lib/format";
 import { drinkSubtypeLabel } from "@/lib/drinkSubtypeGroups";
 import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
 import {
   isProductCategory,
   PRODUCT_CATEGORY,
-  PRODUCT_CATEGORY_LABEL,
   PRODUCT_CATEGORY_ORDER,
 } from "@/lib/productCategories";
 
@@ -36,8 +41,17 @@ import {
  * bar that only appears once rows are ticked.
  */
 
-type StatusFilter = "All" | "Live" | "Hidden";
-const STATUS_FILTERS: StatusFilter[] = ["All", "Live", "Hidden"];
+type StatusFilter = "all" | "live" | "hidden";
+/** Filter identities, not labels — `manage.product.filter*` supplies those. */
+const STATUS_FILTERS: StatusFilter[] = ["all", "live", "hidden"];
+const STATUS_FILTER_LABELS: Record<StatusFilter, MessageKey> = {
+  all: "common.all",
+  live: "manage.product.filterLive",
+  hidden: "manage.product.filterHidden",
+};
+
+/** Sentinel for "no group filter", alongside the canonical group names. */
+const ALL_GROUPS = "__all__";
 
 /**
  * Non-drink categories get one group each; drinks are split further by subtype,
@@ -47,31 +61,42 @@ const NON_DRINK_CATEGORIES = PRODUCT_CATEGORY_ORDER.filter(
   (category) => category !== PRODUCT_CATEGORY.DRINK
 );
 
+/** `group` is the canonical category or subtype name, never a heading. */
 type Row = { product: Drink; group: string };
 
 function groupOf(product: Drink): string {
   const category = NON_DRINK_CATEGORIES.find((name) =>
     isProductCategory(product.categoryName, name)
   );
-  return category ? PRODUCT_CATEGORY_LABEL[category] : drinkSubtypeLabel(product);
+  return category ?? drinkSubtypeLabel(product);
 }
 
-function statusOf(product: Drink): {
+function statusOf(
+  product: Drink,
+  t: TranslateFn
+): {
   label: string;
   className: string;
 } {
   if (product.active !== false) {
-    return { label: "Live", className: "bg-ac-soft text-ac-dark" };
+    return {
+      label: t("manage.product.statusLive"),
+      className: "bg-ac-soft text-ac-dark",
+    };
   }
   if (product.available_until) {
-    return { label: "Back at midnight", className: "bg-warn-soft text-warn" };
+    return {
+      label: t("manage.product.statusBackAtMidnight"),
+      className: "bg-warn-soft text-warn",
+    };
   }
   return {
-    label: "Hidden",
+    label: t("manage.product.statusHidden"),
     className: "bg-neutral-soft text-muted-foreground",
   };
 }
 
+/** Option names are admin-typed rows, so they are listed as they were typed. */
 function optionsLabel(product: Drink): string {
   const names = product.availableOptions.map((o) => o.name);
   return names.length ? names.join(", ") : "—";
@@ -105,23 +130,26 @@ function FilterPill({
 }
 
 export function ProductTable() {
+  const { t } = useTranslation();
   const products = useAppStore((state) => state.products);
   const productsLoading = useAppStore((state) => state.productsLoading);
   const loadProducts = useAppStore((state) => state.loadProducts);
   const deleteProductApi = useAppStore((state) => state.deleteProductApi);
+  const reorderProductsApi = useAppStore((state) => state.reorderProductsApi);
   const toggleProductAvailableApi = useAppStore(
     (state) => state.toggleProductAvailableApi
   );
   const subtypeOrder = useDrinkSubtypeOrder();
 
   const [query, setQuery] = useState("");
-  const [groupFilter, setGroupFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
+  const [groupFilter, setGroupFilter] = useState(ALL_GROUPS);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Row | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -136,30 +164,48 @@ export function ProductTable() {
     const present = new Set(rows.map((r) => r.group));
     // Drink subtypes first in their DB order, then any stragglers, then the
     // other top-level categories in the shared order.
-    const tail = NON_DRINK_CATEGORIES.map((c) => PRODUCT_CATEGORY_LABEL[c]).filter(
-      (name) => present.has(name)
+    const tail = (NON_DRINK_CATEGORIES as string[]).filter((name) =>
+      present.has(name)
     );
     const ordered = subtypeOrder.filter((name) => present.has(name));
     const extra = [...present]
       .filter((name) => !ordered.includes(name) && !tail.includes(name))
       .sort((a, b) => a.localeCompare(b));
-    return ["All", ...ordered, ...extra, ...tail];
+    return [ALL_GROUPS, ...ordered, ...extra, ...tail];
   }, [rows, subtypeOrder]);
 
+  /**
+   * The table is sorted the way the terminal and the menu board show things —
+   * group by group, and inside a group in the cafe's own running order (which
+   * is the order `GET /api/products` already returns). Anything else and the
+   * move up / move down buttons below would be moving rows against a sequence
+   * nobody can see.
+   */
   const visibleRows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return rows.filter(({ product, group }) => {
-      if (groupFilter !== "All" && group !== groupFilter) return false;
-      const live = product.active !== false;
-      if (statusFilter === "Live" && !live) return false;
-      if (statusFilter === "Hidden" && live) return false;
-      if (!needle) return true;
-      return (
-        product.name.toLowerCase().includes(needle) ||
-        (product.description ?? "").toLowerCase().includes(needle)
-      );
-    });
-  }, [rows, query, groupFilter, statusFilter]);
+    const rank = new Map(groups.map((name, index) => [name, index]));
+    return rows
+      .filter(({ product, group }) => {
+        if (groupFilter !== ALL_GROUPS && group !== groupFilter) return false;
+        const live = product.active !== false;
+        if (statusFilter === "live" && !live) return false;
+        if (statusFilter === "hidden" && live) return false;
+        if (!needle) return true;
+        return (
+          product.name.toLowerCase().includes(needle) ||
+          (product.description ?? "").toLowerCase().includes(needle)
+        );
+      })
+      .map((row, index) => ({ row, index }))
+      .sort((a, b) => {
+        const byGroup =
+          (rank.get(a.row.group) ?? Number.MAX_SAFE_INTEGER) -
+          (rank.get(b.row.group) ?? Number.MAX_SAFE_INTEGER);
+        // Ties keep the order the API sent, which is `sort_order` itself.
+        return byGroup !== 0 ? byGroup : a.index - b.index;
+      })
+      .map(({ row }) => row);
+  }, [rows, groups, query, groupFilter, statusFilter]);
 
   const selectedIds = visibleRows
     .map((r) => r.product.id)
@@ -187,29 +233,71 @@ export function ProductTable() {
       }
       toast.success(
         ids.length === 1
-          ? "Visibility updated"
-          : `${ids.length} products updated`
+          ? t("manage.product.visibilityUpdated")
+          : t("manage.product.visibilityUpdatedMany", { count: ids.length })
       );
       setSelected({});
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to update visibility";
+        err instanceof Error ? err.message : t("manage.product.visibilityFailed");
       toast.error(message);
     } finally {
       setBusy(false);
     }
   }
 
+  /**
+   * Swap a product with its neighbour in the same group.
+   *
+   * Only rows of the same group trade places: the terminal and the menu both
+   * group before they list, so swapping a coffee with a dessert would persist
+   * an order change nobody could see. The whole sequence is sent to the server
+   * (`reorderProductsApi`), not the pair — see the route's note on why.
+   */
+  async function handleMove(row: Row, direction: -1 | 1) {
+    const index = visibleRows.findIndex(
+      (candidate) => candidate.product.id === row.product.id
+    );
+    const neighbour = visibleRows[index + direction];
+    if (!neighbour || neighbour.group !== row.group) return;
+
+    const ids = products.map((product) => product.id);
+    const from = ids.indexOf(row.product.id);
+    const to = ids.indexOf(neighbour.product.id);
+    if (from < 0 || to < 0) return;
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+
+    setMovingId(row.product.id);
+    try {
+      await reorderProductsApi(ids);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : t("manage.product.reorderFailed");
+      toast.error(message);
+    } finally {
+      setMovingId(null);
+    }
+  }
+
+  /** Whether the row has a neighbour of its own group to trade places with. */
+  function canMove(row: Row, direction: -1 | 1): boolean {
+    const index = visibleRows.findIndex(
+      (candidate) => candidate.product.id === row.product.id
+    );
+    const neighbour = visibleRows[index + direction];
+    return Boolean(neighbour && neighbour.group === row.group);
+  }
+
   async function handleDelete(row: Row) {
     setDeletingId(row.product.id);
     try {
       await deleteProductApi(row.product.id);
-      toast.success(`"${row.product.name}" deleted`);
+      toast.success(t("manage.product.deleted", { name: row.product.name }));
       setToDelete(null);
       if (editingId === row.product.id) setEditingId(null);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to delete product";
+        err instanceof Error ? err.message : t("manage.product.deleteFailed");
       toast.error(message);
     } finally {
       setDeletingId(null);
@@ -229,9 +317,14 @@ export function ProductTable() {
     <div>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="mb-0.5 text-xl font-extrabold">Products</h2>
+          <h2 className="mb-0.5 text-xl font-extrabold">
+            {t("manage.product.title")}
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Search, then edit in the panel beside the list.
+            {t("manage.product.subtitle")}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("manage.product.orderHint")}
           </p>
         </div>
         <AddProductDialog />
@@ -239,17 +332,17 @@ export function ProductTable() {
 
       <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
         <Input
-          placeholder="Search products…"
+          placeholder={t("manage.product.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search products"
+          aria-label={t("manage.product.searchLabel")}
           className="h-[46px] min-w-[220px] flex-1 rounded-full"
         />
         <div className="flex flex-wrap gap-1 rounded-full border border-line bg-surface p-1">
           {groups.map((name) => (
             <FilterPill
               key={name}
-              label={name}
+              label={name === ALL_GROUPS ? t("common.all") : groupLabel(name, t)}
               on={groupFilter === name}
               onClick={() => setGroupFilter(name)}
             />
@@ -259,7 +352,7 @@ export function ProductTable() {
           {STATUS_FILTERS.map((name) => (
             <FilterPill
               key={name}
-              label={name}
+              label={t(STATUS_FILTER_LABELS[name])}
               on={statusFilter === name}
               onClick={() => setStatusFilter(name)}
             />
@@ -270,42 +363,42 @@ export function ProductTable() {
       {selectedIds.length > 0 && (
         <div className="enter mb-3.5 flex flex-wrap items-center gap-2.5 rounded-ctl bg-ac-soft px-4 py-3">
           <span className="num text-sm font-bold text-ac-dark">
-            {selectedIds.length} selected
+            {t("common.selectedCount", { count: selectedIds.length })}
           </span>
           <span className="flex-1" />
           <button
             type="button"
             disabled={busy}
             onClick={() => applyVisibility(selectedIds, true)}
-            title="Put back on the menu"
+            title={t("manage.product.showTooltip")}
             className="press min-h-10 rounded-full border border-ac-mid bg-surface px-4 text-sm font-semibold text-ac-dark disabled:opacity-50"
           >
-            Show
+            {t("common.show")}
           </button>
           <button
             type="button"
             disabled={busy}
             onClick={() => applyVisibility(selectedIds, false)}
-            title="Hide from menu and terminal"
+            title={t("manage.product.hideTooltip")}
             className="press min-h-10 rounded-full border border-ac-mid bg-surface px-4 text-sm font-semibold text-ac-dark disabled:opacity-50"
           >
-            Hide
+            {t("common.hide")}
           </button>
           <button
             type="button"
             disabled={busy}
             onClick={() => applyVisibility(selectedIds, false, true)}
-            title="Comes back automatically at midnight"
+            title={t("manage.product.hideTillMidnightTooltip")}
             className="press min-h-10 rounded-full border border-ac-mid bg-surface px-4 text-sm font-semibold text-ac-dark disabled:opacity-50"
           >
-            Hide till midnight
+            {t("manage.product.hideTillMidnight")}
           </button>
           <button
             type="button"
             onClick={() => setSelected({})}
             className="press min-h-10 rounded-full px-3.5 text-sm font-semibold text-ac-dark"
           >
-            Deselect
+            {t("common.deselect")}
           </button>
         </div>
       )}
@@ -324,7 +417,7 @@ export function ProductTable() {
                   <input
                     type="checkbox"
                     checked={allChecked}
-                    aria-label="Select everything in view"
+                    aria-label={t("manage.product.selectAllInView")}
                     onChange={(e) => {
                       const next = { ...selected };
                       for (const row of visibleRows) {
@@ -335,18 +428,21 @@ export function ProductTable() {
                     className="h-[18px] w-[18px] accent-[rgb(var(--ac))]"
                   />
                 </th>
-                <th className="p-3.5">Product</th>
-                <th className="p-3.5">Group</th>
-                <th className="p-3.5 text-right">Price</th>
-                <th className="p-3.5">Options</th>
-                <th className="p-3.5">Status</th>
-                <th className="w-[84px] p-3.5" />
+                <th className="p-3.5">{t("manage.product.columnProduct")}</th>
+                <th className="p-3.5">{t("manage.product.columnGroup")}</th>
+                <th className="p-3.5 text-right">{t("common.price")}</th>
+                <th className="p-3.5">{t("manage.product.columnOptions")}</th>
+                <th className="p-3.5">{t("common.status")}</th>
+                {/* Move up / move down / visibility / edit */}
+                <th className="w-[164px] p-3.5 text-right">
+                  {t("manage.product.columnArrange")}
+                </th>
               </tr>
             </thead>
             <tbody>
               {visibleRows.map((row) => {
                 const { product } = row;
-                const status = statusOf(product);
+                const status = statusOf(product, t);
                 const isEditing = editingId === product.id;
                 return (
                   <tr
@@ -360,7 +456,9 @@ export function ProductTable() {
                       <input
                         type="checkbox"
                         checked={Boolean(selected[product.id])}
-                        aria-label={`Select ${product.name}`}
+                        aria-label={t("manage.product.selectNamed", {
+                          name: product.name,
+                        })}
                         onChange={(e) =>
                           setSelected((prev) => ({
                             ...prev,
@@ -383,7 +481,9 @@ export function ProductTable() {
                         </div>
                       ) : null}
                     </td>
-                    <td className="p-3.5 text-muted-foreground">{row.group}</td>
+                    <td className="p-3.5 text-muted-foreground">
+                      {groupLabel(row.group, t)}
+                    </td>
                     <td className="num p-3.5 text-right font-semibold">
                       {formatPrice(product.price)}
                     </td>
@@ -404,6 +504,32 @@ export function ProductTable() {
                       <div className="flex justify-end gap-0.5">
                         <button
                           type="button"
+                          disabled={
+                            movingId !== null || !canMove(row, -1)
+                          }
+                          onClick={() => handleMove(row, -1)}
+                          title={t("manage.product.moveUp")}
+                          aria-label={t("manage.product.moveUpNamed", {
+                            name: product.name,
+                          })}
+                          className="press flex h-9 w-9 items-center justify-center rounded-[11px] text-muted-foreground hover:bg-ink/5 disabled:pointer-events-none disabled:opacity-30"
+                        >
+                          <ChevronUp className="h-[17px] w-[17px]" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={movingId !== null || !canMove(row, 1)}
+                          onClick={() => handleMove(row, 1)}
+                          title={t("manage.product.moveDown")}
+                          aria-label={t("manage.product.moveDownNamed", {
+                            name: product.name,
+                          })}
+                          className="press flex h-9 w-9 items-center justify-center rounded-[11px] text-muted-foreground hover:bg-ink/5 disabled:pointer-events-none disabled:opacity-30"
+                        >
+                          <ChevronDown className="h-[17px] w-[17px]" />
+                        </button>
+                        <button
+                          type="button"
                           disabled={busy}
                           onClick={() =>
                             applyVisibility(
@@ -413,10 +539,13 @@ export function ProductTable() {
                           }
                           title={
                             product.active === false
-                              ? "Put back on the menu"
-                              : "Hide from menu and terminal"
+                              ? t("manage.product.showTooltip")
+                              : t("manage.product.hideTooltip")
                           }
-                          aria-label={`Toggle visibility for ${product.name}`}
+                          aria-label={t(
+                            "manage.product.toggleVisibilityNamed",
+                            { name: product.name }
+                          )}
                           className="press flex h-9 w-9 items-center justify-center rounded-[11px] text-muted-foreground hover:bg-ink/5 disabled:opacity-50"
                         >
                           {product.active === false ? (
@@ -428,8 +557,10 @@ export function ProductTable() {
                         <button
                           type="button"
                           onClick={() => setEditingId(product.id)}
-                          title="Edit details"
-                          aria-label={`Edit ${product.name}`}
+                          title={t("manage.product.editDetails")}
+                          aria-label={t("manage.product.editNamed", {
+                            name: product.name,
+                          })}
                           className="press flex h-9 w-9 items-center justify-center rounded-[11px] text-muted-foreground hover:bg-ink/5"
                         >
                           <Pencil className="h-[17px] w-[17px]" />
@@ -445,7 +576,7 @@ export function ProductTable() {
                     colSpan={7}
                     className="p-8 text-center text-sm text-muted-foreground"
                   >
-                    Nothing matches those filters.
+                    {t("manage.product.noMatches")}
                   </td>
                 </tr>
               )}
@@ -462,8 +593,8 @@ export function ProductTable() {
               <button
                 type="button"
                 onClick={() => setEditingId(null)}
-                aria-label="Close panel"
-                title="Close panel"
+                aria-label={t("manage.product.closePanel")}
+                title={t("manage.product.closePanel")}
                 className="press flex h-9 w-9 flex-none items-center justify-center rounded-[11px] text-muted-foreground hover:bg-ink/5"
               >
                 <X className="h-[17px] w-[17px]" />
@@ -481,10 +612,10 @@ export function ProductTable() {
               <button
                 type="button"
                 onClick={() => setToDelete(editingRow)}
-                title="Delete permanently"
+                title={t("manage.product.deletePermanently")}
                 className="press min-h-11 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-warn hover:bg-warn-soft"
               >
-                Delete
+                {t("common.delete")}
               </button>
             </div>
           </div>
@@ -497,20 +628,25 @@ export function ProductTable() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete product</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("manage.product.deleteTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{toDelete?.product.name}
-              &quot;? This action cannot be undone.
+              {t("manage.product.deleteBody", {
+                name: toDelete?.product.name ?? "",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deletingId === toDelete?.product.id}
               onClick={() => toDelete && handleDelete(toDelete)}
             >
-              {deletingId === toDelete?.product.id ? "Deleting…" : "Delete"}
+              {deletingId === toDelete?.product.id
+                ? t("common.deleting")
+                : t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

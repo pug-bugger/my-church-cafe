@@ -5,6 +5,7 @@ import type { Socket } from "socket.io-client";
 import { OrderStatus } from "@/types";
 import { toast } from "sonner";
 import { createSocket } from "@/app/_lib/socket";
+import { statusLabel, t } from "@/i18n";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { getAuthToken, AUTH_EVENT } from "@/lib/auth";
 
@@ -47,14 +48,19 @@ const isOrderStatus = (status: unknown): status is OrderStatus =>
   status === "cancelled";
 
 const getStatusMessage = (status: OrderStatus, orderId: number) => {
-  const shortId = String(orderId).slice(0, 8);
+  // Toasts are written when the event fires, so the module-scope `t` is the
+  // right one here — there is no component to re-render.
+  const number = String(orderId).slice(0, 8);
   switch (status) {
     case "ready":
-      return `Order #${shortId} is ready for pickup!`;
+      return t("realtime.orderReady", { number });
     case "completed":
-      return `Order #${shortId} has been completed`;
+      return t("realtime.orderCompleted", { number });
     default:
-      return `Order #${shortId} status updated to ${status}`;
+      return t("realtime.orderStatusUpdated", {
+        number,
+        status: statusLabel(status),
+      });
   }
 };
 
@@ -99,22 +105,24 @@ export const WebSocketProvider = ({
 
     newSocket.on("connect", () => {
       setIsConnected(true);
-      toast.success("Connected to server");
+      toast.success(t("realtime.connected"));
     });
 
     newSocket.on("disconnect", () => {
       setIsConnected(false);
-      toast.error("Disconnected from server");
+      toast.error(t("realtime.disconnected"));
     });
 
     newSocket.on("socket:ready", (payload: SocketReadyPayload) => {
-      toast.success(`Socket ready (${payload.role})`);
+      toast.success(t("realtime.socketReady", { role: payload.role }));
     });
 
     newSocket.on("order:created", (payload: OrderCreatedPayload) => {
       // This app currently keeps full order items client-side; backend payload
       // doesn’t include items here, so we only notify.
-      toast.message(`New order #${String(payload.id).slice(0, 8)} created`);
+      toast.message(
+        t("realtime.newOrder", { number: String(payload.id).slice(0, 8) }),
+      );
       setOrdersRefreshKey((prev) => prev + 1);
     });
 
@@ -154,7 +162,9 @@ export const WebSocketProvider = ({
 
     newSocket.on("connect_error", (err) => {
       setIsConnected(false);
-      toast.error(`Socket error: ${err?.message ?? "connect_error"}`);
+      toast.error(
+        t("realtime.socketError", { message: err?.message ?? "connect_error" }),
+      );
     });
 
     setSocket(newSocket);

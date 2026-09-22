@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { ServerOrder } from "@/types";
 import { apiFetch } from "@/lib/api";
+import { useTranslation } from "@/i18n";
 import { getAuthToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ function BoardLabel({ label, onDark }: { label: string; onDark?: boolean }) {
 }
 
 export function OrderList() {
+  const { t } = useTranslation();
   const orders = useAppStore((state) => state.orders);
   const setOrders = useAppStore((state) => state.setOrders);
   const { ordersRefreshKey } = useWebSocket();
@@ -58,10 +60,10 @@ export function OrderList() {
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to load orders";
+        err instanceof Error ? err.message : t("errors.loadOrders");
       toast.error(message);
     }
-  }, [setOrders]);
+  }, [setOrders, t]);
 
   useEffect(() => {
     fetchOrders();
@@ -85,7 +87,7 @@ export function OrderList() {
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <section className="rounded-[26px] border border-line bg-surface p-6 sm:p-7">
         <h2 className="mb-5 text-2xl font-extrabold text-muted-foreground">
-          Preparing
+          {t("orders.board.preparing")}
         </h2>
         <div className="flex flex-wrap gap-x-[22px] gap-y-4">
           {preparingOrders.map((order) => (
@@ -93,7 +95,7 @@ export function OrderList() {
           ))}
           {preparingOrders.length === 0 && (
             <p className="text-[15px] text-muted-foreground">
-              Nothing in preparation.
+              {t("orders.board.nothingPreparing")}
             </p>
           )}
         </div>
@@ -101,14 +103,16 @@ export function OrderList() {
 
       <section className="rounded-[26px] bg-primary p-6 sm:p-7">
         <h2 className="mb-5 text-2xl font-extrabold text-primary-foreground/75">
-          Ready to pick up
+          {t("orders.board.readyToPickUp")}
         </h2>
         <div className="flex flex-wrap gap-x-[22px] gap-y-4">
           {readyForPickup.map((order) => (
             <BoardLabel key={order.id} label={orderLabel(order)} onDark />
           ))}
           {readyForPickup.length === 0 && (
-            <p className="text-[15px] text-primary-foreground/70">Nothing ready yet.</p>
+            <p className="text-[15px] text-primary-foreground/70">
+              {t("orders.board.nothingReady")}
+            </p>
           )}
         </div>
       </section>

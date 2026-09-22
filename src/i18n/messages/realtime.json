@@ -1,0 +1,42 @@
+{
+  "connected": {
+    "en": "Connected to server",
+    "lt": "Prisijungta prie serverio",
+    "ru": "Подключено к серверу"
+  },
+  "disconnected": {
+    "en": "Disconnected from server",
+    "lt": "Atsijungta nuo serverio",
+    "ru": "Отключено от сервера"
+  },
+  "socketReady": {
+    "en": "Socket ready ({role})",
+    "lt": "Ryšys paruoštas ({role})",
+    "ru": "Канал готов ({role})"
+  },
+  "socketError": {
+    "en": "Socket error: {message}",
+    "lt": "Ryšio klaida: {message}",
+    "ru": "Ошибка канала: {message}"
+  },
+  "newOrder": {
+    "en": "New order #{number} created",
+    "lt": "Sukurtas naujas užsakymas #{number}",
+    "ru": "Создан новый заказ №{number}"
+  },
+  "orderReady": {
+    "en": "Order #{number} is ready for pickup!",
+    "lt": "Užsakymas #{number} paruoštas atsiimti!",
+    "ru": "Заказ №{number} готов к выдаче!"
+  },
+  "orderCompleted": {
+    "en": "Order #{number} has been completed",
+    "lt": "Užsakymas #{number} įvykdytas",
+    "ru": "Заказ №{number} выполнен"
+  },
+  "orderStatusUpdated": {
+    "en": "Order #{number} status updated to {status}",
+    "lt": "Užsakymo #{number} būsena pakeista į {status}",
+    "ru": "Статус заказа №{number} изменён на {status}"
+  }
+}

@@ -3,6 +3,7 @@ import { Drink, OrderItem, ServerOrder, OrderStatus } from '@/types';
 import { defaultDrinks } from '@/data/defaultDrinks';
 import { mapProductApiToDrinkOptions } from '@/lib/drinkOptions';
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
+import { t } from '@/i18n';
 import {
   fetchCategories,
   findSubtypeByName,
@@ -45,7 +46,7 @@ function mapApiProductToDrink(product: Record<string, unknown>): Drink {
 
   return {
     id: String(product.id),
-    name: String(product.name ?? "Unnamed"),
+    name: String(product.name ?? t("common.unnamed")),
     secondaryName: subtypeName ?? categoryName,
     categoryName: topLevel,
     subtypeName,
@@ -58,6 +59,8 @@ function mapApiProductToDrink(product: Record<string, unknown>): Drink {
     ),
     active: product.available !== 0 && product.available !== false,
     available_until: product.available_until != null ? String(product.available_until) : null,
+    sortOrder:
+      product.sort_order != null ? Number(product.sort_order) : undefined,
   };
 }
 
@@ -122,6 +125,11 @@ interface AppState {
   createProductApi: (product: Omit<Drink, "id">) => Promise<Drink>;
   updateProductApi: (id: string, product: Omit<Drink, "id">) => Promise<void>;
   deleteProductApi: (id: string) => Promise<void>;
+  /**
+   * Persist the running order products are shown in. Takes the whole sequence
+   * of product ids, in the order the terminal and the menu should list them.
+   */
+  reorderProductsApi: (orderedIds: string[]) => Promise<void>;
   uploadProductImage: (productId: string, file: File) => Promise<string>;
   toggleProductAvailableApi: (id: string, active: boolean, hideUntilMidnight?: boolean) => Promise<void>;
   setOrders: (orders: ServerOrder[]) => void;
@@ -133,7 +141,7 @@ interface AppState {
   clearDraft: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   products: [],
   productsLoading: false,
   orders: [],
@@ -165,19 +173,17 @@ export const useAppStore = create<AppState>((set) => ({
     const categoryId = await resolveCategoryId(apiUrl, product);
     const categoryName = product.categoryName ?? PRODUCT_CATEGORY.DRINK;
     if (!categoryId) {
-      throw new Error(
-        `The "${categoryName}" category is missing in the database. Run the category migrations.`
-      );
+      throw new Error(t("errors.categoryMissing", { category: categoryName }));
     }
     const body = productToApiBody(product, categoryId);
     const data = await apiFetch<{ id?: string | number }>("/api/products", {
       method: "POST",
       body,
       auth: true,
-      authError: "Login required to create products",
+      authError: t("errors.loginRequiredToCreateProducts"),
     });
     const id = String(data?.id ?? "");
-    if (!id) throw new Error("Server did not return product id");
+    if (!id) throw new Error(t("errors.noProductId"));
     const categories = await fetchCategories(apiUrl);
     const categoryRow = categories.find((c) => c.id === categoryId);
     const isDrink = isProductCategory(categoryName, PRODUCT_CATEGORY.DRINK);
@@ -199,14 +205,16 @@ export const useAppStore = create<AppState>((set) => ({
     const categoryId = await resolveCategoryId(apiUrl, product);
     const categoryName = product.categoryName ?? PRODUCT_CATEGORY.DRINK;
     if (!categoryId) {
-      throw new Error(`Could not resolve the "${categoryName}" category.`);
+      throw new Error(
+        t("errors.categoryUnresolved", { category: categoryName })
+      );
     }
     const body = productToApiBody(product, categoryId);
     await apiFetch(`/api/products/${id}`, {
       method: "PUT",
       body,
       auth: true,
-      authError: "Login required to update products",
+      authError: t("errors.loginRequiredToUpdateProducts"),
     });
     const categories = await fetchCategories(apiUrl);
     const categoryRow = categories.find((c) => c.id === categoryId);
@@ -227,11 +235,37 @@ export const useAppStore = create<AppState>((set) => ({
     await apiFetch(`/api/products/${id}`, {
       method: "DELETE",
       auth: true,
-      authError: "Login required to delete products",
+      authError: t("errors.loginRequiredToDeleteProducts"),
     });
     set((state) => ({
       products: state.products.filter((p) => p.id !== id),
     }));
+  },
+
+  reorderProductsApi: async (orderedIds) => {
+    // Move the list locally first: the table this is driven from must not lag
+    // a tap behind, and the API answers with nothing worth waiting for.
+    const previous = get().products;
+    const byId = new Map(previous.map((p) => [p.id, p]));
+    const named = new Set(orderedIds);
+    const moved = orderedIds
+      .map((id) => byId.get(id))
+      .filter((p): p is Drink => Boolean(p));
+    const rest = previous.filter((p) => !named.has(p.id));
+    set(() => ({ products: [...moved, ...rest] }));
+    try {
+      await apiFetch("/api/products/reorder", {
+        method: "PUT",
+        body: { ids: orderedIds.map((id) => Number(id)) },
+        auth: true,
+        authError: t("errors.loginRequiredToUpdateProducts"),
+      });
+    } catch (err) {
+      // Put the old order back rather than leaving the screen showing a
+      // sequence the server never accepted.
+      set(() => ({ products: previous }));
+      throw err;
+    }
   },
 
   uploadProductImage: async (productId, file) => {
@@ -243,11 +277,11 @@ export const useAppStore = create<AppState>((set) => ({
         method: "POST",
         formData,
         auth: true,
-        authError: "Login required to upload images",
+        authError: t("errors.loginRequiredToUploadImages"),
       }
     );
     const imageUrl = typeof data?.image_url === "string" ? data.image_url : "";
-    if (!imageUrl) throw new Error("Server did not return image_url");
+    if (!imageUrl) throw new Error(t("errors.noImageUrl"));
     set((state) => ({
       products: state.products.map((p) =>
         p.id === productId ? { ...p, imageUrl } : p

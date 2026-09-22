@@ -1,0 +1,166 @@
+{
+  "appearance": {
+    "title": { "en": "Appearance", "lt": "Išvaizda", "ru": "Внешний вид" },
+    "hint": {
+      "en": "Saved on this device only — each terminal, tablet and phone keeps its own theme.",
+      "lt": "Išsaugoma tik šiame įrenginyje — kiekvienas terminalas, planšetė ir telefonas turi savo temą.",
+      "ru": "Сохраняется только на этом устройстве — у каждого терминала, планшета и телефона своя тема."
+    },
+    "hintShort": {
+      "en": "Saved on this device only.",
+      "lt": "Išsaugoma tik šiame įrenginyje.",
+      "ru": "Сохраняется только на этом устройстве."
+    },
+    "modeLabel": { "en": "Mode", "lt": "Režimas", "ru": "Режим" },
+    "modeGroupLabel": { "en": "Colour mode", "lt": "Spalvų režimas", "ru": "Режим оформления" },
+    "paletteLabel": { "en": "Palette", "lt": "Paletė", "ru": "Палитра" },
+    "paletteGroupLabel": { "en": "Colour palette", "lt": "Spalvų paletė", "ru": "Цветовая палитра" },
+    "paletteNote": {
+      "en": "Each palette ships a light and a dark version — the pair above shows both. Switching mode keeps the palette you picked.",
+      "lt": "Kiekviena paletė turi šviesią ir tamsią versiją — abi matote viršuje. Pakeitus režimą pasirinkta paletė lieka ta pati.",
+      "ru": "У каждой палитры есть светлая и тёмная версия — обе показаны выше. При смене режима выбранная палитра сохраняется."
+    },
+    "selected": { "en": "(selected)", "lt": "(pasirinkta)", "ru": "(выбрано)" },
+    "themeButton": { "en": "Theme", "lt": "Tema", "ru": "Тема" },
+    "themeTooltip": { "en": "Theme and colours", "lt": "Tema ir spalvos", "ru": "Тема и цвета" },
+    "previewAll": { "en": "Preview all themes", "lt": "Peržiūrėti visas temas", "ru": "Посмотреть все темы" }
+  },
+  "mode": {
+    "light": { "en": "Light", "lt": "Šviesi", "ru": "Светлая" },
+    "dark": { "en": "Dark", "lt": "Tamsi", "ru": "Тёмная" },
+    "system": { "en": "System", "lt": "Sistemos", "ru": "Системная" }
+  },
+  "palette": {
+    "sage": {
+      "label": { "en": "Sage", "lt": "Šalavijas", "ru": "Шалфей" },
+      "description": {
+        "en": "Warm off-white with a sage green accent",
+        "lt": "Šiltas balkšvas tonas su šalaviniu žaliu akcentu",
+        "ru": "Тёплый белый с шалфейно-зелёным акцентом"
+      }
+    },
+    "slate": {
+      "label": { "en": "Slate", "lt": "Skalūnas", "ru": "Сланец" },
+      "description": {
+        "en": "Cool blue-grey with a deep blue accent",
+        "lt": "Vėsus pilkai mėlynas su tamsiai mėlynu akcentu",
+        "ru": "Прохладный серо-синий с глубоким синим акцентом"
+      }
+    },
+    "stone": {
+      "label": { "en": "Stone", "lt": "Akmuo", "ru": "Камень" },
+      "description": {
+        "en": "Warm greige with a muted plum accent",
+        "lt": "Šiltas pilkai smėlinis su prigesintu slyvų akcentu",
+        "ru": "Тёплый серо-бежевый с приглушённым сливовым акцентом"
+      }
+    },
+    "graphite": {
+      "label": { "en": "Graphite", "lt": "Grafitas", "ru": "Графит" },
+      "description": {
+        "en": "Pure greyscale with a near-black accent",
+        "lt": "Grynai pilka su beveik juodu akcentu",
+        "ru": "Чистая серая гамма с почти чёрным акцентом"
+      }
+    },
+    "mist": {
+      "label": { "en": "Mist", "lt": "Rūkas", "ru": "Туман" },
+      "description": {
+        "en": "Cool grey with a soft teal accent",
+        "lt": "Vėsi pilka su švelniu žalsvai mėlynu akcentu",
+        "ru": "Прохладный серый с мягким бирюзовым акцентом"
+      }
+    }
+  },
+  "language": {
+    "title": { "en": "Language", "lt": "Kalba", "ru": "Язык" },
+    "hint": {
+      "en": "Saved on this device only — each terminal, tablet and phone keeps its own language.",
+      "lt": "Išsaugoma tik šiame įrenginyje — kiekvienas terminalas, planšetė ir telefonas turi savo kalbą.",
+      "ru": "Сохраняется только на этом устройстве — у каждого терминала, планшета и телефона свой язык."
+    },
+    "groupLabel": { "en": "Interface language", "lt": "Sąsajos kalba", "ru": "Язык интерфейса" },
+    "systemNote": {
+      "en": "Until you pick one, the device's own language is used where the app has it.",
+      "lt": "Kol nepasirinksite, naudojama įrenginio kalba, jei programa ją turi.",
+      "ru": "Пока язык не выбран, используется язык устройства, если он поддерживается."
+    }
+  },
+  "printer": {
+    "title": { "en": "Printer connection", "lt": "Spausdintuvo ryšys", "ru": "Связь с принтером" },
+    "link": { "en": "Backend ↔ Printer", "lt": "Serveris ↔ Spausdintuvas", "ru": "Сервер ↔ Принтер" },
+    "unreachableBackend": {
+      "en": "Couldn't reach the backend to check printer status.",
+      "lt": "Nepavyko susisiekti su serveriu, kad patikrintume spausdintuvo būseną.",
+      "ru": "Не удалось связаться с сервером, чтобы проверить состояние принтера."
+    },
+    "badge": {
+      "connected": { "en": "Connected", "lt": "Prijungta", "ru": "Подключён" },
+      "disconnected": { "en": "Disconnected", "lt": "Atjungta", "ru": "Нет связи" },
+      "unconfigured": { "en": "Not configured", "lt": "Nesukonfigūruota", "ru": "Не настроен" },
+      "checking": { "en": "Checking…", "lt": "Tikrinama…", "ru": "Проверка…" }
+    },
+    "setup": {
+      "title": { "en": "Set up the printer", "lt": "Nustatyti spausdintuvą", "ru": "Настроить принтер" },
+      "step1": {
+        "en": "Connect the printer to the same WiFi network as this server and note the IP address it gets (print a self-test page to see it).",
+        "lt": "Prijunkite spausdintuvą prie to paties WiFi tinklo kaip šis serveris ir užsirašykite jo gautą IP adresą (jį pamatysite atspausdinę savitikros lapą).",
+        "ru": "Подключите принтер к той же сети WiFi, что и сервер, и запишите полученный им IP-адрес (его покажет страница самотестирования)."
+      },
+      "step2": {
+        "en": "Set PRINTER_HOST to that IP address in the backend's .env file, then restart the backend.",
+        "lt": "Įrašykite tą IP adresą į PRINTER_HOST serverio .env faile ir perkraukite serverį.",
+        "ru": "Укажите этот IP-адрес в PRINTER_HOST в файле .env сервера и перезапустите сервер."
+      },
+      "step3": {
+        "en": "Give the printer a static IP / DHCP reservation on your router so the address doesn't change on reboot.",
+        "lt": "Maršrutizatoriuje priskirkite spausdintuvui statinį IP arba DHCP rezervaciją, kad adresas nepasikeistų po perkrovimo.",
+        "ru": "Закрепите за принтером статический IP или DHCP-резервацию на роутере, чтобы адрес не менялся после перезагрузки."
+      }
+    },
+    "fix": {
+      "title": { "en": "Fix this", "lt": "Kaip sutvarkyti", "ru": "Как исправить" },
+      "step1": {
+        "en": "Is the printer powered on and out of sleep/error state (paper loaded, cover closed)?",
+        "lt": "Ar spausdintuvas įjungtas ir nėra užmigęs ar klaidos būsenoje (įdėtas popierius, uždarytas dangtis)?",
+        "ru": "Принтер включён и не в спящем режиме или состоянии ошибки (бумага заправлена, крышка закрыта)?"
+      },
+      "step2": {
+        "en": "Is it connected to the same WiFi network as this server?",
+        "lt": "Ar jis prijungtas prie to paties WiFi tinklo kaip šis serveris?",
+        "ru": "Он подключён к той же сети WiFi, что и сервер?"
+      },
+      "step3": {
+        "en": "Has its IP address changed? Print a self-test page to check, and confirm it matches PRINTER_HOST{current}.",
+        "lt": "Gal pasikeitė jo IP adresas? Atspausdinkite savitikros lapą ir patikrinkite, ar jis atitinka PRINTER_HOST{current}.",
+        "ru": "Не изменился ли его IP-адрес? Напечатайте страницу самотестирования и сверьте её с PRINTER_HOST{current}."
+      },
+      "currentHost": { "en": " (currently {host})", "lt": " (dabar {host})", "ru": " (сейчас {host})" },
+      "step4": {
+        "en": "Can the server reach it? Try: ping {host}",
+        "lt": "Ar serveris jį pasiekia? Pabandykite: ping {host}",
+        "ru": "Сервер до него достаёт? Попробуйте: ping {host}"
+      },
+      "step5": {
+        "en": "Is TCP port {port} open (not blocked by a firewall or AP isolation)?",
+        "lt": "Ar TCP prievadas {port} atviras (neblokuojamas ugniasienės ar AP izoliacijos)?",
+        "ru": "Открыт ли TCP-порт {port} (не блокируется брандмауэром или изоляцией точки доступа)?"
+      },
+      "unknownHost": { "en": "<printer-ip>", "lt": "<spausdintuvo-ip>", "ru": "<ip-принтера>" }
+    },
+    "lastError": { "en": "Last error: {message}", "lt": "Paskutinė klaida: {message}", "ru": "Последняя ошибка: {message}" }
+  },
+  "connection": {
+    "title": { "en": "Connection", "lt": "Ryšys", "ru": "Соединение" },
+    "live": {
+      "en": "Live — receiving order updates",
+      "lt": "Tiesiogiai — gaunami užsakymų atnaujinimai",
+      "ru": "Онлайн — обновления заказов приходят"
+    },
+    "offline": {
+      "en": "Offline — orders refresh on a timer",
+      "lt": "Neprisijungta — užsakymai atnaujinami periodiškai",
+      "ru": "Не в сети — заказы обновляются по таймеру"
+    }
+  }
+}

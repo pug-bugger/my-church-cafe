@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { usePalette } from "@/context/PaletteContext";
+import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { MODES, PALETTES, isPaletteId, type ModeId } from "@/lib/themes";
 
@@ -33,6 +34,7 @@ const MODE_ICONS: Record<ModeId, typeof Sun> = {
 export function ThemeMenu() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { palette, setPalette } = usePalette();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -43,7 +45,12 @@ export function ThemeMenu() {
   // markup matches the server and the header doesn't jump.
   if (!mounted) {
     return (
-      <Button variant="outline" size="icon" aria-label="Theme" disabled>
+      <Button
+        variant="outline"
+        size="icon"
+        aria-label={t("settings.appearance.themeButton")}
+        disabled
+      >
         <Sun className="h-[1.2rem] w-[1.2rem]" />
       </Button>
     );
@@ -57,8 +64,8 @@ export function ThemeMenu() {
         <Button
           variant="outline"
           size="icon"
-          aria-label="Theme"
-          title="Theme and colours"
+          aria-label={t("settings.appearance.themeButton")}
+          title={t("settings.appearance.themeTooltip")}
         >
           {isDark ? (
             <Moon className="h-[1.2rem] w-[1.2rem]" />
@@ -69,14 +76,16 @@ export function ThemeMenu() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Mode</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          {t("settings.appearance.modeLabel")}
+        </DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
           {MODES.map((option) => {
             const Icon = MODE_ICONS[option.id];
             return (
               <DropdownMenuRadioItem key={option.id} value={option.id}>
                 <Icon className="mr-2 h-4 w-4" />
-                {option.label}
+                {t(`settings.mode.${option.id}`)}
               </DropdownMenuRadioItem>
             );
           })}
@@ -84,7 +93,9 @@ export function ThemeMenu() {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuLabel>Palette</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          {t("settings.appearance.paletteLabel")}
+        </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={palette}
           onValueChange={(value) => {
@@ -101,7 +112,7 @@ export function ThemeMenu() {
                   isDark && "dark",
                 )}
               />
-              {option.label}
+              {t(`settings.palette.${option.id}.label`)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
@@ -110,7 +121,7 @@ export function ThemeMenu() {
         <DropdownMenuItem asChild>
           <Link href="/profile">
             <Palette className="mr-2 h-4 w-4" />
-            Preview all themes
+            {t("settings.appearance.previewAll")}
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

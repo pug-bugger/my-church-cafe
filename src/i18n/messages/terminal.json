@@ -1,0 +1,132 @@
+{
+  "currentOrder": {
+    "en": "Current order",
+    "lt": "Dabartinis užsakymas",
+    "ru": "Текущий заказ"
+  },
+  "emptyHint": {
+    "en": "Tap a drink to start. Options open in a sheet so you can confirm with one hand.",
+    "lt": "Pradėkite paspaudę gėrimą. Pasirinkimai atsidaro lange, kad patvirtintumėte viena ranka.",
+    "ru": "Нажмите на напиток, чтобы начать. Опции открываются панелью — подтвердить можно одной рукой."
+  },
+  "nothingOnSale": {
+    "en": "Nothing is on sale right now. Add products under Manage.",
+    "lt": "Šiuo metu nieko neparduodama. Pridėkite prekių skiltyje Valdymas.",
+    "ru": "Сейчас ничего не продаётся. Добавьте товары в разделе «Управление»."
+  },
+  "customerNamePlaceholder": {
+    "en": "Customer name (optional)",
+    "lt": "Kliento vardas (neprivaloma)",
+    "ru": "Имя клиента (необязательно)"
+  },
+  "customerName": {
+    "en": "Customer name",
+    "lt": "Kliento vardas",
+    "ru": "Имя клиента"
+  },
+  "noteForBarista": {
+    "en": "Note for the barista",
+    "lt": "Pastaba baristui",
+    "ru": "Заметка для баристы"
+  },
+  "sendToBarista": {
+    "en": "Send to barista",
+    "lt": "Siųsti baristui",
+    "ru": "Отправить баристе"
+  },
+  "sending": {
+    "en": "Sending…",
+    "lt": "Siunčiama…",
+    "ru": "Отправка…"
+  },
+  "clearOrder": {
+    "en": "Clear order",
+    "lt": "Išvalyti užsakymą",
+    "ru": "Очистить заказ"
+  },
+  "clearOrderTooltip": {
+    "en": "Clear the whole order",
+    "lt": "Išvalyti visą užsakymą",
+    "ru": "Очистить весь заказ"
+  },
+  "removeFromOrder": {
+    "en": "Remove from order",
+    "lt": "Pašalinti iš užsakymo",
+    "ru": "Убрать из заказа"
+  },
+  "removeNamed": {
+    "en": "Remove {name}",
+    "lt": "Pašalinti: {name}",
+    "ru": "Убрать: {name}"
+  },
+  "orderSent": {
+    "en": "Order sent to the barista",
+    "lt": "Užsakymas išsiųstas baristui",
+    "ru": "Заказ отправлен баристе"
+  },
+  "unmatchedItems": {
+    "en": "Some items could not be matched to backend products.",
+    "lt": "Kai kurių prekių nepavyko susieti su serverio produktais.",
+    "ru": "Некоторые позиции не удалось сопоставить с товарами на сервере."
+  },
+  "noteForItem": {
+    "en": "Note for this item",
+    "lt": "Pastaba šiai prekei",
+    "ru": "Заметка к позиции"
+  },
+  "notePlaceholder": {
+    "en": "e.g. extra hot",
+    "lt": "pvz., karštesnis",
+    "ru": "напр., погорячее"
+  },
+  "addToOrder": {
+    "en": "Add to order · {price}",
+    "lt": "Įtraukti į užsakymą · {price}",
+    "ru": "Добавить в заказ · {price}"
+  },
+  "eachPrice": {
+    "en": "{price} each",
+    "lt": "{price} už vieną",
+    "ru": "{price} за штуку"
+  },
+  "basePlusOptions": {
+    "en": "({price} + options)",
+    "lt": "({price} + pasirinkimai)",
+    "ru": "({price} + опции)"
+  },
+  "closeWithoutAdding": {
+    "en": "Close without adding",
+    "lt": "Uždaryti neįtraukus",
+    "ru": "Закрыть без добавления"
+  },
+  "decreaseQuantity": {
+    "en": "Decrease quantity",
+    "lt": "Mažinti kiekį",
+    "ru": "Уменьшить количество"
+  },
+  "increaseQuantity": {
+    "en": "Increase quantity",
+    "lt": "Didinti kiekį",
+    "ru": "Увеличить количество"
+  },
+  "noItemsYet": {
+    "en": "No items yet",
+    "lt": "Kol kas nieko",
+    "ru": "Пока ничего"
+  },
+  "reviewOrder": {
+    "en": "Review order, {items}, {total}",
+    "lt": "Peržiūrėti užsakymą, {items}, {total}",
+    "ru": "Просмотреть заказ, {items}, {total}"
+  },
+  "nothingOnSaleTitle": {
+    "en": "Nothing is on sale",
+    "lt": "Nieko neparduodama",
+    "ru": "Ничего не продаётся"
+  },
+  "nothingOnSaleHint": {
+    "en": "Add products under Manage, or put a hidden one back on the menu.",
+    "lt": "Pridėkite prekių skiltyje Valdymas arba grąžinkite paslėptą į meniu.",
+    "ru": "Добавьте товары в разделе «Управление» или верните скрытый в меню."
+  }
+}

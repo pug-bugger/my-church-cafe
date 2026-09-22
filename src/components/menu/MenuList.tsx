@@ -22,12 +22,12 @@ import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
 import {
   isProductCategory,
   PRODUCT_CATEGORY,
-  PRODUCT_CATEGORY_LABEL,
   PRODUCT_CATEGORY_ORDER,
   UNCATEGORIZED_LABEL,
   type ProductCategoryName,
 } from "@/lib/productCategories";
-import { formatPrice } from "@/lib/format";
+import { subtypeLabel, useTranslation } from "@/i18n";
+import { formatDate, formatPrice } from "@/lib/format";
 import { getAuthToken } from "@/lib/auth";
 import { useWebSocket } from "@/context/WebSocketContext";
 
@@ -41,17 +41,20 @@ type Product = {
   available?: boolean | number | null;
 };
 
+/**
+ * `name` is the canonical category or subtype name from the database, not a
+ * heading: it is the React key and the bucket identity, and `subtypeLabel()`
+ * turns it into a heading at render. Translating it here would make the
+ * grouping itself language-dependent.
+ */
 type MenuGroup = { name: string; items: Product[] };
 
 function productTypeName(product: Product): string | null {
   return product.parent_category_name ?? product.category_name ?? null;
 }
 
-const MENU_SECTIONS: { title: string; category: ProductCategoryName }[] =
-  PRODUCT_CATEGORY_ORDER.map((category) => ({
-    title: PRODUCT_CATEGORY_LABEL[category],
-    category,
-  }));
+const MENU_SECTIONS: { category: ProductCategoryName }[] =
+  PRODUCT_CATEGORY_ORDER.map((category) => ({ category }));
 
 function isAvailable(value: Product["available"]): boolean {
   if (value === null || value === undefined) return true;
@@ -59,9 +62,9 @@ function isAvailable(value: Product["available"]): boolean {
   return value;
 }
 
-/** "Sunday, 1 September" — the day the board is being read. */
+/** "Sunday, 1 September" — the day the board is being read, in the active language. */
 function dateline(): string {
-  return new Date().toLocaleDateString(undefined, {
+  return formatDate(new Date(), {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -81,21 +84,22 @@ function dateline(): string {
  * something to say. Swapping is a fade out, change, fade back in — one element,
  * so the line never jumps while both strings are on screen.
  */
-const TAGLINES = [
-  "Today at the cafe",
-  "Daily Bread and Daily Brew",
-  "Fellowship starts here — one cup at a time",
-  "Every cup brewed with a blessing",
-];
+const TAGLINE_KEYS = [
+  "menu.tagline1",
+  "menu.tagline2",
+  "menu.tagline3",
+  "menu.tagline4",
+] as const;
 const TAGLINE_INTERVAL_MS = 10_000;
 const TAGLINE_FADE_MS = 400;
 
 function useRotatingTagline() {
+  const { t } = useTranslation();
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    if (TAGLINES.length < 2) return;
+    if (TAGLINE_KEYS.length < 2) return;
 
     // With motion reduced the fade is disabled in CSS, so hiding first would
     // just blank the line for 400ms — swap straight over instead.
@@ -104,7 +108,7 @@ function useRotatingTagline() {
     ).matches;
 
     let swap: ReturnType<typeof setTimeout>;
-    const advance = () => setIndex((i) => (i + 1) % TAGLINES.length);
+    const advance = () => setIndex((i) => (i + 1) % TAGLINE_KEYS.length);
     const cycle = setInterval(() => {
       if (reducedMotion) {
         advance();
@@ -123,7 +127,7 @@ function useRotatingTagline() {
     };
   }, []);
 
-  return { tagline: TAGLINES[index], visible };
+  return { tagline: t(TAGLINE_KEYS[index]), visible };
 }
 
 const MAX_BOARD_FONT_PX = 22;
@@ -241,12 +245,13 @@ function MenuRow({ product }: { product: Product }) {
  * category always starts on a fresh line below rather than flowing alongside.
  */
 function MenuCard({ groups }: { groups: MenuGroup[] }) {
+  const { t } = useTranslation();
   return (
     <section className="rounded-card border border-line bg-surface p-[1.4em] sm:p-[1.6em]">
       {groups.map((group) => (
         <div key={group.name} className="mb-[1.4em] last:mb-0">
           <h2 className="mb-[0.7em] text-[1.05em] font-bold text-ac-dark">
-            {group.name}
+            {subtypeLabel(group.name, t)}
           </h2>
           <ul className="columns-1 gap-[2.5em] sm:columns-2">
             {group.items.map((product) => (
@@ -260,6 +265,7 @@ function MenuCard({ groups }: { groups: MenuGroup[] }) {
 }
 
 export function MenuList() {
+  const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -328,17 +334,17 @@ export function MenuList() {
           signal,
         });
         if (!Array.isArray(data)) {
-          throw new Error("Invalid response while loading menu");
+          throw new Error(t("errors.invalidMenuResponse"));
         }
         setProducts(data);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setError("Could not load menu right now.");
+        setError(t("errors.loadMenu"));
       } finally {
         setLoading(false);
       }
     },
-    [apiUrl],
+    [apiUrl, t],
   );
 
   // First load, then again whenever a product is created, edited, hidden or
@@ -387,12 +393,12 @@ export function MenuList() {
   const otherGroups = useMemo<MenuGroup[]>(() => {
     const result: MenuGroup[] = [];
 
-    for (const { title, category } of MENU_SECTIONS) {
+    for (const { category } of MENU_SECTIONS) {
       if (category === PRODUCT_CATEGORY.DRINK) continue;
       const items = availableProducts.filter((p) =>
         isProductCategory(productTypeName(p), category),
       );
-      if (items.length) result.push({ name: title, items });
+      if (items.length) result.push({ name: category, items });
     }
 
     const uncategorized = availableProducts.filter((p) => {
@@ -434,7 +440,7 @@ export function MenuList() {
         error={error}
         isEmpty={availableProducts.length === 0}
         loadingFallback={<MenuListSkeleton />}
-        emptyMessage="No products are currently available."
+        emptyMessage={t("menu.empty")}
       >
         <h1
           className={cn(
@@ -448,7 +454,7 @@ export function MenuList() {
           {tagline}
         </h1>
         <p className="mb-[22px] text-sm text-muted-foreground">
-          {dateline()} · prices in euro
+          {t("menu.dateline", { date: dateline() })}
         </p>
 
         {/* The box is the space the board may occupy; the cards inside are
@@ -470,8 +476,12 @@ export function MenuList() {
         type="button"
         onClick={togglePresenting}
         aria-pressed={presenting}
-        title={presenting ? "Exit full screen" : "Show full screen"}
-        aria-label={presenting ? "Exit full screen" : "Show full screen"}
+        title={
+          presenting ? t("menu.exitFullScreen") : t("menu.showFullScreen")
+        }
+        aria-label={
+          presenting ? t("menu.exitFullScreen") : t("menu.showFullScreen")
+        }
         className="press fixed bottom-6 right-6 z-[60] flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface text-muted-foreground shadow-card hover:bg-ink/5 hover:text-foreground"
       >
         {presenting ? (

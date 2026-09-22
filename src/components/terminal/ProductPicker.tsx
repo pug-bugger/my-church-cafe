@@ -13,11 +13,12 @@ import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
 import {
   isProductCategory,
   PRODUCT_CATEGORY,
-  PRODUCT_CATEGORY_LABEL,
   PRODUCT_CATEGORY_ORDER,
 } from "@/lib/productCategories";
+import { groupLabel, useTranslation, type TranslateFn } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
+import { useWebSocket } from "@/context/WebSocketContext";
 
 /**
  * The counter tablet's product picker: one row of category pills over a single
@@ -25,14 +26,19 @@ import { formatPrice } from "@/lib/format";
  * never scrolls past a heading to reach a drink.
  */
 
-const ALL_CATEGORY = "All";
+/**
+ * Sentinel for the "everything" pill. A key rather than a label — the pill row
+ * compares it against the selection, so it must not change with the language.
+ */
+const ALL_CATEGORY = "__all__";
 
+/** `name` is the canonical subtype/category name; `groupLabel` renders it. */
 type Category = { name: string; items: Drink[] };
 
-function optionsLabel(product: Drink): string {
+function optionsLabel(product: Drink, t: TranslateFn): string {
   const count = product.availableOptions.length;
-  if (count === 0) return "no options";
-  return `${count} ${count === 1 ? "option" : "options"}`;
+  if (count === 0) return t("products.noOptions");
+  return t("products.optionCount", { count });
 }
 
 function PickerSkeleton() {
@@ -56,9 +62,11 @@ function PickerSkeleton() {
 function ProductTile({
   product,
   onOpen,
+  t,
 }: {
   product: Drink;
   onOpen: (id: string) => void;
+  t: TranslateFn;
 }) {
   return (
     <button
@@ -81,7 +89,7 @@ function ProductTile({
           {formatPrice(product.price)}
         </span>
         <span className="rounded-full bg-ac-soft px-2.5 py-[5px] text-xs font-semibold text-ac-dark">
-          {optionsLabel(product)}
+          {optionsLabel(product, t)}
         </span>
       </span>
     </button>
@@ -91,14 +99,16 @@ function ProductTile({
 function TileGrid({
   items,
   onOpen,
+  t,
 }: {
   items: Drink[];
   onOpen: (id: string) => void;
+  t: TranslateFn;
 }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
       {items.map((product) => (
-        <ProductTile key={product.id} product={product} onOpen={onOpen} />
+        <ProductTile key={product.id} product={product} onOpen={onOpen} t={t} />
       ))}
     </div>
   );
@@ -121,17 +131,23 @@ function CategoryLabel({ name, count }: { name: string; count: number }) {
 }
 
 export function ProductPicker() {
+  const { t } = useTranslation();
   const products = useAppStore((state) => state.products);
   const productsLoading = useAppStore((state) => state.productsLoading);
   const loadProducts = useAppStore((state) => state.loadProducts);
   const subtypeOrder = useDrinkSubtypeOrder();
+  const { productsRefreshKey } = useWebSocket();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
+  // Reload whenever a `product:*` socket event fires, as the menu board and the
+  // mobile terminal already do — a price, a new drink or a reorder done in
+  // Manage should reach the counter tablet without someone refreshing it. Only
+  // the catalogue is replaced; the draft order lives elsewhere in the store.
   useEffect(() => {
     loadProducts();
-  }, [loadProducts]);
+  }, [loadProducts, productsRefreshKey]);
 
   /**
    * "All" first, then drink subtypes in menu order, then every other category
@@ -155,7 +171,7 @@ export function ProductPicker() {
         isProductCategory(p.categoryName, category)
       );
       if (items.length) {
-        groups.push({ name: PRODUCT_CATEGORY_LABEL[category], items });
+        groups.push({ name: category, items });
       }
     }
     return groups;
@@ -184,7 +200,7 @@ export function ProductPicker() {
   if (categories.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        Nothing is on sale right now. Add products under Manage.
+        {t("terminal.nothingOnSale")}
       </p>
     );
   }
@@ -207,7 +223,9 @@ export function ProductPicker() {
                   : "border-line bg-surface text-foreground hover:bg-ink/5"
               )}
             >
-              {category.name}
+              {category.name === ALL_CATEGORY
+                ? t("common.all")
+                : groupLabel(category.name, t)}
               <span className="num text-xs opacity-55">
                 {category.items.length}
               </span>
@@ -220,13 +238,16 @@ export function ProductPicker() {
         <div className="flex flex-col gap-6">
           {sections.map((section) => (
             <section key={section.name}>
-              <CategoryLabel name={section.name} count={section.items.length} />
-              <TileGrid items={section.items} onOpen={setOpenId} />
+              <CategoryLabel
+                name={groupLabel(section.name, t)}
+                count={section.items.length}
+              />
+              <TileGrid items={section.items} onOpen={setOpenId} t={t} />
             </section>
           ))}
         </div>
       ) : (
-        <TileGrid items={selected?.items ?? []} onOpen={setOpenId} />
+        <TileGrid items={selected?.items ?? []} onOpen={setOpenId} t={t} />
       )}
 
       <ProductSheet product={openProduct} onClose={() => setOpenId(null)} />

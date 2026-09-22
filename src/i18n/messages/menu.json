@@ -1,0 +1,47 @@
+{
+  "tagline1": {
+    "en": "Today at the cafe",
+    "lt": "Šiandien kavinėje",
+    "ru": "Сегодня в кафе"
+  },
+  "tagline2": {
+    "en": "Daily Bread and Daily Brew",
+    "lt": "Kasdienė duona ir kasdienė kava",
+    "ru": "Хлеб наш и кофе наш"
+  },
+  "tagline3": {
+    "en": "Fellowship starts here — one cup at a time",
+    "lt": "Bendrystė prasideda čia — po vieną puodelį",
+    "ru": "Общение начинается здесь — чашка за чашкой"
+  },
+  "tagline4": {
+    "en": "Every cup brewed with a blessing",
+    "lt": "Kiekvienas puodelis užplikytas su palaiminimu",
+    "ru": "Каждая чашка сварена с благословением"
+  },
+  "dateline": {
+    "en": "{date} · prices in euro",
+    "lt": "{date} · kainos eurais",
+    "ru": "{date} · цены в евро"
+  },
+  "empty": {
+    "en": "No products are currently available.",
+    "lt": "Šiuo metu nėra prieinamų prekių.",
+    "ru": "Сейчас нет доступных товаров."
+  },
+  "showFullScreen": {
+    "en": "Show full screen",
+    "lt": "Rodyti visame ekrane",
+    "ru": "Во весь экран"
+  },
+  "exitFullScreen": {
+    "en": "Exit full screen",
+    "lt": "Išeiti iš viso ekrano",
+    "ru": "Выйти из полного экрана"
+  },
+  "emptyTitle": {
+    "en": "Nothing on the menu",
+    "lt": "Meniu tuščias",
+    "ru": "Меню пусто"
+  }
+}

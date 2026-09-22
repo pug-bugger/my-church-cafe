@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/i18n";
 import { getAuthToken, getStoredUser, AUTH_EVENT } from "@/lib/auth";
 
 export type AppRole = "admin" | "personal" | "parishioner";
@@ -27,6 +28,7 @@ export function RoleRouteGuard({
   children,
 }: RoleRouteGuardProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   const check = useCallback(() => {
@@ -56,7 +58,7 @@ export function RoleRouteGuard({
   if (allowed !== true) {
     return (
       <div className="container mx-auto py-12 text-center text-muted-foreground text-sm">
-        Checking access…
+        {t("nav.checkingAccess")}
       </div>
     );
   }

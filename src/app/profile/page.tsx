@@ -22,7 +22,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
 import { cn } from "@/lib/utils";
 import { apiFetch, ApiError } from "@/lib/api";
-import { formatPrice, initialsFromName } from "@/lib/format";
+import {
+  roleLabel,
+  useTranslation,
+  type MessageKey,
+  type TranslateFn,
+} from "@/i18n";
+import { formatDate as formatLocaleDate, formatPrice, initialsFromName } from "@/lib/format";
 import {
   getAuthToken,
   getStoredUser,
@@ -49,14 +55,15 @@ type LoginResponse = {
 const getTokenFromResponse = (data: LoginResponse): string | undefined =>
   data.token ?? data.accessToken ?? data.data?.token ?? data.data?.accessToken;
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string, t: TranslateFn) {
   const d = new Date(dateStr);
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return "Today";
-  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return d.toLocaleDateString(undefined, {
+  if (d.toDateString() === today.toDateString()) return t("time.today");
+  if (d.toDateString() === yesterday.toDateString())
+    return t("time.yesterdayCap");
+  return formatLocaleDate(d, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -95,6 +102,24 @@ function toDateInput(d: Date | null): string {
   return d.toISOString().slice(0, 10);
 }
 
+const PRESET_LABEL_KEYS: Record<Preset, MessageKey> = {
+  "all-time": "profile.range.allTime",
+  "last-sunday": "profile.range.lastSunday",
+  "last-2-weeks": "profile.range.last2Weeks",
+  "last-month": "profile.range.lastMonth",
+  "last-3-months": "profile.range.last3Months",
+  custom: "profile.range.custom",
+};
+
+const PRESETS: Preset[] = [
+  "all-time",
+  "last-sunday",
+  "last-2-weeks",
+  "last-month",
+  "last-3-months",
+  "custom",
+];
+
 function rangeFromPreset(p: Preset): DateRange {
   if (p === "all-time" || p === "custom") return { from: null, to: null };
   if (p === "last-sunday") {
@@ -121,6 +146,7 @@ function DateRangeSelector({
   onChange: (r: DateRange) => void;
   initialPreset?: Preset;
 }) {
+  const { t } = useTranslation();
   const [preset, setPreset] = useState<Preset>(initialPreset);
 
   function handlePreset(p: Preset) {
@@ -135,12 +161,11 @@ function DateRangeSelector({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all-time">All time</SelectItem>
-          <SelectItem value="last-sunday">Last Sunday</SelectItem>
-          <SelectItem value="last-2-weeks">Last 2 weeks</SelectItem>
-          <SelectItem value="last-month">Last month</SelectItem>
-          <SelectItem value="last-3-months">Last 3 months</SelectItem>
-          <SelectItem value="custom">Custom range</SelectItem>
+          {PRESETS.map((option) => (
+            <SelectItem key={option} value={option}>
+              {t(PRESET_LABEL_KEYS[option])}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
       {preset === "custom" && (
@@ -244,6 +269,7 @@ type DayRow = { dateKey: string; count: number; label: string };
 
 /** Orders per day — change over time, counts direct-labelled above each column. */
 function DayColumns({ data }: { data: DayRow[] }) {
+  const { t } = useTranslation();
   const max = Math.max(1, ...data.map((d) => d.count));
   return (
     <div className="flex h-[180px] items-end gap-2 overflow-x-auto">
@@ -251,9 +277,10 @@ function DayColumns({ data }: { data: DayRow[] }) {
         <div
           key={day.dateKey}
           className="flex h-full min-w-[26px] max-w-[56px] flex-1 flex-col items-center justify-end gap-1.5"
-          title={`${day.label}: ${day.count} ${
-            day.count === 1 ? "order" : "orders"
-          }`}
+          title={t("profile.overview.dayTooltip", {
+            label: day.label,
+            orders: t("common.orderCount", { count: day.count }),
+          })}
         >
           <span className="num text-[11px] text-muted-foreground">
             {day.count}
@@ -309,21 +336,33 @@ function UserTable({
   users: ServerUser[];
   loading: boolean;
 }) {
+  const { t } = useTranslation();
+
   if (loading && users.length === 0) {
-    return <p className="text-sm text-muted-foreground">Loading users…</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t("profile.users.loadingUsers")}
+      </p>
+    );
   }
   if (users.length === 0) {
-    return <p className="text-sm text-muted-foreground">No users found.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t("profile.users.noUsers")}
+      </p>
+    );
   }
   return (
     <div className="overflow-x-auto rounded-card border border-line bg-surface">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="text-left text-xs font-semibold text-muted-foreground">
-            <th className="p-4">Name</th>
-            <th className="p-4">Email</th>
-            <th className="p-4">Role</th>
-            <th className="hidden p-4 sm:table-cell">Joined</th>
+            <th className="p-4">{t("common.name")}</th>
+            <th className="p-4">{t("common.email")}</th>
+            <th className="p-4">{t("profile.account.role")}</th>
+            <th className="hidden p-4 sm:table-cell">
+              {t("profile.users.joined")}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -341,19 +380,17 @@ function UserTable({
               <td className="p-4">
                 <span
                   className={cn(
-                    "rounded-full px-2.5 py-[5px] text-xs font-semibold capitalize",
+                    "rounded-full px-2.5 py-[5px] text-xs font-semibold",
                     u.role === "admin"
                       ? "bg-ac-soft text-ac-dark"
                       : "bg-neutral-soft text-muted-foreground"
                   )}
                 >
-                  {u.role ?? "—"}
+                  {roleLabel(u.role, t) || "—"}
                 </span>
               </td>
               <td className="num hidden p-4 text-muted-foreground sm:table-cell">
-                {u.created_at
-                  ? new Date(u.created_at).toLocaleDateString()
-                  : "—"}
+                {u.created_at ? formatLocaleDate(u.created_at, {}) : "—"}
               </td>
             </tr>
           ))}
@@ -372,6 +409,7 @@ type SectionId =
   | "users";
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -463,19 +501,21 @@ export default function ProfilePage() {
 
   const sections = useMemo<{ id: SectionId; label: string }[]>(() => {
     const list: { id: SectionId; label: string }[] = [
-      { id: "account", label: "Account" },
-      { id: "preferences", label: "Preferences" },
+      { id: "account", label: t("profile.section.account") },
+      { id: "preferences", label: t("profile.section.preferences") },
     ];
     if (showStaffOrderDashboard) {
       list.push(
-        { id: "overview", label: "Overview" },
-        { id: "analytics", label: "Analytics" },
-        { id: "orders", label: "Orders" }
+        { id: "overview", label: t("profile.section.overview") },
+        { id: "analytics", label: t("profile.section.analytics") },
+        { id: "orders", label: t("profile.section.orders") }
       );
     }
-    if (isAdminDashboard) list.push({ id: "users", label: "People" });
+    if (isAdminDashboard) {
+      list.push({ id: "users", label: t("profile.section.users") });
+    }
     return list;
-  }, [showStaffOrderDashboard, isAdminDashboard]);
+  }, [showStaffOrderDashboard, isAdminDashboard, t]);
 
   // A role change can retire the open section (e.g. logging out of admin).
   useEffect(() => {
@@ -501,11 +541,13 @@ export default function ProfilePage() {
         return;
       }
       setOrders([]);
-      toast.error(err instanceof Error ? err.message : "Unable to load orders");
+      toast.error(
+        err instanceof Error ? err.message : t("errors.loadOrders")
+      );
     } finally {
       setOrdersLoading(false);
     }
-  }, [apiUrl, hasToken, readStoredRole, clearAuthSession]);
+  }, [apiUrl, hasToken, readStoredRole, clearAuthSession, t]);
 
   const fetchDirectoryUsers = useCallback(async () => {
     if (!apiUrl || !hasToken) return;
@@ -520,12 +562,14 @@ export default function ProfilePage() {
       }
       setDirectoryUsers([]);
       toast.error(
-        err instanceof Error ? err.message : "Unable to load user directory"
+        err instanceof Error
+          ? err.message
+          : t("profile.users.loadDirectoryFailed")
       );
     } finally {
       setUsersLoading(false);
     }
-  }, [apiUrl, hasToken, clearAuthSession]);
+  }, [apiUrl, hasToken, clearAuthSession, t]);
 
   useEffect(() => {
     if (!hasToken || !showStaffOrderDashboard || !user) {
@@ -552,7 +596,7 @@ export default function ProfilePage() {
     event.preventDefault();
     setError(null);
     if (!apiUrl) {
-      setError("Missing NEXT_PUBLIC_API_URL in your environment.");
+      setError(t("auth.missingApiUrl"));
       return;
     }
     setLoading(true);
@@ -562,11 +606,11 @@ export default function ProfilePage() {
         body: { email, password },
         auth: false,
         credentials: "include",
-        authError: "Login failed",
+        authError: t("auth.loginFailed"),
       });
       const token = getTokenFromResponse(data);
       const loggedIn = data.user;
-      if (!token) throw new Error("Login succeeded but no token was returned.");
+      if (!token) throw new Error(t("auth.noTokenReturned"));
       if (loggedIn) {
         const nextUser: SessionUser = {
           ...loggedIn,
@@ -579,11 +623,9 @@ export default function ProfilePage() {
         setUser(null);
       }
       setHasToken(true);
-      toast.success("Logged in");
+      toast.success(t("auth.loggedIn"));
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to login. Try again."
-      );
+      setError(err instanceof Error ? err.message : t("auth.unableToLogin"));
     } finally {
       setLoading(false);
     }
@@ -591,7 +633,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     clearAuthSession();
-    toast.success("Logged out");
+    toast.success(t("auth.loggedOut"));
   };
 
   async function handleSaveAccount() {
@@ -599,7 +641,7 @@ export default function ProfilePage() {
     const name = nameDraft.trim();
     const nextEmail = emailDraft.trim();
     if (!name || !nextEmail) {
-      toast.error("Name and email cannot be empty");
+      toast.error(t("profile.account.nameEmailRequired"));
       return;
     }
     setSavingAccount(true);
@@ -608,12 +650,14 @@ export default function ProfilePage() {
         method: "PUT",
         body: { name, email: nextEmail },
         auth: true,
-        authError: "Login required to update your account.",
+        authError: t("profile.account.loginRequiredToUpdate"),
       });
       persistUser({ ...user, name, email: nextEmail });
-      toast.success("Account updated");
+      toast.success(t("profile.account.updated"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save changes");
+      toast.error(
+        err instanceof Error ? err.message : t("profile.account.couldNotSave")
+      );
     } finally {
       setSavingAccount(false);
     }
@@ -627,15 +671,22 @@ export default function ProfilePage() {
       fd.append("image", file);
       const data = await apiFetch<{ picture_url?: string }>(
         "/api/users/me/image",
-        { method: "POST", formData: fd, auth: true, authError: "Upload failed" }
+        {
+          method: "POST",
+          formData: fd,
+          auth: true,
+          authError: t("profile.account.uploadFailed"),
+        }
       );
       const url = data?.picture_url;
       if (typeof url === "string") {
         persistUser({ ...user, picture_url: url });
-        toast.success("Profile photo updated");
+        toast.success(t("profile.account.photoUpdated"));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
+      toast.error(
+        err instanceof Error ? err.message : t("profile.account.uploadFailed")
+      );
     } finally {
       setPhotoUploading(false);
     }
@@ -649,12 +700,16 @@ export default function ProfilePage() {
         method: "PUT",
         body: { picture_url: null },
         auth: true,
-        authError: "Could not remove photo",
+        authError: t("profile.account.couldNotRemovePhoto"),
       });
       persistUser({ ...user, picture_url: null });
-      toast.success("Profile photo removed");
+      toast.success(t("profile.account.photoRemoved"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not remove photo");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t("profile.account.couldNotRemovePhoto")
+      );
     } finally {
       setPhotoUploading(false);
     }
@@ -663,31 +718,38 @@ export default function ProfilePage() {
   const topProducts = useMemo(() => {
     const byName = new Map<string, number>();
     for (const order of orders) {
-      const t = new Date(order.created_at);
-      if (topProductsRange.from && t < topProductsRange.from) continue;
-      if (topProductsRange.to && t > topProductsRange.to) continue;
+      const at = new Date(order.created_at);
+      if (topProductsRange.from && at < topProductsRange.from) continue;
+      if (topProductsRange.to && at > topProductsRange.to) continue;
       for (const item of order.items) {
-        const name = item.product_item_name ?? "Unknown";
+        const name = item.product_item_name ?? t("common.unknown");
         byName.set(name, (byName.get(name) ?? 0) + item.quantity);
       }
     }
     return Array.from(byName.entries())
       .map(([name, total]) => ({ name, total }))
       .sort((a, b) => b.total - a.total);
-  }, [orders, topProductsRange]);
+  }, [orders, topProductsRange, t]);
 
   const optionStats = useMemo(() => {
     const byDefinition = new Map<string, Map<string, number>>();
     for (const order of orders) {
-      const t = new Date(order.created_at);
-      if (optionStatsRange.from && t < optionStatsRange.from) continue;
-      if (optionStatsRange.to && t > optionStatsRange.to) continue;
+      const at = new Date(order.created_at);
+      if (optionStatsRange.from && at < optionStatsRange.from) continue;
+      if (optionStatsRange.to && at > optionStatsRange.to) continue;
       for (const item of order.items) {
         for (const opt of item.product_item_options ?? []) {
-          const def = opt.option_definition_name ?? "Other";
-          const raw = opt.option_value_name ?? "Unknown";
-          // Checkbox options are stored as "true"/"false"; read them as answers.
-          const val = raw === "true" ? "Yes" : raw === "false" ? "No" : raw;
+          // Definition and value names are admin-typed rows, so they stay as
+          // typed; only the two words the app supplies itself are translated.
+          const def =
+            opt.option_definition_name ?? t("products.category.other");
+          const raw = opt.option_value_name ?? t("common.unknown");
+          const val =
+            raw === "true"
+              ? t("common.yes")
+              : raw === "false"
+                ? t("common.no")
+                : raw;
           if (!byDefinition.has(def)) byDefinition.set(def, new Map());
           const inner = byDefinition.get(def)!;
           inner.set(val, (inner.get(val) ?? 0) + 1);
@@ -700,7 +762,7 @@ export default function ProfilePage() {
         .map(([name, total]) => ({ name, total }))
         .sort((a, b) => b.total - a.total),
     }));
-  }, [orders, optionStatsRange]);
+  }, [orders, optionStatsRange, t]);
 
   const ordersByDate = useMemo(() => {
     const byDate = new Map<string, { count: number; date: string }>();
@@ -715,11 +777,11 @@ export default function ProfilePage() {
         dateKey: key,
         date,
         count,
-        label: formatDate(date),
+        label: formatDate(date, t),
       }))
       .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
       .slice(-14);
-  }, [orders]);
+  }, [orders, t]);
 
   const stats = useMemo(() => {
     const totalOrders = orders.length;
@@ -751,33 +813,43 @@ export default function ProfilePage() {
   const kpis = useMemo(() => {
     const list = [
       {
-        label: isAdminDashboard ? "Orders (all users)" : "Total orders",
+        label: isAdminDashboard
+          ? t("profile.overview.ordersAllUsers")
+          : t("profile.overview.totalOrders"),
         value: String(stats.totalOrders),
       },
       {
-        label: isAdminDashboard ? "Items sold (all)" : "Total items",
+        label: isAdminDashboard
+          ? t("profile.overview.itemsSoldAll")
+          : t("profile.overview.totalItems"),
         value: String(stats.totalItems),
       },
-      { label: "This week", value: String(stats.ordersThisWeek) },
       {
-        label: isAdminDashboard ? "Revenue (all orders)" : "Total spent",
+        label: t("profile.overview.thisWeek"),
+        value: String(stats.ordersThisWeek),
+      },
+      {
+        label: isAdminDashboard
+          ? t("profile.overview.revenueAllOrders")
+          : t("profile.overview.totalSpent"),
         value: formatPrice(stats.totalSpent),
       },
     ];
     if (isAdminDashboard) {
       list.push({
-        label: "Registered users",
+        label: t("profile.overview.registeredUsers"),
         value: usersLoading ? "…" : String(directoryUsers.length),
       });
     }
     return list;
-  }, [stats, isAdminDashboard, usersLoading, directoryUsers.length]);
+  }, [stats, isAdminDashboard, usersLoading, directoryUsers.length, t]);
 
   const lineCountLabel = ordersLoading
-    ? "Loading orders…"
-    : `${stats.totalOrders} ${stats.totalOrders === 1 ? "order" : "orders"} · ${
-        stats.totalItems
-      } items`;
+    ? t("profile.orders.loadingOrders")
+    : t("profile.orders.summary", {
+        orders: t("common.orderCount", { count: stats.totalOrders }),
+        items: t("common.itemCount", { count: stats.totalItems }),
+      });
 
   // ── Signed out: the sign-in card, plus the theme picker ────────────────────
   // Appearance is a per-device setting, so a guest watching the order board can
@@ -786,12 +858,10 @@ export default function ProfilePage() {
     return (
       <div className="mx-auto flex w-full max-w-[680px] flex-col gap-5 px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-[480px] rounded-card border border-line bg-surface p-6">
-          <h1 className="mb-5 text-xl font-extrabold">Sign in</h1>
+          <h1 className="mb-5 text-xl font-extrabold">{t("auth.signIn")}</h1>
           {!apiUrl && (
             <Alert variant="destructive" className="mb-4">
-              <AlertDescription>
-                Set `NEXT_PUBLIC_API_URL` in `.env.local` to connect.
-              </AlertDescription>
+              <AlertDescription>{t("auth.configureApiHint")}</AlertDescription>
             </Alert>
           )}
           {error && (
@@ -801,7 +871,7 @@ export default function ProfilePage() {
           )}
           <form className="flex flex-col gap-4" onSubmit={handleLogin}>
             <div className="space-y-2">
-              <Label htmlFor="profile-email">Email</Label>
+              <Label htmlFor="profile-email">{t("common.email")}</Label>
               <Input
                 id="profile-email"
                 type="email"
@@ -812,7 +882,7 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="profile-password">Password</Label>
+              <Label htmlFor="profile-password">{t("common.password")}</Label>
               <Input
                 id="profile-password"
                 type="password"
@@ -827,12 +897,15 @@ export default function ProfilePage() {
               disabled={loading}
               className="press min-h-12 rounded-ctl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-ac-dark disabled:opacity-60"
             >
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? t("auth.signingIn") : t("auth.signIn")}
             </button>
           </form>
         </div>
 
+        {/* A guest watching the order board can still set their own device's
+            appearance and language — both are per-device, not per-account. */}
         <ThemeSettings />
+        <LanguageSettings />
         <VersionFooter />
       </div>
     );
@@ -842,7 +915,7 @@ export default function ProfilePage() {
     <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[196px_1fr]">
         <nav
-          aria-label="Profile sections"
+          aria-label={t("profile.sectionsLabel")}
           className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:sticky lg:top-[88px] lg:flex-col lg:overflow-visible lg:px-0"
         >
           {sections.map((item) => {
@@ -876,7 +949,9 @@ export default function ProfilePage() {
           {section === "account" && (
             <div className="flex max-w-[560px] flex-col gap-5">
               <div className="rounded-card border border-line bg-surface p-6">
-                <h1 className="mb-5 text-xl font-extrabold">Account</h1>
+                <h1 className="mb-5 text-xl font-extrabold">
+                  {t("profile.section.account")}
+                </h1>
 
                 <div className="mb-[22px] flex items-center gap-5">
                   <Avatar className="h-[88px] w-[88px]">
@@ -893,10 +968,12 @@ export default function ProfilePage() {
                   <div className="flex flex-col items-start gap-2">
                     <Label
                       htmlFor="profile-photo"
-                      title="JPEG, PNG, GIF or WebP"
+                      title={t("profile.account.photoTypes")}
                       className="press flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-surface px-[18px] text-sm font-semibold hover:bg-ink/5"
                     >
-                      {photoUploading ? "Uploading…" : "Upload photo"}
+                      {photoUploading
+                        ? t("profile.account.uploading")
+                        : t("profile.account.uploadPhoto")}
                     </Label>
                     <input
                       id="profile-photo"
@@ -917,7 +994,7 @@ export default function ProfilePage() {
                         onClick={() => void handleRemoveProfilePhoto()}
                         className="press min-h-10 px-1.5 text-left text-sm font-semibold text-muted-foreground hover:text-foreground"
                       >
-                        Remove photo
+                        {t("profile.account.removePhoto")}
                       </button>
                     ) : null}
                   </div>
@@ -929,7 +1006,7 @@ export default function ProfilePage() {
                       htmlFor="account-name"
                       className="mb-1.5 block text-xs font-semibold text-muted-foreground"
                     >
-                      Name
+                      {t("common.name")}
                     </Label>
                     <Input
                       id="account-name"
@@ -943,7 +1020,7 @@ export default function ProfilePage() {
                       htmlFor="account-email"
                       className="mb-1.5 block text-xs font-semibold text-muted-foreground"
                     >
-                      Email
+                      {t("common.email")}
                     </Label>
                     <Input
                       id="account-email"
@@ -958,14 +1035,14 @@ export default function ProfilePage() {
                       htmlFor="account-role"
                       className="mb-1.5 block text-xs font-semibold text-muted-foreground"
                     >
-                      Role
+                      {t("profile.account.role")}
                     </Label>
                     <Input
                       id="account-role"
-                      value={user?.role ?? "—"}
+                      value={roleLabel(user?.role, t) || "—"}
                       disabled
-                      title="Only an admin can change a role"
-                      className="h-[46px] rounded-xl capitalize"
+                      title={t("profile.account.roleLocked")}
+                      className="h-[46px] rounded-xl"
                     />
                   </div>
                 </div>
@@ -977,14 +1054,14 @@ export default function ProfilePage() {
                     disabled={savingAccount}
                     className="press min-h-[46px] rounded-ctl bg-primary px-5 text-[15px] font-bold text-primary-foreground hover:bg-ac-dark disabled:opacity-60"
                   >
-                    {savingAccount ? "Saving…" : "Save changes"}
+                    {savingAccount ? t("common.saving") : t("common.saveChanges")}
                   </button>
                   <button
                     type="button"
                     onClick={handleLogout}
                     className="press min-h-[46px] rounded-ctl border border-line bg-surface px-5 text-[15px] font-semibold hover:bg-ink/5"
                   >
-                    Log out
+                    {t("auth.logOut")}
                   </button>
                 </div>
               </div>
@@ -995,7 +1072,9 @@ export default function ProfilePage() {
 
           {section === "preferences" && (
             <div className="flex max-w-[680px] flex-col gap-5">
-              <h1 className="text-xl font-extrabold">Preferences</h1>
+              <h1 className="text-xl font-extrabold">
+                {t("profile.section.preferences")}
+              </h1>
               <ThemeSettings />
               <LanguageSettings />
             </div>
@@ -1003,7 +1082,9 @@ export default function ProfilePage() {
 
           {section === "overview" && (
             <div>
-              <h1 className="mb-4 text-xl font-extrabold">Overview</h1>
+              <h1 className="mb-4 text-xl font-extrabold">
+                {t("profile.section.overview")}
+              </h1>
               <div className="mb-[22px] grid grid-cols-2 gap-3.5 sm:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
                 {kpis.map((kpi) => (
                   <div
@@ -1019,10 +1100,10 @@ export default function ProfilePage() {
                   </div>
                 ))}
               </div>
-              <Panel title="Orders per day · last 14 days">
+              <Panel title={t("profile.overview.ordersPerDay")}>
                 {ordersByDate.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">
-                    No orders yet.
+                    {t("profile.overview.noOrders")}
                   </p>
                 ) : (
                   <DayColumns data={ordersByDate} />
@@ -1033,10 +1114,12 @@ export default function ProfilePage() {
 
           {section === "analytics" && (
             <div className="flex flex-col gap-4">
-              <h1 className="text-xl font-extrabold">Analytics</h1>
+              <h1 className="text-xl font-extrabold">
+                {t("profile.section.analytics")}
+              </h1>
 
               <Panel
-                title="Most ordered"
+                title={t("profile.analytics.mostOrdered")}
                 action={
                   <DateRangeSelector
                     value={topProductsRange}
@@ -1048,8 +1131,8 @@ export default function ProfilePage() {
                 {topProducts.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">
                     {isAdminDashboard
-                      ? "No orders in this range."
-                      : "No orders yet. Order from the Terminal to see your top products here."}
+                      ? t("profile.analytics.noOrdersInRange")
+                      : t("profile.analytics.noOrdersYetOwn")}
                   </p>
                 ) : (
                   <RankedBars data={topProducts} />
@@ -1057,7 +1140,9 @@ export default function ProfilePage() {
               </Panel>
 
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-base font-bold">Option choices</h2>
+                <h2 className="text-base font-bold">
+                  {t("profile.analytics.optionChoices")}
+                </h2>
                 <DateRangeSelector
                   value={optionStatsRange}
                   onChange={setOptionStatsRange}
@@ -1067,7 +1152,7 @@ export default function ProfilePage() {
               {optionStats.length === 0 ? (
                 <Panel>
                   <p className="py-8 text-center text-sm text-muted-foreground">
-                    No option data in this range.
+                    {t("profile.analytics.noOptionData")}
                   </p>
                 </Panel>
               ) : (
@@ -1085,7 +1170,9 @@ export default function ProfilePage() {
           {section === "orders" && (
             <div>
               <div className="mb-4">
-                <h1 className="mb-0.5 text-xl font-extrabold">Orders</h1>
+                <h1 className="mb-0.5 text-xl font-extrabold">
+                  {t("profile.section.orders")}
+                </h1>
                 <p className="text-sm text-muted-foreground">
                   {lineCountLabel}
                 </p>
@@ -1095,12 +1182,14 @@ export default function ProfilePage() {
                 loading={ordersLoading}
                 showUserColumns={isAdminDashboard}
                 title={
-                  isAdminDashboard ? "All orders — line items" : "Your orders"
+                  isAdminDashboard
+                    ? t("profile.orders.titleAll")
+                    : t("profile.orders.titleMine")
                 }
                 description={
                   isAdminDashboard
-                    ? "Every customer's line items. Default range is the last 30 days; filter, sort, group, and export."
-                    : "Line items from your orders. Default range is the last 30 days; change dates, sort, group, and export."
+                    ? t("profile.orders.descAll")
+                    : t("profile.orders.descMine")
                 }
               />
             </div>
@@ -1108,7 +1197,9 @@ export default function ProfilePage() {
 
           {section === "users" && (
             <div>
-              <h1 className="mb-4 text-xl font-extrabold">People</h1>
+              <h1 className="mb-4 text-xl font-extrabold">
+                {t("profile.section.users")}
+              </h1>
               <UserTable users={directoryUsers} loading={usersLoading} />
             </div>
           )}

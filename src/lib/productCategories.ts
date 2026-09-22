@@ -1,3 +1,5 @@
+import { t, type MessageKey } from "@/i18n";
+
 /** Category names in `categories` table (product type via `products.category_id`). */
 export const PRODUCT_CATEGORY = {
   DRINK: "Drink",
@@ -35,18 +37,31 @@ export const PRODUCT_CATEGORY_ORDER: ProductCategoryName[] = [
 export const ADMIN_CREATABLE_CATEGORIES: ProductCategoryName[] =
   PRODUCT_CATEGORY_ORDER;
 
-/** Section / filter-pill heading for each category. "Other" is already plural. */
-export const PRODUCT_CATEGORY_LABEL: Record<ProductCategoryName, string> = {
-  [PRODUCT_CATEGORY.DRINK]: "Drinks",
-  [PRODUCT_CATEGORY.MEAL]: "Meals",
-  [PRODUCT_CATEGORY.DESSERT]: "Desserts",
-  [PRODUCT_CATEGORY.OTHER]: "Other",
+/**
+ * Section / filter-pill heading for each category, as a catalogue key.
+ *
+ * The headings themselves live in `src/i18n/messages/products.json`; resolve
+ * one with `categoryLabel(name, t)` from `@/i18n`, or `t(PRODUCT_CATEGORY_LABEL_KEY[c])`
+ * when the category is already narrowed to this union.
+ */
+export const PRODUCT_CATEGORY_LABEL_KEY: Record<
+  ProductCategoryName,
+  MessageKey
+> = {
+  [PRODUCT_CATEGORY.DRINK]: "products.category.drink",
+  [PRODUCT_CATEGORY.MEAL]: "products.category.meal",
+  [PRODUCT_CATEGORY.DESSERT]: "products.category.dessert",
+  [PRODUCT_CATEGORY.OTHER]: "products.category.other",
 };
 
 /**
  * Bucket for a product whose category matches none of the above — a category
  * an admin created directly, or one whose row was deleted. Deliberately NOT
  * "Other", which is now a real category an admin can file things under.
+ *
+ * Kept as the English string because it is also a *grouping key*: rows are
+ * bucketed under it before anything is rendered, and `subtypeLabel()`
+ * translates it on the way to the screen.
  */
 export const UNCATEGORIZED_LABEL = "Uncategorized";
 
@@ -88,7 +103,7 @@ export async function fetchCategories(
   if (categoriesCache && !force) return categoriesCache;
   const response = await fetch(`${apiUrl}/api/categories`);
   if (!response.ok) {
-    throw new Error("Failed to load categories");
+    throw new Error(t("errors.loadCategories"));
   }
   const data = await response.json();
   const rows: CategoryRow[] = [];

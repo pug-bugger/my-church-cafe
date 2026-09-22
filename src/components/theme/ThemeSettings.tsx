@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaletteSwatch } from "@/components/theme/PaletteSwatch";
 import { usePalette } from "@/context/PaletteContext";
+import { useTranslation } from "@/i18n";
 import { MODES, PALETTES, type ModeId } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 
@@ -23,26 +24,26 @@ const MODE_ICONS: Record<ModeId, typeof Sun> = {
 export function ThemeSettings() {
   const { theme, setTheme } = useTheme();
   const { palette, setPalette, mounted } = usePalette();
+  const { t } = useTranslation();
 
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle>Appearance</CardTitle>
+        <CardTitle>{t("settings.appearance.title")}</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Saved on this device only — each terminal, tablet and phone keeps its
-          own theme.
+          {t("settings.appearance.hint")}
         </p>
       </CardHeader>
 
       <CardContent className="space-y-6">
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Mode
+            {t("settings.appearance.modeLabel")}
           </h4>
           {mounted ? (
             <div
               role="radiogroup"
-              aria-label="Colour mode"
+              aria-label={t("settings.appearance.modeGroupLabel")}
               className="inline-flex w-full max-w-sm gap-1 rounded-ctl border border-line bg-surface-sunken p-1"
             >
               {MODES.map((option) => {
@@ -63,7 +64,7 @@ export function ThemeSettings() {
                     )}
                   >
                     <Icon className="h-4 w-4" />
-                    {option.label}
+                    {t(`settings.mode.${option.id}`)}
                   </button>
                 );
               })}
@@ -75,11 +76,11 @@ export function ThemeSettings() {
 
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Palette
+            {t("settings.appearance.paletteLabel")}
           </h4>
           <div
             role="radiogroup"
-            aria-label="Colour palette"
+            aria-label={t("settings.appearance.paletteGroupLabel")}
             className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
           >
             {PALETTES.map((option) => {
@@ -103,24 +104,25 @@ export function ThemeSettings() {
                     <PaletteSwatch palette={option.id} mode="dark" />
                   </div>
                   <div className="mt-2.5 flex items-center gap-1.5">
-                    <span className="text-sm font-bold">{option.label}</span>
+                    <span className="text-sm font-bold">
+                      {t(`settings.palette.${option.id}.label`)}
+                    </span>
                     {active && (
                       <Check className="h-3.5 w-3.5 text-ac" aria-hidden />
                     )}
                     <span className="sr-only">
-                      {active ? "(selected)" : ""}
+                      {active ? t("settings.appearance.selected") : ""}
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
-                    {option.description}
+                    {t(`settings.palette.${option.id}.description`)}
                   </p>
                 </button>
               );
             })}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Each palette ships a light and a dark version — the pair above shows
-            both. Switching mode keeps the palette you picked.
+            {t("settings.appearance.paletteNote")}
           </p>
         </section>
       </CardContent>

@@ -1,0 +1,68 @@
+{
+  "title": { "en": "Statistics", "lt": "Statistika", "ru": "Статистика" },
+  "range": {
+    "today": { "en": "Today", "lt": "Šiandien", "ru": "Сегодня" },
+    "7d": { "en": "7 days", "lt": "7 dienos", "ru": "7 дней" },
+    "30d": { "en": "30 days", "lt": "30 dienų", "ru": "30 дней" },
+    "all": { "en": "All time", "lt": "Visas laikas", "ru": "За всё время" }
+  },
+  "noOrdersYet": { "en": "No orders yet", "lt": "Užsakymų dar nėra", "ru": "Заказов пока нет" },
+  "noOrdersYetMessage": {
+    "en": "Figures appear here once the cafe has taken its first order.",
+    "lt": "Skaičiai atsiras, kai kavinė priims pirmą užsakymą.",
+    "ru": "Цифры появятся, когда кафе примет первый заказ."
+  },
+  "noOrdersInRange": {
+    "en": "No orders in this range.",
+    "lt": "Šiame intervale užsakymų nėra.",
+    "ru": "В этом диапазоне заказов нет."
+  },
+  "revenue": { "en": "Revenue", "lt": "Pajamos", "ru": "Выручка" },
+  "revenueHint": {
+    "en": "Cancelled orders excluded",
+    "lt": "Atšaukti užsakymai neįskaičiuoti",
+    "ru": "Отменённые заказы не учтены"
+  },
+  "orders": { "en": "Orders", "lt": "Užsakymai", "ru": "Заказы" },
+  "itemsSold": { "en": "Items sold", "lt": "Parduota prekių", "ru": "Продано позиций" },
+  "averageOrder": { "en": "Average order", "lt": "Vidutinis užsakymas", "ru": "Средний заказ" },
+  "cancelledCount": {
+    "en": { "one": "{count} cancelled", "other": "{count} cancelled" },
+    "lt": { "one": "{count} atšauktas", "few": "{count} atšaukti", "other": "{count} atšauktų" },
+    "ru": { "one": "{count} отменён", "few": "{count} отменено", "many": "{count} отменено" }
+  },
+  "noneCancelled": { "en": "none cancelled", "lt": "nė vienas neatšauktas", "ru": "отмен нет" },
+  "tradePerDay": { "en": "Trade per day", "lt": "Apyvarta per dieną", "ru": "Оборот по дням" },
+  "tapBarForTakings": {
+    "en": "Tap a bar to read its takings",
+    "lt": "Paspauskite stulpelį, kad pamatytumėte apyvartą",
+    "ru": "Нажмите на столбец, чтобы увидеть выручку"
+  },
+  "tapBarForTakingsTruncated": {
+    "en": "Last {count} days · tap a bar to read its takings",
+    "lt": "Paskutinės {count} dienos · paspauskite stulpelį, kad pamatytumėte apyvartą",
+    "ru": "Последние {count} дней · нажмите на столбец, чтобы увидеть выручку"
+  },
+  "busiestHours": { "en": "Busiest hours", "lt": "Judriausios valandos", "ru": "Самые загруженные часы" },
+  "ordersByHour": { "en": "Orders by hour of day", "lt": "Užsakymai pagal paros valandą", "ru": "Заказы по часам" },
+  "peakServiceAround": {
+    "en": "Peak service around {hour}",
+    "lt": "Įtempčiausia apie {hour}",
+    "ru": "Пик обслуживания около {hour}"
+  },
+  "bestSellers": { "en": "Best sellers", "lt": "Geriausiai parduodama", "ru": "Лидеры продаж" },
+  "byUnitsSold": { "en": "By units sold", "lt": "Pagal parduotus vienetus", "ru": "По количеству продаж" },
+  "nothingSoldInRange": {
+    "en": "Nothing sold in this range.",
+    "lt": "Šiame intervale nieko neparduota.",
+    "ru": "В этом диапазоне ничего не продано."
+  },
+  "orderStates": { "en": "Order states", "lt": "Užsakymų būsenos", "ru": "Состояния заказов" },
+  "everyOrderInRange": {
+    "en": "Every order in the range",
+    "lt": "Visi intervalo užsakymai",
+    "ru": "Все заказы диапазона"
+  },
+  "noOrdersShort": { "en": "no orders", "lt": "užsakymų nėra", "ru": "нет заказов" },
+  "unknownItem": { "en": "Unknown item", "lt": "Nežinoma prekė", "ru": "Неизвестная позиция" }
+}
