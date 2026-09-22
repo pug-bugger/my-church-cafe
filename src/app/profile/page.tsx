@@ -17,6 +17,7 @@ import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 import { PrinterStatusCard } from "@/components/profile/PrinterStatusCard";
 import { ThemeSettings } from "@/components/theme/ThemeSettings";
 import { LanguageSettings } from "@/components/profile/LanguageSettings";
+import { VersionFooter } from "@/components/profile/VersionFooter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
 import { cn } from "@/lib/utils";
@@ -832,6 +833,7 @@ export default function ProfilePage() {
         </div>
 
         <ThemeSettings />
+        <VersionFooter />
       </div>
     );
   }
@@ -1112,6 +1114,8 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      <VersionFooter />
     </div>
   );
 }
