@@ -22,6 +22,9 @@ import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
 import {
   isProductCategory,
   PRODUCT_CATEGORY,
+  PRODUCT_CATEGORY_LABEL,
+  PRODUCT_CATEGORY_ORDER,
+  UNCATEGORIZED_LABEL,
   type ProductCategoryName,
 } from "@/lib/productCategories";
 import { formatPrice } from "@/lib/format";
@@ -44,11 +47,11 @@ function productTypeName(product: Product): string | null {
   return product.parent_category_name ?? product.category_name ?? null;
 }
 
-const MENU_SECTIONS: { title: string; category: ProductCategoryName }[] = [
-  { title: "Drinks", category: PRODUCT_CATEGORY.DRINK },
-  { title: "Meals", category: PRODUCT_CATEGORY.MEAL },
-  { title: "Desserts", category: PRODUCT_CATEGORY.DESSERT },
-];
+const MENU_SECTIONS: { title: string; category: ProductCategoryName }[] =
+  PRODUCT_CATEGORY_ORDER.map((category) => ({
+    title: PRODUCT_CATEGORY_LABEL[category],
+    category,
+  }));
 
 function isAvailable(value: Product["available"]): boolean {
   if (value === null || value === undefined) return true;
@@ -400,7 +403,9 @@ export function MenuList() {
       );
     });
     if (uncategorized.length) {
-      result.push({ name: "Other", items: uncategorized });
+      // Not "Other" — that is now a real category an admin can file things
+      // under, and these are products that match no category at all.
+      result.push({ name: UNCATEGORIZED_LABEL, items: uncategorized });
     }
 
     return result;

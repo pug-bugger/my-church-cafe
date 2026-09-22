@@ -33,8 +33,7 @@ const TABS: { id: TabId; label: string; tip: string }[] = [
 ];
 
 export function ManageTabs() {
-  const drinks = useAppStore((state) => state.drinks);
-  const desserts = useAppStore((state) => state.desserts);
+  const products = useAppStore((state) => state.products);
   const [tab, setTab] = useState<TabId>("products");
   const [optionCount, setOptionCount] = useState<number | null>(null);
   const [userCount, setUserCount] = useState<number | null>(null);
@@ -66,12 +65,12 @@ export function ManageTabs() {
 
   const counts = useMemo<Record<TabId, number | null>>(
     () => ({
-      products: drinks.length + desserts.length,
+      products: products.length,
       options: optionCount,
       users: userCount,
       reports: null,
     }),
-    [drinks.length, desserts.length, optionCount, userCount]
+    [products.length, optionCount, userCount]
   );
 
   return (

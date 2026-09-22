@@ -25,8 +25,20 @@ import type { DrinkOptionDefinitionApi } from "@/lib/drinkOptions";
 import { toast } from "sonner";
 import { PlusIcon, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 
 type NewValueRow = { label: string; extra_price: string };
+
+/**
+ * Parse a price typed into an admin field. Returns null when it isn't a usable
+ * amount, so the caller can refuse to save rather than quietly storing NaN or a
+ * negative — these numbers are charged to customers.
+ */
+function parsePrice(raw: string): number | null {
+  const n = Number.parseFloat(raw);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
 
 export function DrinkOptionManagement() {
   const [list, setList] = useState<DrinkOptionDefinitionApi[]>([]);
@@ -42,6 +54,15 @@ export function DrinkOptionManagement() {
   const [newValueByDef, setNewValueByDef] = useState<
     Record<number, NewValueRow>
   >({});
+  // Price edits are held as drafts keyed by row id and saved explicitly. These
+  // are amounts customers get charged, so no save-on-blur.
+  const [valuePriceDraft, setValuePriceDraft] = useState<
+    Record<number, string>
+  >({});
+  const [checkboxPriceDraft, setCheckboxPriceDraft] = useState<
+    Record<number, string>
+  >({});
+  const [savingPriceId, setSavingPriceId] = useState<string | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -163,6 +184,64 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
+    }
+  }
+
+  /** Change what one choice of a select option adds to the price. */
+  async function saveValuePrice(valueId: number, raw: string) {
+    const extra_price = parsePrice(raw);
+    if (extra_price === null) {
+      toast.error("Enter a price of 0 or more");
+      return;
+    }
+    setSavingPriceId(`value-${valueId}`);
+    try {
+      await apiFetch(`/api/drink-options/values/${valueId}`, {
+        method: "PUT",
+        body: { extra_price },
+        auth: true,
+        authError: "Login required to change option prices",
+      });
+      toast.success("Price updated");
+      setValuePriceDraft((prev) => {
+        const next = { ...prev };
+        delete next[valueId];
+        return next;
+      });
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setSavingPriceId(null);
+    }
+  }
+
+  /** Change what ticking a checkbox option adds to the price. */
+  async function saveCheckboxPrice(defId: number, raw: string) {
+    const checkbox_extra_price = parsePrice(raw);
+    if (checkbox_extra_price === null) {
+      toast.error("Enter a price of 0 or more");
+      return;
+    }
+    setSavingPriceId(`def-${defId}`);
+    try {
+      await apiFetch(`/api/drink-options/${defId}`, {
+        method: "PUT",
+        body: { checkbox_extra_price },
+        auth: true,
+        authError: "Login required to change option prices",
+      });
+      toast.success("Price updated");
+      setCheckboxPriceDraft((prev) => {
+        const next = { ...prev };
+        delete next[defId];
+        return next;
+      });
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setSavingPriceId(null);
     }
   }
 
@@ -312,15 +391,53 @@ export function DrinkOptionManagement() {
                     <p className="font-medium">{def.name}</p>
                     <p className="text-xs text-muted-foreground font-mono">
                       {def.option_key} · {def.type}
-                      {def.type === "checkbox" &&
-                        def.checkbox_extra_price > 0 && (
-                          <span>
-                            {" "}
-                            · +€{def.checkbox_extra_price.toFixed(2)} when
-                            on
-                          </span>
-                        )}
                     </p>
+                    {def.type === "checkbox" && (
+                      <div className="mt-2 flex flex-wrap items-end gap-2">
+                        <div>
+                          <Label
+                            htmlFor={`chk-price-${def.id}`}
+                            className="text-xs text-muted-foreground"
+                          >
+                            Extra when on
+                          </Label>
+                          <Input
+                            id={`chk-price-${def.id}`}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="mt-1 w-28"
+                            value={
+                              checkboxPriceDraft[def.id] ??
+                              String(def.checkbox_extra_price ?? 0)
+                            }
+                            onChange={(e) =>
+                              setCheckboxPriceDraft((prev) => ({
+                                ...prev,
+                                [def.id]: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            checkboxPriceDraft[def.id] === undefined ||
+                            savingPriceId === `def-${def.id}`
+                          }
+                          onClick={() =>
+                            saveCheckboxPrice(
+                              def.id,
+                              checkboxPriceDraft[def.id] ?? ""
+                            )
+                          }
+                        >
+                          {savingPriceId === `def-${def.id}` ? "Saving…" : "Save"}
+                        </Button>
+                      </div>
+                    )}
                     {def.type === "select" && def.values.length > 0 && (
                       <ul className="mt-2 text-sm list-disc list-inside">
                         {def.values.map((v) => (
@@ -328,15 +445,44 @@ export function DrinkOptionManagement() {
                             key={v.id}
                             className="flex items-center gap-2 flex-wrap mb-2"
                           >
-                            <span>
-                              {v.label}
-                              {v.extra_price > 0 && (
-                                <span className="text-muted-foreground">
-                                  {" "}
-                                  (+€{v.extra_price.toFixed(2)})
-                                </span>
-                              )}
-                            </span>
+                            <span>{v.label}</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="w-24"
+                              aria-label={`Extra price for ${v.label}`}
+                              value={
+                                valuePriceDraft[v.id] ?? String(v.extra_price ?? 0)
+                              }
+                              onChange={(e) =>
+                                setValuePriceDraft((prev) => ({
+                                  ...prev,
+                                  [v.id]: e.target.value,
+                                }))
+                              }
+                            />
+                            {valuePriceDraft[v.id] === undefined ? (
+                              <span className="text-xs text-muted-foreground">
+                                {v.extra_price > 0
+                                  ? `+${formatPrice(v.extra_price)}`
+                                  : "no extra"}
+                              </span>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={savingPriceId === `value-${v.id}`}
+                                onClick={() =>
+                                  saveValuePrice(v.id, valuePriceDraft[v.id] ?? "")
+                                }
+                              >
+                                {savingPriceId === `value-${v.id}`
+                                  ? "Saving…"
+                                  : "Save"}
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               variant="outline"

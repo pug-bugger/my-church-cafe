@@ -108,10 +108,8 @@ export function ProductForm({
   defaultCategory,
   onSuccess,
 }: ProductFormProps) {
-  const createDrinkApi = useAppStore((state) => state.createDrinkApi);
-  const updateDrinkApi = useAppStore((state) => state.updateDrinkApi);
-  const createDessertApi = useAppStore((state) => state.createDessertApi);
-  const updateDessertApi = useAppStore((state) => state.updateDessertApi);
+  const createProductApi = useAppStore((state) => state.createProductApi);
+  const updateProductApi = useAppStore((state) => state.updateProductApi);
   const uploadProductImage = useAppStore((state) => state.uploadProductImage);
 
   const isEditing = !!product;
@@ -155,7 +153,9 @@ export function ProductForm({
 
   useEffect(() => {
     if (!apiUrl) return;
-    fetchCategories(apiUrl)
+    // `force`: the module-scope cache can predate a category migration, and a
+    // stale list makes saving into a newly seeded category fail.
+    fetchCategories(apiUrl, true)
       .then((rows) => setDrinkSubtypes(getDrinkSubtypes(rows)))
       .catch(() => setDrinkSubtypes([]));
   }, [apiUrl]);
@@ -247,28 +247,18 @@ export function ProductForm({
       categoryId: subtypeRow?.id,
     };
 
+    // One path for every category. Drink, Dessert, Meal and Other differ only in
+    // which `categories` row they resolve to, which the store works out.
     try {
       if (product) {
-        if (isProductCategory(selectedCategory, PRODUCT_CATEGORY.DRINK)) {
-          await updateDrinkApi(product.id, payload);
-        } else if (
-          isProductCategory(selectedCategory, PRODUCT_CATEGORY.DESSERT)
-        ) {
-          await updateDessertApi(product.id, {
-            ...payload,
-            availableOptions: [],
-          });
-        } else {
-          toast.error("Meal editing is not available yet.");
-          return;
-        }
+        await updateProductApi(product.id, payload);
         if (imageFile) {
           await uploadProductImage(product.id, imageFile);
           setImageFile(null);
         }
         toast.success("Item updated");
-      } else if (isProductCategory(selectedCategory, PRODUCT_CATEGORY.DRINK)) {
-        const created = await createDrinkApi(payload);
+      } else {
+        const created = await createProductApi(payload);
         if (imageFile) {
           await uploadProductImage(created.id, imageFile);
           setImageFile(null);
@@ -276,34 +266,15 @@ export function ProductForm({
         form.reset({
           category: selectedCategory,
           subtype:
-            drinkSubtypes.length > 0 ? String(drinkSubtypes[0].id) : "",
+            isDrinkCategory && drinkSubtypes.length > 0
+              ? String(drinkSubtypes[0].id)
+              : "",
           name: "",
           description: "",
           price: "",
         });
         setSelectedDefIds([]);
-        toast.success("Drink created");
-      } else if (
-        isProductCategory(selectedCategory, PRODUCT_CATEGORY.DESSERT)
-      ) {
-        const created = await createDessertApi({
-          ...payload,
-          availableOptions: [],
-        });
-        if (imageFile) {
-          await uploadProductImage(created.id, imageFile);
-          setImageFile(null);
-        }
-        form.reset({
-          category: selectedCategory,
-          name: "",
-          description: "",
-          price: "",
-        });
-        toast.success("Dessert created");
-      } else {
-        toast.error("Meal creation is not available yet.");
-        return;
+        toast.success(`${selectedCategory} created`);
       }
       onSuccess?.();
     } catch (err) {

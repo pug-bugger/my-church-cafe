@@ -6,10 +6,11 @@ import { apiFetch, getApiBaseUrl } from '@/lib/api';
 import {
   fetchCategories,
   findSubtypeByName,
-  getCategoryId,
   getDrinkParentCategory,
+  getTopLevelCategory,
   isProductCategory,
   PRODUCT_CATEGORY,
+  type ProductCategoryName,
 } from '@/lib/productCategories';
 
 function areSelectedOptionsEqual(
@@ -60,19 +61,32 @@ function mapApiProductToDrink(product: Record<string, unknown>): Drink {
   };
 }
 
-async function resolveDrinkCategoryId(
+/**
+ * The `categories` row a product should be filed under.
+ *
+ * Drinks are a special case: they hang off a *subtype* (Coffee, Season drinks)
+ * rather than the Drink row itself. Every other top-level category — Meal,
+ * Dessert, Other, or one an admin adds later — resolves by name, which is what
+ * makes adding a category a migration rather than a code change.
+ */
+async function resolveCategoryId(
   apiUrl: string,
-  drink: Omit<Drink, "id">
+  product: Omit<Drink, "id">
 ): Promise<number | undefined> {
   const categories = await fetchCategories(apiUrl);
-  if (drink.categoryId != null) {
-    const match = categories.find((c) => c.id === drink.categoryId);
-    if (match) return match.id;
+  const topLevel = product.categoryName ?? PRODUCT_CATEGORY.DRINK;
+
+  if (isProductCategory(topLevel, PRODUCT_CATEGORY.DRINK)) {
+    if (product.categoryId != null) {
+      const match = categories.find((c) => c.id === product.categoryId);
+      if (match) return match.id;
+    }
+    const fromSubtype = findSubtypeByName(categories, product.subtypeName);
+    if (fromSubtype) return fromSubtype.id;
+    return getDrinkParentCategory(categories)?.id;
   }
-  const fromSubtype = findSubtypeByName(categories, drink.subtypeName);
-  if (fromSubtype) return fromSubtype.id;
-  const drinkParent = getDrinkParentCategory(categories);
-  return drinkParent?.id;
+
+  return getTopLevelCategory(categories, topLevel)?.id;
 }
 
 /** Map frontend product (without id) to backend POST/PUT /api/products body. */
@@ -95,23 +109,19 @@ function productToApiBody(
 }
 
 interface AppState {
-  drinks: Drink[];
-  drinksLoading: boolean;
-  desserts: Drink[];
-  dessertsLoading: boolean;
+  /**
+   * Every product, whatever its category — one unfiltered load, the shape the
+   * mobile client has always used. It replaced separate `drinks`/`desserts`
+   * arrays, which were why meals could never be ordered on the web terminal.
+   */
+  products: Drink[];
+  productsLoading: boolean;
   orders: ServerOrder[];
   draftItems: OrderItem[];
-  addDrink: (drink: Drink) => void;
-  updateDrink: (id: string, drink: Partial<Drink>) => void;
-  deleteDrink: (id: string) => void;
-  loadDrinks: () => Promise<void>;
-  loadDesserts: () => Promise<void>;
-  createDrinkApi: (drink: Omit<Drink, "id">) => Promise<Drink>;
-  updateDrinkApi: (id: string, drink: Omit<Drink, "id">) => Promise<void>;
-  deleteDrinkApi: (id: string) => Promise<void>;
-  createDessertApi: (dessert: Omit<Drink, "id">) => Promise<Drink>;
-  updateDessertApi: (id: string, dessert: Omit<Drink, "id">) => Promise<void>;
-  deleteDessertApi: (id: string) => Promise<void>;
+  loadProducts: () => Promise<void>;
+  createProductApi: (product: Omit<Drink, "id">) => Promise<Drink>;
+  updateProductApi: (id: string, product: Omit<Drink, "id">) => Promise<void>;
+  deleteProductApi: (id: string) => Promise<void>;
   uploadProductImage: (productId: string, file: File) => Promise<string>;
   toggleProductAvailableApi: (id: string, active: boolean, hideUntilMidnight?: boolean) => Promise<void>;
   setOrders: (orders: ServerOrder[]) => void;
@@ -124,225 +134,103 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  drinks: [],
-  drinksLoading: false,
-  desserts: [],
-  dessertsLoading: false,
+  products: [],
+  productsLoading: false,
   orders: [],
   draftItems: [],
-  
-  addDrink: (drink) => set((state) => ({
-    drinks: [...state.drinks, drink]
-  })),
-  
-  updateDrink: (id, updatedDrink) => set((state) => ({
-    drinks: state.drinks.map((drink) => 
-      drink.id === id ? { ...drink, ...updatedDrink } : drink
-    )
-  })),
-  
-  deleteDrink: (id) => set((state) => ({
-    drinks: state.drinks.filter((drink) => drink.id !== id)
-  })),
 
-  loadDrinks: async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      set(() => ({ drinks: defaultDrinks, drinksLoading: false }));
-      return;
-    }
-    set(() => ({ drinksLoading: true }));
+  loadProducts: async () => {
+    set(() => ({ productsLoading: true }));
     try {
-      const categories = await fetchCategories(apiUrl);
-      const drinkParent = getDrinkParentCategory(categories);
-      const path = drinkParent
-        ? `/api/products?parent_category_id=${drinkParent.id}`
-        : `/api/products`;
-      const data = await apiFetch<Record<string, unknown>[]>(path);
+      // One unfiltered request for every category. The old pair of
+      // category-filtered loads is why meals existed in the database but were
+      // unreachable from the web terminal.
+      const data = await apiFetch<Record<string, unknown>[]>("/api/products");
       if (!Array.isArray(data) || data.length === 0) {
-        set(() => ({ drinks: defaultDrinks, drinksLoading: false }));
+        // Keep the offline/empty menu working, as the drink load always has.
+        set(() => ({ products: defaultDrinks, productsLoading: false }));
         return;
       }
-      const mapped = data.map((product) => mapApiProductToDrink(product));
-      set(() => ({ drinks: mapped, drinksLoading: false }));
+      set(() => ({
+        products: data.map((product) => mapApiProductToDrink(product)),
+        productsLoading: false,
+      }));
     } catch (_err) {
-      set(() => ({ drinks: defaultDrinks, drinksLoading: false }));
+      set(() => ({ products: defaultDrinks, productsLoading: false }));
     }
   },
 
-  loadDesserts: async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      set(() => ({ desserts: [], dessertsLoading: false }));
-      return;
-    }
-    set(() => ({ dessertsLoading: true }));
-    try {
-      const categoryIds = await fetchCategories(apiUrl).then((rows) => {
-        const map = new Map<string, number>();
-        for (const row of rows) {
-          map.set(row.name.trim().toLowerCase(), row.id);
-        }
-        return map;
-      });
-      const dessertCategoryId = getCategoryId(
-        categoryIds,
-        PRODUCT_CATEGORY.DESSERT
-      );
-      if (!dessertCategoryId) {
-        set(() => ({ desserts: [], dessertsLoading: false }));
-        return;
-      }
-      const data = await apiFetch<Record<string, unknown>[]>(
-        `/api/products?category_id=${dessertCategoryId}`
-      );
-      const mapped = Array.isArray(data)
-        ? data.map((product) => mapApiProductToDrink(product))
-        : [];
-      set(() => ({ desserts: mapped, dessertsLoading: false }));
-    } catch (_err) {
-      set(() => ({ desserts: [], dessertsLoading: false }));
-    }
-  },
-
-  createDrinkApi: async (drink) => {
+  createProductApi: async (product) => {
     const apiUrl = getApiBaseUrl();
-    const categoryId = await resolveDrinkCategoryId(apiUrl, drink);
+    const categoryId = await resolveCategoryId(apiUrl, product);
+    const categoryName = product.categoryName ?? PRODUCT_CATEGORY.DRINK;
     if (!categoryId) {
       throw new Error(
-        "Drink category is missing. Run migration_drink_subtypes.sql and assign a subtype."
+        `The "${categoryName}" category is missing in the database. Run the category migrations.`
       );
     }
-    const body = productToApiBody(drink, categoryId);
+    const body = productToApiBody(product, categoryId);
     const data = await apiFetch<{ id?: string | number }>("/api/products", {
       method: "POST",
       body,
       auth: true,
-      authError: "Login required to create drinks",
+      authError: "Login required to create products",
     });
     const id = String(data?.id ?? "");
     if (!id) throw new Error("Server did not return product id");
     const categories = await fetchCategories(apiUrl);
-    const subtypeRow = categories.find((c) => c.id === categoryId);
+    const categoryRow = categories.find((c) => c.id === categoryId);
+    const isDrink = isProductCategory(categoryName, PRODUCT_CATEGORY.DRINK);
     const created: Drink = {
-      ...drink,
+      ...product,
       id,
-      categoryName: PRODUCT_CATEGORY.DRINK,
-      subtypeName: subtypeRow?.name ?? drink.subtypeName,
+      categoryName,
+      // Only a drink hangs off a subtype; for anything else the resolved row
+      // *is* the top-level category.
+      subtypeName: isDrink ? categoryRow?.name ?? product.subtypeName : undefined,
       categoryId,
     };
-    set((state) => ({ drinks: [...state.drinks, created] }));
+    set((state) => ({ products: [...state.products, created] }));
     return created;
   },
 
-  updateDrinkApi: async (id, drink) => {
+  updateProductApi: async (id, product) => {
     const apiUrl = getApiBaseUrl();
-    const categoryId = await resolveDrinkCategoryId(apiUrl, drink);
+    const categoryId = await resolveCategoryId(apiUrl, product);
+    const categoryName = product.categoryName ?? PRODUCT_CATEGORY.DRINK;
     if (!categoryId) {
-      throw new Error("Could not resolve drink subtype category.");
+      throw new Error(`Could not resolve the "${categoryName}" category.`);
     }
-    const body = productToApiBody(drink, categoryId);
+    const body = productToApiBody(product, categoryId);
     await apiFetch(`/api/products/${id}`, {
       method: "PUT",
       body,
       auth: true,
-      authError: "Login required to update drinks",
+      authError: "Login required to update products",
     });
     const categories = await fetchCategories(apiUrl);
-    const subtypeRow = categories.find((c) => c.id === categoryId);
+    const categoryRow = categories.find((c) => c.id === categoryId);
+    const isDrink = isProductCategory(categoryName, PRODUCT_CATEGORY.DRINK);
     const updated: Drink = {
-      ...drink,
+      ...product,
       id,
-      categoryName: PRODUCT_CATEGORY.DRINK,
-      subtypeName: subtypeRow?.name ?? drink.subtypeName,
+      categoryName,
+      subtypeName: isDrink ? categoryRow?.name ?? product.subtypeName : undefined,
       categoryId,
     };
     set((state) => ({
-      drinks: state.drinks.map((d) => (d.id === id ? updated : d)),
+      products: state.products.map((p) => (p.id === id ? updated : p)),
     }));
   },
 
-  deleteDrinkApi: async (id) => {
+  deleteProductApi: async (id) => {
     await apiFetch(`/api/products/${id}`, {
       method: "DELETE",
       auth: true,
-      authError: "Login required to delete drinks",
+      authError: "Login required to delete products",
     });
     set((state) => ({
-      drinks: state.drinks.filter((d) => d.id !== id),
-    }));
-  },
-
-  createDessertApi: async (dessert) => {
-    const apiUrl = getApiBaseUrl();
-    const categories = await fetchCategories(apiUrl);
-    const map = new Map(
-      categories.map((c) => [c.name.trim().toLowerCase(), c.id])
-    );
-    const categoryId = getCategoryId(map, PRODUCT_CATEGORY.DESSERT);
-    if (!categoryId) {
-      throw new Error(
-        "Dessert category is missing in the database. Run the dessert category migration."
-      );
-    }
-    const body = productToApiBody(
-      { ...dessert, availableOptions: [] },
-      categoryId
-    );
-    const data = await apiFetch<{ id?: string | number }>("/api/products", {
-      method: "POST",
-      body,
-      auth: true,
-      authError: "Login required to create desserts",
-    });
-    const id = String(data?.id ?? "");
-    if (!id) throw new Error("Server did not return product id");
-    const created: Drink = {
-      ...dessert,
-      id,
-      availableOptions: [],
-      categoryName: PRODUCT_CATEGORY.DESSERT,
-    };
-    set((state) => ({ desserts: [...state.desserts, created] }));
-    return created;
-  },
-
-  updateDessertApi: async (id, dessert) => {
-    const apiUrl = getApiBaseUrl();
-    const categories = await fetchCategories(apiUrl);
-    const map = new Map(
-      categories.map((c) => [c.name.trim().toLowerCase(), c.id])
-    );
-    const categoryId = getCategoryId(map, PRODUCT_CATEGORY.DESSERT);
-    const body = productToApiBody(
-      { ...dessert, availableOptions: [] },
-      categoryId
-    );
-    await apiFetch(`/api/products/${id}`, {
-      method: "PUT",
-      body,
-      auth: true,
-      authError: "Login required to update desserts",
-    });
-    const updated: Drink = {
-      ...dessert,
-      id,
-      availableOptions: [],
-      categoryName: PRODUCT_CATEGORY.DESSERT,
-    };
-    set((state) => ({
-      desserts: state.desserts.map((d) => (d.id === id ? updated : d)),
-    }));
-  },
-
-  deleteDessertApi: async (id) => {
-    await apiFetch(`/api/products/${id}`, {
-      method: "DELETE",
-      auth: true,
-      authError: "Login required to delete desserts",
-    });
-    set((state) => ({
-      desserts: state.desserts.filter((d) => d.id !== id),
+      products: state.products.filter((p) => p.id !== id),
     }));
   },
 
@@ -361,11 +249,8 @@ export const useAppStore = create<AppState>((set) => ({
     const imageUrl = typeof data?.image_url === "string" ? data.image_url : "";
     if (!imageUrl) throw new Error("Server did not return image_url");
     set((state) => ({
-      drinks: state.drinks.map((d) =>
-        d.id === productId ? { ...d, imageUrl } : d
-      ),
-      desserts: state.desserts.map((d) =>
-        d.id === productId ? { ...d, imageUrl } : d
+      products: state.products.map((p) =>
+        p.id === productId ? { ...p, imageUrl } : p
       ),
     }));
     return imageUrl;
@@ -380,11 +265,8 @@ export const useAppStore = create<AppState>((set) => ({
     // available_until is non-null only for the temporary-hide case (value used only for the label)
     const available_until = !active && hideUntilMidnight ? "scheduled" : null;
     set((state) => ({
-      drinks: state.drinks.map((d) =>
-        d.id === id ? { ...d, active, available_until } : d
-      ),
-      desserts: state.desserts.map((d) =>
-        d.id === id ? { ...d, active, available_until } : d
+      products: state.products.map((p) =>
+        p.id === id ? { ...p, active, available_until } : p
       ),
     }));
   },
@@ -449,10 +331,10 @@ export const useAppStore = create<AppState>((set) => ({
   })),
 }));
 
-/** Drinks and desserts available for terminal ordering. */
-export function getOrderableProducts(state: {
-  drinks: Drink[];
-  desserts: Drink[];
-}): Drink[] {
-  return [...state.drinks, ...state.desserts];
+/** Products of one top-level category, for a menu section or a filter pill. */
+export function productsInCategory(
+  products: Drink[],
+  category: ProductCategoryName
+): Drink[] {
+  return products.filter((p) => isProductCategory(p.categoryName, category));
 }

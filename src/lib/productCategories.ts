@@ -3,6 +3,7 @@ export const PRODUCT_CATEGORY = {
   DRINK: "Drink",
   MEAL: "Meal",
   DESSERT: "Dessert",
+  OTHER: "Other",
 } as const;
 
 export type ProductCategoryName =
@@ -18,12 +19,36 @@ export const DRINK_SUBTYPE = {
 export type DrinkSubtypeName =
   (typeof DRINK_SUBTYPE)[keyof typeof DRINK_SUBTYPE];
 
-/** Categories available in the admin add-product form. */
-export const ADMIN_CREATABLE_CATEGORIES: ProductCategoryName[] = [
+/**
+ * The order top-level categories are presented in, everywhere: menu sections,
+ * terminal filter pills, admin grouping and the add-product form. One list so
+ * the menu and the terminal can't drift apart, which they previously had.
+ */
+export const PRODUCT_CATEGORY_ORDER: ProductCategoryName[] = [
   PRODUCT_CATEGORY.DRINK,
-  PRODUCT_CATEGORY.DESSERT,
   PRODUCT_CATEGORY.MEAL,
+  PRODUCT_CATEGORY.DESSERT,
+  PRODUCT_CATEGORY.OTHER,
 ];
+
+/** Categories available in the admin add-product form. */
+export const ADMIN_CREATABLE_CATEGORIES: ProductCategoryName[] =
+  PRODUCT_CATEGORY_ORDER;
+
+/** Section / filter-pill heading for each category. "Other" is already plural. */
+export const PRODUCT_CATEGORY_LABEL: Record<ProductCategoryName, string> = {
+  [PRODUCT_CATEGORY.DRINK]: "Drinks",
+  [PRODUCT_CATEGORY.MEAL]: "Meals",
+  [PRODUCT_CATEGORY.DESSERT]: "Desserts",
+  [PRODUCT_CATEGORY.OTHER]: "Other",
+};
+
+/**
+ * Bucket for a product whose category matches none of the above — a category
+ * an admin created directly, or one whose row was deleted. Deliberately NOT
+ * "Other", which is now a real category an admin can file things under.
+ */
+export const UNCATEGORIZED_LABEL = "Uncategorized";
 
 export type CategoryRow = {
   id: number;
@@ -48,8 +73,19 @@ export function isProductCategory(
 
 let categoriesCache: CategoryRow[] | null = null;
 
-export async function fetchCategories(apiUrl: string): Promise<CategoryRow[]> {
-  if (categoriesCache) return categoriesCache;
+/**
+ * Categories, cached at module scope for the life of the page.
+ *
+ * Pass `force` to go back to the server — the admin form does on mount, so a
+ * category seeded by a migration while this tab was open is picked up. Without
+ * it, saving a product in that new category fails with "category is missing"
+ * until a full reload. Mirrors the mobile client's `fetchCategories(force)`.
+ */
+export async function fetchCategories(
+  apiUrl: string,
+  force = false
+): Promise<CategoryRow[]> {
+  if (categoriesCache && !force) return categoriesCache;
   const response = await fetch(`${apiUrl}/api/categories`);
   if (!response.ok) {
     throw new Error("Failed to load categories");
@@ -91,14 +127,26 @@ export function getCategoryId(
   return map.get(normalizeCategoryName(name));
 }
 
+/**
+ * A top-level category row by name. Ported from the mobile app's
+ * `src/lib/categories.ts`, which needed it first because its product form has
+ * always been category-generic.
+ */
+export function getTopLevelCategory(
+  categories: CategoryRow[],
+  name: string | null | undefined
+): CategoryRow | undefined {
+  const key = normalizeCategoryName(name);
+  if (!key) return undefined;
+  return categories.find(
+    (c) => c.parent_id == null && normalizeCategoryName(c.name) === key
+  );
+}
+
 export function getDrinkParentCategory(
   categories: CategoryRow[]
 ): CategoryRow | undefined {
-  return categories.find(
-    (c) =>
-      c.parent_id == null &&
-      isProductCategory(c.name, PRODUCT_CATEGORY.DRINK)
-  );
+  return getTopLevelCategory(categories, PRODUCT_CATEGORY.DRINK);
 }
 
 export function getDrinkSubtypes(

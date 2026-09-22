@@ -15,12 +15,10 @@ import { useAppStore } from "@/store";
 
 export function AddProductDialog() {
   const [open, setOpen] = useState(false);
-  const loadDrinks = useAppStore((state) => state.loadDrinks);
-  const loadDesserts = useAppStore((state) => state.loadDesserts);
+  const loadProducts = useAppStore((state) => state.loadProducts);
 
   function handleSuccess() {
-    loadDrinks();
-    loadDesserts();
+    loadProducts();
     setOpen(false);
   }
 

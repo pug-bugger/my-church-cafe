@@ -8,6 +8,7 @@ import { useAppStore } from "@/store";
 import type { Drink, DrinkOption } from "@/types";
 import { cn, generateId } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
+import { lineUnitPrice } from "@/lib/drinkOptions";
 
 /**
  * Bottom sheet for adding one product to the draft order.
@@ -33,17 +34,23 @@ function defaultValueFor(option: DrinkOption): string {
   if (typeof option.defaultValue === "string" && option.defaultValue) {
     return option.defaultValue;
   }
-  return option.values[0] ?? "";
+  return option.values[0]?.label ?? "";
 }
 
-function choicesFor(option: DrinkOption): { label: string; value: string }[] {
+type Choice = { label: string; value: string; extraPrice: number };
+
+function choicesFor(option: DrinkOption): Choice[] {
   if (option.type === "checkbox") {
     return [
-      { label: "No", value: CHECKBOX_OFF },
-      { label: "Yes", value: CHECKBOX_ON },
+      { label: "No", value: CHECKBOX_OFF, extraPrice: 0 },
+      { label: "Yes", value: CHECKBOX_ON, extraPrice: option.checkboxExtraPrice ?? 0 },
     ];
   }
-  return option.values.map((value) => ({ label: value, value }));
+  return option.values.map((v) => ({
+    label: v.label,
+    value: v.label,
+    extraPrice: v.extraPrice,
+  }));
 }
 
 export function ProductSheet({ product, onClose }: ProductSheetProps) {
@@ -71,7 +78,10 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
 
   if (!product) return null;
 
-  const lineTotal = product.price * quantity;
+  // The options chosen are part of the price, so the sheet quotes what the
+  // server will charge rather than the bare product price.
+  const unitPrice = lineUnitPrice(product.price, options, picks);
+  const lineTotal = unitPrice * quantity;
 
   const handleAdd = () => {
     addDraftItem({
@@ -103,7 +113,12 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
                 {product.name}
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="num text-[15px] text-muted-foreground">
-                {formatPrice(product.price)} each
+                {formatPrice(unitPrice)} each
+                {unitPrice !== product.price ? (
+                  <span className="ml-1.5 text-[13px]">
+                    ({formatPrice(product.price)} + options)
+                  </span>
+                ) : null}
               </DialogPrimitive.Description>
             </div>
             <button
@@ -144,6 +159,16 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
                         )}
                       >
                         {choice.label}
+                        {choice.extraPrice > 0 ? (
+                          <span
+                            className={cn(
+                              "num ml-1.5 text-[13px] font-medium",
+                              selected ? "opacity-80" : "text-muted-foreground"
+                            )}
+                          >
+                            +{formatPrice(choice.extraPrice)}
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}

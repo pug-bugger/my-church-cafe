@@ -17,7 +17,14 @@ export function mapDefinitionToDrinkOption(
     id: String(d.id),
     name: d.name,
     type: d.type === "checkbox" ? "checkbox" : "custom",
-    values: (d.values ?? []).map((v) => v.label),
+    // The surcharge travels with the label: the terminal has to show it, and
+    // the draft total has to include it. (It used to be dropped here, which is
+    // why a priced option was decoration.)
+    values: (d.values ?? []).map((v) => ({
+      label: v.label,
+      extraPrice: Number(v.extra_price ?? 0),
+    })),
+    checkboxExtraPrice: Number(d.checkbox_extra_price ?? 0),
     defaultValue: d.type === "checkbox" ? false : undefined,
   };
 }
@@ -51,6 +58,41 @@ export function describeSelectedOptions(
     }
   }
   return parts.join(" · ");
+}
+
+/**
+ * What the chosen options add to one unit of a line.
+ *
+ * Deliberately the same walk as `describeSelectedOptions` above — the summary a
+ * customer reads and the money they are charged have to agree. This is display
+ * only: the server prices every order again from its own tables and its figure
+ * is the one that counts.
+ */
+export function optionsSurcharge(
+  options: DrinkOption[],
+  selected: Record<string, string>
+): number {
+  let total = 0;
+  for (const option of options) {
+    const value = selected[option.id];
+    if (!value) continue;
+    if (option.type === "checkbox") {
+      if (value === "true") total += option.checkboxExtraPrice ?? 0;
+    } else if (value !== "false") {
+      const match = option.values.find((v) => v.label === value);
+      total += match?.extraPrice ?? 0;
+    }
+  }
+  return total;
+}
+
+/** Price of one unit of a line: the product plus its chosen options. */
+export function lineUnitPrice(
+  basePrice: number,
+  options: DrinkOption[],
+  selected: Record<string, string>
+): number {
+  return basePrice + optionsSurcharge(options, selected);
 }
 
 /** Same summary for a saved line item coming back from the API. */

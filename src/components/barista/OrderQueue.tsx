@@ -6,10 +6,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { OrderStatus, ServerOrder, ServerOrderItem } from "@/types";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { RotateCcw, Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { getAuthToken } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 import { relativeAge } from "@/lib/format";
 import { describeServerOptions } from "@/lib/drinkOptions";
 
@@ -28,11 +27,8 @@ function drinkItems(order: ServerOrder): ServerOrderItem[] {
 
 type OrderCardProps = {
   order: ServerOrder;
-  /** `preparing` cards get the accent edge; queue cards stay neutral. */
-  tone: "queue" | "preparing";
   busy: boolean;
   onAdvance: () => void;
-  onBack?: () => void;
   onDelete?: () => void;
   onRemoveItem?: (item: ServerOrderItem) => void;
   removingKey: string | null;
@@ -40,32 +36,20 @@ type OrderCardProps = {
 
 function OrderCard({
   order,
-  tone,
   busy,
   onAdvance,
-  onBack,
   onDelete,
   onRemoveItem,
   removingKey,
 }: OrderCardProps) {
   const items = drinkItems(order);
   return (
-    <article
-      className={cn(
-        "enter rounded-card border bg-surface p-[18px] shadow-card",
-        tone === "preparing" ? "border-ac-mid" : "border-line"
-      )}
-    >
+    <article className="enter rounded-card border border-line bg-surface p-[18px] shadow-card">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-[21px] font-extrabold tracking-[-0.015em]">
           {orderTitle(order)}
         </span>
-        <span
-          className={cn(
-            "text-xs font-semibold",
-            tone === "preparing" ? "text-primary" : "text-muted-foreground"
-          )}
-        >
+        <span className="text-xs font-semibold text-muted-foreground">
           {relativeAge(order.created_at)}
         </span>
       </div>
@@ -114,24 +98,13 @@ function OrderCard({
       </ul>
 
       <div className="flex gap-2.5">
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Put back in the queue"
-            title="Put back in the queue"
-            className="press flex min-h-[52px] w-[52px] flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5"
-          >
-            <RotateCcw className="h-[18px] w-[18px]" />
-          </button>
-        ) : null}
         <button
           type="button"
           onClick={onAdvance}
           disabled={busy}
           className="press min-h-[52px] flex-1 rounded-ctl bg-primary text-base font-bold text-primary-foreground hover:bg-ac-dark disabled:pointer-events-none disabled:bg-ac-mid"
         >
-          {tone === "queue" ? "Start preparing" : "Ready for pickup"}
+          Ready for pickup
         </button>
         {onDelete ? (
           <button
@@ -150,26 +123,11 @@ function OrderCard({
   );
 }
 
-function ColumnHeading({
-  title,
-  count,
-  tone,
-}: {
-  title: string;
-  count: number;
-  tone: "queue" | "preparing";
-}) {
+function ColumnHeading({ title, count }: { title: string; count: number }) {
   return (
     <div className="mb-3.5 flex items-center gap-2.5">
       <h2 className="text-lg font-extrabold">{title}</h2>
-      <span
-        className={cn(
-          "num rounded-full px-2.5 py-[3px] text-[13px] font-semibold",
-          tone === "preparing"
-            ? "bg-ac-soft text-ac-dark"
-            : "border border-line bg-surface text-muted-foreground"
-        )}
-      >
+      <span className="num rounded-full border border-line bg-surface px-2.5 py-[3px] text-[13px] font-semibold text-muted-foreground">
         {count}
       </span>
     </div>
@@ -187,8 +145,12 @@ export function OrderQueue() {
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
   const [, setAgeTick] = useState(0);
 
-  const pendingOrders = orders.filter((order) => order.status === "pending");
-  const preparingOrders = orders.filter((order) => order.status === "preparing");
+  // One step: an order waits here until it is handed to the shelf or removed.
+  // `preparing` is no longer produced, but orders that were mid-flight when this
+  // shipped still carry it — fold them in so they aren't stranded invisible.
+  const queueOrders = orders.filter(
+    (order) => order.status === "pending" || order.status === "preparing"
+  );
   const readyOrders = orders.filter((order) => order.status === "ready");
 
   const fetchOrders = useCallback(async () => {
@@ -284,60 +246,35 @@ export function OrderQueue() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <section>
-          <ColumnHeading
-            title="In queue"
-            count={pendingOrders.length}
-            tone="queue"
-          />
-          <div className="flex flex-col gap-3.5">
-            {pendingOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                tone="queue"
-                busy={deletingOrderId === order.id}
-                removingKey={removingKey}
-                onAdvance={() => handleStatusUpdate(order.id, "preparing")}
-                onDelete={() => handleDeleteOrder(order.id)}
-                onRemoveItem={(item) => handleRemoveItem(order.id, item)}
-              />
-            ))}
-            {pendingOrders.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nothing waiting. New orders slide in here.
-              </p>
-            )}
-          </div>
-        </section>
-
-        <section>
-          <ColumnHeading
-            title="Preparing"
-            count={preparingOrders.length}
-            tone="preparing"
-          />
-          <div className="flex flex-col gap-3.5">
-            {preparingOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                tone="preparing"
-                busy={false}
-                removingKey={removingKey}
-                onAdvance={() => handleStatusUpdate(order.id, "ready")}
-                onBack={() => handleStatusUpdate(order.id, "pending")}
-              />
-            ))}
-            {preparingOrders.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nothing on the bar right now.
-              </p>
-            )}
-          </div>
-        </section>
-      </div>
+      <section>
+        <ColumnHeading title="In queue" count={queueOrders.length} />
+        {/* One column on a phone, two once there is width — the queue owns the
+            full page now that "preparing" no longer takes half of it. */}
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+          {queueOrders.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              busy={deletingOrderId === order.id}
+              removingKey={removingKey}
+              onAdvance={() => handleStatusUpdate(order.id, "ready")}
+              // The server only allows deleting a `pending` order, so a legacy
+              // `preparing` one is advanced or emptied item by item, not removed.
+              onDelete={
+                order.status === "pending"
+                  ? () => handleDeleteOrder(order.id)
+                  : undefined
+              }
+              onRemoveItem={(item) => handleRemoveItem(order.id, item)}
+            />
+          ))}
+          {queueOrders.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Nothing waiting. New orders slide in here.
+            </p>
+          )}
+        </div>
+      </section>
 
       {/* Handover shelf: tap a name to complete the order. */}
       <div className="rounded-card border border-line bg-surface px-[18px] py-4 shadow-card">

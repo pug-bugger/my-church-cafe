@@ -10,6 +10,12 @@ import {
   groupByDrinkSubtype,
 } from "@/lib/drinkSubtypeGroups";
 import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
+import {
+  isProductCategory,
+  PRODUCT_CATEGORY,
+  PRODUCT_CATEGORY_LABEL,
+  PRODUCT_CATEGORY_ORDER,
+} from "@/lib/productCategories";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 
@@ -19,7 +25,6 @@ import { formatPrice } from "@/lib/format";
  * never scrolls past a heading to reach a drink.
  */
 
-const DESSERTS_CATEGORY = "Desserts";
 const ALL_CATEGORY = "All";
 
 type Category = { name: string; items: Drink[] };
@@ -116,39 +121,45 @@ function CategoryLabel({ name, count }: { name: string; count: number }) {
 }
 
 export function ProductPicker() {
-  const drinks = useAppStore((state) => state.drinks);
-  const desserts = useAppStore((state) => state.desserts);
-  const drinksLoading = useAppStore((state) => state.drinksLoading);
-  const dessertsLoading = useAppStore((state) => state.dessertsLoading);
-  const loadDrinks = useAppStore((state) => state.loadDrinks);
-  const loadDesserts = useAppStore((state) => state.loadDesserts);
+  const products = useAppStore((state) => state.products);
+  const productsLoading = useAppStore((state) => state.productsLoading);
+  const loadProducts = useAppStore((state) => state.loadProducts);
   const subtypeOrder = useDrinkSubtypeOrder();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDrinks();
-    loadDesserts();
-  }, [loadDrinks, loadDesserts]);
+    loadProducts();
+  }, [loadProducts]);
 
   /**
-   * "All" first, then drink subtypes in menu order, then desserts. The All tab
-   * is what a barista reaches for when they know the drink but not its group.
+   * "All" first, then drink subtypes in menu order, then every other category
+   * in the shared order. The All tab is what a barista reaches for when they
+   * know the drink but not its group.
    */
   const sections = useMemo<Category[]>(() => {
-    const activeDrinks = drinks.filter((d) => d.active !== false);
-    const activeDesserts = desserts.filter((d) => d.active !== false);
+    const sellable = products.filter((p) => p.active !== false);
+    const drinks = sellable.filter((p) =>
+      isProductCategory(p.categoryName, PRODUCT_CATEGORY.DRINK)
+    );
     const groups = groupByDrinkSubtype(
-      activeDrinks,
+      drinks,
       drinkSubtypeLabel,
       subtypeOrder
     ).map((section) => ({ name: section.title, items: section.items }));
-    if (activeDesserts.length) {
-      groups.push({ name: DESSERTS_CATEGORY, items: activeDesserts });
+
+    for (const category of PRODUCT_CATEGORY_ORDER) {
+      if (category === PRODUCT_CATEGORY.DRINK) continue; // already split by subtype
+      const items = sellable.filter((p) =>
+        isProductCategory(p.categoryName, category)
+      );
+      if (items.length) {
+        groups.push({ name: PRODUCT_CATEGORY_LABEL[category], items });
+      }
     }
     return groups;
-  }, [drinks, desserts, subtypeOrder]);
+  }, [products, subtypeOrder]);
 
   const categories = useMemo<Category[]>(() => {
     if (sections.length === 0) return [];
@@ -163,12 +174,10 @@ export function ProductPicker() {
 
   const openProduct = useMemo(() => {
     if (!openId) return null;
-    return (
-      [...drinks, ...desserts].find((product) => product.id === openId) ?? null
-    );
-  }, [openId, drinks, desserts]);
+    return products.find((product) => product.id === openId) ?? null;
+  }, [openId, products]);
 
-  if (drinksLoading || dessertsLoading) {
+  if (productsLoading) {
     return <PickerSkeleton />;
   }
 

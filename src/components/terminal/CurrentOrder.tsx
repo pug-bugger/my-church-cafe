@@ -1,13 +1,13 @@
 "use client";
 
-import { getOrderableProducts, useAppStore } from "@/store";
+import { useAppStore } from "@/store";
 import { Input } from "@/components/ui/input";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
-import { describeSelectedOptions } from "@/lib/drinkOptions";
+import { describeSelectedOptions, lineUnitPrice } from "@/lib/drinkOptions";
 
 /**
  * The counter's running order: a sticky panel beside the picker on desktop,
@@ -15,12 +15,9 @@ import { describeSelectedOptions } from "@/lib/drinkOptions";
  */
 export function CurrentOrder() {
   const draftItems = useAppStore((state) => state.draftItems);
-  const drinks = useAppStore((state) => state.drinks);
-  const desserts = useAppStore((state) => state.desserts);
-  const orderableProducts = useMemo(
-    () => getOrderableProducts({ drinks, desserts }),
-    [drinks, desserts]
-  );
+  // Every category is orderable, meals and "Other" included — the terminal used
+  // to see only drinks and desserts because the store held just those two.
+  const orderableProducts = useAppStore((state) => state.products);
   const removeDraftItem = useAppStore((state) => state.removeDraftItem);
   const clearDraft = useAppStore((state) => state.clearDraft);
   const [products, setProducts] = useState<
@@ -37,7 +34,14 @@ export function CurrentOrder() {
 
   const total = draftItems.reduce((sum, item) => {
     const product = getProductById(item.drinkId);
-    return sum + (product ? product.price * item.quantity : 0);
+    if (!product) return sum;
+    // Option surcharges are part of the line, exactly as the server bills it.
+    const unit = lineUnitPrice(
+      product.price,
+      product.availableOptions,
+      item.selectedOptions
+    );
+    return sum + unit * item.quantity;
   }, 0);
 
   const itemCount = draftItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -182,7 +186,13 @@ export function CurrentOrder() {
                     ) : null}
                   </div>
                   <span className="num whitespace-nowrap text-base font-semibold">
-                    {formatPrice(drink.price * item.quantity)}
+                    {formatPrice(
+                      lineUnitPrice(
+                        drink.price,
+                        drink.availableOptions,
+                        item.selectedOptions
+                      ) * item.quantity
+                    )}
                   </span>
                   <button
                     type="button"

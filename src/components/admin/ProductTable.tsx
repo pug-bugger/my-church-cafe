@@ -23,6 +23,12 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { drinkSubtypeLabel } from "@/lib/drinkSubtypeGroups";
 import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
+import {
+  isProductCategory,
+  PRODUCT_CATEGORY,
+  PRODUCT_CATEGORY_LABEL,
+  PRODUCT_CATEGORY_ORDER,
+} from "@/lib/productCategories";
 
 /**
  * Everything on sale in one searchable table, with the editor as a panel
@@ -30,11 +36,25 @@ import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
  * bar that only appears once rows are ticked.
  */
 
-const DESSERTS_GROUP = "Desserts";
 type StatusFilter = "All" | "Live" | "Hidden";
 const STATUS_FILTERS: StatusFilter[] = ["All", "Live", "Hidden"];
 
-type Row = { product: Drink; group: string; isDessert: boolean };
+/**
+ * Non-drink categories get one group each; drinks are split further by subtype,
+ * because "Drinks" alone would be most of the table.
+ */
+const NON_DRINK_CATEGORIES = PRODUCT_CATEGORY_ORDER.filter(
+  (category) => category !== PRODUCT_CATEGORY.DRINK
+);
+
+type Row = { product: Drink; group: string };
+
+function groupOf(product: Drink): string {
+  const category = NON_DRINK_CATEGORIES.find((name) =>
+    isProductCategory(product.categoryName, name)
+  );
+  return category ? PRODUCT_CATEGORY_LABEL[category] : drinkSubtypeLabel(product);
+}
 
 function statusOf(product: Drink): {
   label: string;
@@ -85,14 +105,10 @@ function FilterPill({
 }
 
 export function ProductTable() {
-  const drinks = useAppStore((state) => state.drinks);
-  const desserts = useAppStore((state) => state.desserts);
-  const drinksLoading = useAppStore((state) => state.drinksLoading);
-  const dessertsLoading = useAppStore((state) => state.dessertsLoading);
-  const loadDrinks = useAppStore((state) => state.loadDrinks);
-  const loadDesserts = useAppStore((state) => state.loadDesserts);
-  const deleteDrinkApi = useAppStore((state) => state.deleteDrinkApi);
-  const deleteDessertApi = useAppStore((state) => state.deleteDessertApi);
+  const products = useAppStore((state) => state.products);
+  const productsLoading = useAppStore((state) => state.productsLoading);
+  const loadProducts = useAppStore((state) => state.loadProducts);
+  const deleteProductApi = useAppStore((state) => state.deleteProductApi);
   const toggleProductAvailableApi = useAppStore(
     (state) => state.toggleProductAvailableApi
   );
@@ -108,31 +124,25 @@ export function ProductTable() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    loadDrinks();
-    loadDesserts();
-  }, [loadDrinks, loadDesserts]);
+    loadProducts();
+  }, [loadProducts]);
 
-  const rows = useMemo<Row[]>(() => {
-    const drinkRows = drinks.map((product) => ({
-      product,
-      group: drinkSubtypeLabel(product),
-      isDessert: false,
-    }));
-    const dessertRows = desserts.map((product) => ({
-      product,
-      group: DESSERTS_GROUP,
-      isDessert: true,
-    }));
-    return [...drinkRows, ...dessertRows];
-  }, [drinks, desserts]);
+  const rows = useMemo<Row[]>(
+    () => products.map((product) => ({ product, group: groupOf(product) })),
+    [products]
+  );
 
   const groups = useMemo(() => {
     const present = new Set(rows.map((r) => r.group));
+    // Drink subtypes first in their DB order, then any stragglers, then the
+    // other top-level categories in the shared order.
+    const tail = NON_DRINK_CATEGORIES.map((c) => PRODUCT_CATEGORY_LABEL[c]).filter(
+      (name) => present.has(name)
+    );
     const ordered = subtypeOrder.filter((name) => present.has(name));
     const extra = [...present]
-      .filter((name) => !ordered.includes(name) && name !== DESSERTS_GROUP)
+      .filter((name) => !ordered.includes(name) && !tail.includes(name))
       .sort((a, b) => a.localeCompare(b));
-    const tail = present.has(DESSERTS_GROUP) ? [DESSERTS_GROUP] : [];
     return ["All", ...ordered, ...extra, ...tail];
   }, [rows, subtypeOrder]);
 
@@ -162,8 +172,7 @@ export function ProductTable() {
     : null;
 
   const reload = () => {
-    loadDrinks();
-    loadDesserts();
+    loadProducts();
   };
 
   async function applyVisibility(
@@ -194,11 +203,7 @@ export function ProductTable() {
   async function handleDelete(row: Row) {
     setDeletingId(row.product.id);
     try {
-      if (row.isDessert) {
-        await deleteDessertApi(row.product.id);
-      } else {
-        await deleteDrinkApi(row.product.id);
-      }
+      await deleteProductApi(row.product.id);
       toast.success(`"${row.product.name}" deleted`);
       setToDelete(null);
       if (editingId === row.product.id) setEditingId(null);
@@ -211,7 +216,7 @@ export function ProductTable() {
     }
   }
 
-  if (drinksLoading || dessertsLoading) {
+  if (productsLoading) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-11 w-full rounded-full" />

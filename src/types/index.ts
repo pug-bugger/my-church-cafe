@@ -1,9 +1,18 @@
+/** One choice of a select-style option, with what picking it adds to the line. */
+export type DrinkOptionValue = {
+  label: string;
+  /** Surcharge in euros; 0 for most choices. */
+  extraPrice: number;
+};
+
 export type DrinkOption = {
   id: string;
   name: string;
   type: 'sugar' | 'temperature' | 'size' | 'custom' | 'checkbox';
-  /** Labels for select-style options; empty for checkbox-only options */
-  values: string[];
+  /** Choices for select-style options; empty for checkbox-only options */
+  values: DrinkOptionValue[];
+  /** Surcharge added when a checkbox-style option is ticked. */
+  checkboxExtraPrice?: number;
   defaultValue?: string | boolean;
 };
 

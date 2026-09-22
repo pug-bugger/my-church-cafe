@@ -49,8 +49,6 @@ const isOrderStatus = (status: unknown): status is OrderStatus =>
 const getStatusMessage = (status: OrderStatus, orderId: number) => {
   const shortId = String(orderId).slice(0, 8);
   switch (status) {
-    case "preparing":
-      return `Order #${shortId} is now being prepared`;
     case "ready":
       return `Order #${shortId} is ready for pickup!`;
     case "completed":
@@ -138,9 +136,6 @@ export const WebSocketProvider = ({
         case "ready":
           playSound();
           toast.success(message);
-          break;
-        case "preparing":
-          toast.info(message);
           break;
         case "completed":
           toast.success(message);
