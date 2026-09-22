@@ -918,11 +918,6 @@
       "lt": "Numatytasis pasirinkimas atnaujintas",
       "ru": "Вариант по умолчанию обновлён"
     },
-    "newChoiceHeading": {
-      "en": "New choice",
-      "lt": "Naujas pasirinkimas",
-      "ru": "Новый вариант"
-    },
     "deleteChoiceTitle": {
       "en": "Remove this choice?",
       "lt": "Pašalinti šį pasirinkimą?",

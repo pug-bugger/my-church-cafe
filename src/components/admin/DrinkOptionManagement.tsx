@@ -68,7 +68,9 @@ export function DrinkOptionManagement() {
   const [valueRows, setValueRows] = useState<NewValueRow[]>([emptyValueRow()]);
   const [deleteTarget, setDeleteTarget] =
     useState<DrinkOptionDefinitionApi | null>(null);
-  const [valueToDelete, setValueToDelete] = useState<ValueToDelete | null>(null);
+  const [valueToDelete, setValueToDelete] = useState<ValueToDelete | null>(
+    null,
+  );
   const [removingValueId, setRemovingValueId] = useState<number | null>(null);
   /**
    * Which option has its add-a-choice panel open, and what has been typed into
@@ -100,7 +102,7 @@ export function DrinkOptionManagement() {
     try {
       const data = await apiFetch<DrinkOptionDefinitionApi[]>(
         "/api/drink-options",
-        { auth: false }
+        { auth: false },
       );
       setList(Array.isArray(data) ? data : []);
     } catch {
@@ -170,7 +172,7 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("manage.option.createFailed")
+        err instanceof Error ? err.message : t("manage.option.createFailed"),
       );
     }
   }
@@ -187,7 +189,7 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("manage.option.deleteFailed")
+        err instanceof Error ? err.message : t("manage.option.deleteFailed"),
       );
     }
   }
@@ -212,7 +214,7 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("manage.option.actionFailed")
+        err instanceof Error ? err.message : t("manage.option.actionFailed"),
       );
     }
   }
@@ -231,7 +233,7 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("manage.option.actionFailed")
+        err instanceof Error ? err.message : t("manage.option.actionFailed"),
       );
     } finally {
       setRemovingValueId(null);
@@ -256,7 +258,7 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("manage.option.actionFailed")
+        err instanceof Error ? err.message : t("manage.option.actionFailed"),
       );
     } finally {
       setSavingDefaultId(null);
@@ -277,7 +279,7 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("manage.option.actionFailed")
+        err instanceof Error ? err.message : t("manage.option.actionFailed"),
       );
     } finally {
       setSavingDefaultId(null);
@@ -308,7 +310,7 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("manage.option.actionFailed")
+        err instanceof Error ? err.message : t("manage.option.actionFailed"),
       );
     } finally {
       setSavingPriceId(null);
@@ -339,7 +341,7 @@ export function DrinkOptionManagement() {
       await load();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : t("manage.option.actionFailed")
+        err instanceof Error ? err.message : t("manage.option.actionFailed"),
       );
     } finally {
       setSavingPriceId(null);
@@ -477,7 +479,7 @@ export function DrinkOptionManagement() {
                           valueRows.map((r, j) => ({
                             ...r,
                             is_default: e.target.checked && i === j,
-                          }))
+                          })),
                         )
                       }
                       className="h-4 w-4 accent-[rgb(var(--ac))]"
@@ -577,7 +579,7 @@ export function DrinkOptionManagement() {
                             onClick={() =>
                               saveCheckboxPrice(
                                 def.id,
-                                checkboxPriceDraft[def.id] ?? ""
+                                checkboxPriceDraft[def.id] ?? "",
                               )
                             }
                           >
@@ -619,7 +621,8 @@ export function DrinkOptionManagement() {
                                 label: v.label,
                               })}
                               value={
-                                valuePriceDraft[v.id] ?? String(v.extra_price ?? 0)
+                                valuePriceDraft[v.id] ??
+                                String(v.extra_price ?? 0)
                               }
                               onChange={(e) =>
                                 setValuePriceDraft((prev) => ({
@@ -641,7 +644,10 @@ export function DrinkOptionManagement() {
                                 size="sm"
                                 disabled={savingPriceId === `value-${v.id}`}
                                 onClick={() =>
-                                  saveValuePrice(v.id, valuePriceDraft[v.id] ?? "")
+                                  saveValuePrice(
+                                    v.id,
+                                    valuePriceDraft[v.id] ?? "",
+                                  )
                                 }
                               >
                                 {savingPriceId === `value-${v.id}`
@@ -658,9 +664,12 @@ export function DrinkOptionManagement() {
                                   setValueDefault(v.id, e.target.checked)
                                 }
                                 className="h-4 w-4 accent-[rgb(var(--ac))]"
-                                aria-label={t("manage.option.defaultChoiceFor", {
-                                  label: v.label,
-                                })}
+                                aria-label={t(
+                                  "manage.option.defaultChoiceFor",
+                                  {
+                                    label: v.label,
+                                  },
+                                )}
                               />
                               {t("manage.option.defaultChoice")}
                             </label>
@@ -688,14 +697,11 @@ export function DrinkOptionManagement() {
                           /* Its own panel, set apart from the rows above: these
                              fields create a choice, they don't edit one. */
                           <div className="rounded-lg border border-dashed bg-muted/40 p-3">
-                            <p className="mb-2 text-xs font-semibold text-muted-foreground">
-                              {t("manage.option.newChoiceHeading")}
-                            </p>
                             <div className="flex flex-wrap items-end gap-2">
                               <Input
                                 autoFocus
                                 placeholder={t(
-                                  "manage.option.newChoicePlaceholder"
+                                  "manage.option.newChoicePlaceholder",
                                 )}
                                 className="max-w-xs"
                                 value={newValue.label}
