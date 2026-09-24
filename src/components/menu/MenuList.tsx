@@ -8,11 +8,21 @@ import {
   useRef,
   useState,
 } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, Pencil, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataState } from "@/components/ui/data-state";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { defaultDrinks } from "@/data/defaultDrinks";
 import {
   groupByDrinkSubtype,
@@ -28,7 +38,8 @@ import {
 } from "@/lib/productCategories";
 import { subtypeLabel, useTranslation } from "@/i18n";
 import { formatDate, formatPrice } from "@/lib/format";
-import { getAuthToken } from "@/lib/auth";
+import { AUTH_EVENT, getAuthToken, getStoredUser } from "@/lib/auth";
+import { useAppStore } from "@/store";
 import { useWebSocket } from "@/context/WebSocketContext";
 
 type Product = {
@@ -240,6 +251,145 @@ function MenuRow({ product }: { product: Product }) {
   );
 }
 
+/** Matches the server's cap in `routes/settings.js`. */
+const MENU_NOTE_MAX_LENGTH = 1000;
+
+/** Whether the signed-in user is an admin — re-checked on every login/logout. */
+function useIsAdmin(): boolean {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      setIsAdmin(getStoredUser<{ role?: string }>()?.role === "admin");
+    check();
+    window.addEventListener(AUTH_EVENT, check);
+    return () => window.removeEventListener(AUTH_EVENT, check);
+  }, []);
+  return isAdmin;
+}
+
+/**
+ * The admin's small print under the board — which milks can be swapped, what
+ * to ask the barista about. Line breaks are kept as written. Admins get an
+ * edit control beside it, except while presenting: the room screen shows only
+ * what guests see.
+ */
+function MenuNote({
+  note,
+  editable,
+  onEdit,
+}: {
+  note: string;
+  editable: boolean;
+  onEdit: () => void;
+}) {
+  const { t } = useTranslation();
+  if (!note && !editable) return null;
+
+  if (!note) {
+    return (
+      <button
+        type="button"
+        onClick={onEdit}
+        className="press flex items-center gap-2 self-start rounded-ctl border border-dashed border-line px-3 py-2 text-sm text-muted-foreground hover:bg-ink/5 hover:text-foreground"
+      >
+        <Plus className="h-4 w-4" />
+        {t("menu.noteAdd")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-[0.5em] px-[0.4em]">
+      <p className="flex-1 whitespace-pre-line text-[0.75em] leading-snug text-muted-foreground">
+        {note}
+      </p>
+      {editable ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          title={t("menu.noteEdit")}
+          aria-label={t("menu.noteEdit")}
+          className="press -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-ink/5 hover:text-foreground"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function MenuNoteDialog({
+  open,
+  note,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean;
+  note: string;
+  onOpenChange: (open: boolean) => void;
+  onSaved: (note: string) => void;
+}) {
+  const { t } = useTranslation();
+  const saveMenuNoteApi = useAppStore((s) => s.saveMenuNoteApi);
+  const [draft, setDraft] = useState(note);
+  const [saving, setSaving] = useState(false);
+
+  // Start from what is on the board each time the dialog opens.
+  useEffect(() => {
+    if (open) setDraft(note);
+  }, [open, note]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const saved = await saveMenuNoteApi(draft);
+      onSaved(saved);
+      toast.success(t("menu.noteSaved"));
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : t("errors.generic"),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t("menu.noteEdit")}</DialogTitle>
+          <DialogDescription>{t("menu.noteDialogDescription")}</DialogDescription>
+        </DialogHeader>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={MENU_NOTE_MAX_LENGTH}
+          rows={5}
+          placeholder={t("menu.notePlaceholder")}
+          className="w-full resize-y rounded-ctl border border-input bg-surface px-4 py-3 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        />
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
+            {t("common.cancel")}
+          </Button>
+          <Button type="button" onClick={() => void save()} disabled={saving}>
+            {saving ? t("common.saving") : t("common.save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /**
  * A card of categories. Each category's items run in two columns, and the next
  * category always starts on a fresh line below rather than flowing alongside.
@@ -270,6 +420,9 @@ export function MenuList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [presenting, setPresenting] = useState(false);
+  const [note, setNote] = useState("");
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const isAdmin = useIsAdmin();
   const rootRef = useRef<HTMLDivElement>(null);
   const subtypeOrder = useDrinkSubtypeOrder();
   const { productsRefreshKey } = useWebSocket();
@@ -329,10 +482,17 @@ export function MenuList() {
 
       try {
         setError(null);
+        // The note is small print: if it fails to load, the menu still shows.
+        const notePromise = apiFetch<{ note?: string }>(
+          "/api/settings/menu-note",
+          { auth: false, signal },
+        ).catch(() => null);
         const data = await apiFetch<Product[]>("/api/products", {
           auth: false,
           signal,
         });
+        const noteData = await notePromise;
+        if (noteData) setNote(noteData.note?.trim() ?? "");
         if (!Array.isArray(data)) {
           throw new Error(t("errors.invalidMenuResponse"));
         }
@@ -423,7 +583,7 @@ export function MenuList() {
   // fit has to re-run whenever the line changes.
   const { boxRef, contentRef } = useFitToBox(
     presenting ? MAX_BOARD_FONT_PRESENTING_PX : MAX_BOARD_FONT_PX,
-    [drinkGroups, otherGroups, presenting, tagline],
+    [drinkGroups, otherGroups, presenting, tagline, note, isAdmin],
   );
 
   return (
@@ -468,9 +628,23 @@ export function MenuList() {
             {otherGroups.map((group) => (
               <MenuCard key={group.name} groups={[group]} />
             ))}
+            <MenuNote
+              note={note}
+              editable={isAdmin && !presenting}
+              onEdit={() => setNoteDialogOpen(true)}
+            />
           </div>
         </div>
       </DataState>
+
+      {isAdmin ? (
+        <MenuNoteDialog
+          open={noteDialogOpen}
+          note={note}
+          onOpenChange={setNoteDialogOpen}
+          onSaved={setNote}
+        />
+      ) : null}
 
       <button
         type="button"

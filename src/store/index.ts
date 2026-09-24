@@ -132,6 +132,8 @@ interface AppState {
   reorderProductsApi: (orderedIds: string[]) => Promise<void>;
   uploadProductImage: (productId: string, file: File) => Promise<string>;
   toggleProductAvailableApi: (id: string, active: boolean, hideUntilMidnight?: boolean) => Promise<void>;
+  /** Replace the small-print note under the menu board; "" clears it. Admin only. */
+  saveMenuNoteApi: (note: string) => Promise<string>;
   setOrders: (orders: ServerOrder[]) => void;
   updateOrderStatus: (orderId: number, status: OrderStatus) => void;
   removeOrderItem: (orderId: number, itemId: number) => void;
@@ -240,6 +242,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       products: state.products.filter((p) => p.id !== id),
     }));
+  },
+
+  saveMenuNoteApi: async (note) => {
+    const saved = await apiFetch<{ note: string }>("/api/settings/menu-note", {
+      method: "PUT",
+      body: { note },
+      auth: true,
+      authError: t("errors.loginRequiredToUpdateProducts"),
+    });
+    return saved?.note ?? "";
   },
 
   reorderProductsApi: async (orderedIds) => {

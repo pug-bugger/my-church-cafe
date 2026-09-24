@@ -43,5 +43,30 @@
     "en": "Nothing on the menu",
     "lt": "Meniu tuščias",
     "ru": "Меню пусто"
+  },
+  "noteEdit": {
+    "en": "Edit menu note",
+    "lt": "Redaguoti meniu pastabą",
+    "ru": "Изменить примечание к меню"
+  },
+  "noteAdd": {
+    "en": "Add a note under the menu",
+    "lt": "Pridėti pastabą po meniu",
+    "ru": "Добавить примечание под меню"
+  },
+  "noteDialogDescription": {
+    "en": "Shown in small print under the menu — for things like which milks or sizes can be swapped. Leave it empty to hide it.",
+    "lt": "Rodoma smulkiu šriftu po meniu — pavyzdžiui, kokį pieną ar dydį galima pakeisti. Palikite tuščią, kad nebūtų rodoma.",
+    "ru": "Показывается мелким шрифтом под меню — например, какое молоко или размер можно заменить. Оставьте пустым, чтобы скрыть."
+  },
+  "notePlaceholder": {
+    "en": "e.g. Any drink can be made with oat milk.",
+    "lt": "pvz. Bet kurį gėrimą galime paruošti su avižų pienu.",
+    "ru": "напр. Любой напиток можно приготовить на овсяном молоке."
+  },
+  "noteSaved": {
+    "en": "Menu note saved",
+    "lt": "Meniu pastaba išsaugota",
+    "ru": "Примечание к меню сохранено"
   }
 }
