@@ -146,6 +146,63 @@
       "en": "Login required to update your account.",
       "lt": "Norint atnaujinti paskyrą reikia prisijungti.",
       "ru": "Чтобы изменить аккаунт, нужно войти."
+    },
+    "google": {
+      "title": {
+        "en": "Google account",
+        "lt": "Google paskyra",
+        "ru": "Аккаунт Google"
+      },
+      "hint": {
+        "en": "Connect a Google account to sign in with one tap. It can be any Google account — its email doesn't have to match this one.",
+        "lt": "Susiekite Google paskyrą ir prisijunkite vienu paspaudimu. Tinka bet kuri Google paskyra — jos el. paštas neturi sutapti su šiuo.",
+        "ru": "Подключите аккаунт Google, чтобы входить в одно касание. Подойдёт любой аккаунт Google — его почта не обязана совпадать с этой."
+      },
+      "connectedAs": {
+        "en": "Connected as {email}",
+        "lt": "Susieta su {email}",
+        "ru": "Подключён: {email}"
+      },
+      "connected": {
+        "en": "Google account connected",
+        "lt": "Google paskyra susieta",
+        "ru": "Аккаунт Google подключён"
+      },
+      "notConnected": {
+        "en": "No Google account connected.",
+        "lt": "Google paskyra nesusieta.",
+        "ru": "Аккаунт Google не подключён."
+      },
+      "disconnect": {
+        "en": "Disconnect",
+        "lt": "Atsieti",
+        "ru": "Отключить"
+      },
+      "disconnecting": {
+        "en": "Disconnecting…",
+        "lt": "Atsiejama…",
+        "ru": "Отключение…"
+      },
+      "disconnected": {
+        "en": "Google account disconnected",
+        "lt": "Google paskyra atsieta",
+        "ru": "Аккаунт Google отключён"
+      },
+      "couldNotConnect": {
+        "en": "Could not connect the Google account",
+        "lt": "Nepavyko susieti Google paskyros",
+        "ru": "Не удалось подключить аккаунт Google"
+      },
+      "couldNotDisconnect": {
+        "en": "Could not disconnect the Google account",
+        "lt": "Nepavyko atsieti Google paskyros",
+        "ru": "Не удалось отключить аккаунт Google"
+      },
+      "needsPassword": {
+        "en": "This account has no password yet, so Google is its only way to sign in and can't be disconnected.",
+        "lt": "Ši paskyra dar neturi slaptažodžio, todėl Google yra vienintelis būdas prisijungti ir jo atsieti negalima.",
+        "ru": "У этого аккаунта ещё нет пароля, поэтому Google — единственный способ входа, и его нельзя отключить."
+      }
     }
   },
   "role": {

@@ -18,6 +18,11 @@ import { PrinterStatusCard } from "@/components/profile/PrinterStatusCard";
 import { ThemeSettings } from "@/components/theme/ThemeSettings";
 import { LanguageSettings } from "@/components/profile/LanguageSettings";
 import { ProductLanguageSettings } from "@/components/profile/ProductLanguageSettings";
+import { GoogleAccountCard } from "@/components/profile/GoogleAccountCard";
+import {
+  GoogleSignInButton,
+  useGoogleSignInEnabled,
+} from "@/components/auth/GoogleSignInButton";
 import { VersionFooter } from "@/components/profile/VersionFooter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
@@ -435,6 +440,7 @@ export default function ProfilePage() {
   );
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
+  const googleEnabled = useGoogleSignInEnabled();
 
   const fetchToken = useCallback(() => {
     const token = getAuthToken();
@@ -609,24 +615,50 @@ export default function ProfilePage() {
         credentials: "include",
         authError: t("auth.loginFailed"),
       });
-      const token = getTokenFromResponse(data);
-      const loggedIn = data.user;
-      if (!token) throw new Error(t("auth.noTokenReturned"));
-      if (loggedIn) {
-        const nextUser: SessionUser = {
-          ...loggedIn,
-          picture_url: loggedIn.picture_url ?? null,
-        };
-        setAuthSession(token, nextUser);
-        setUser(nextUser);
-      } else {
-        setAuthSession(token);
-        setUser(null);
-      }
-      setHasToken(true);
+      applySession(data);
       toast.success(t("auth.loggedIn"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.unableToLogin"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** Store the `{ token, user }` a sign-in returned and switch to the account. */
+  const applySession = (data: LoginResponse) => {
+    const token = getTokenFromResponse(data);
+    const loggedIn = data.user;
+    if (!token) throw new Error(t("auth.noTokenReturned"));
+    if (loggedIn) {
+      const nextUser: SessionUser = {
+        ...loggedIn,
+        picture_url: loggedIn.picture_url ?? null,
+      };
+      setAuthSession(token, nextUser);
+      setUser(nextUser);
+    } else {
+      setAuthSession(token);
+      setUser(null);
+    }
+    setHasToken(true);
+  };
+
+  // Signs in an account already linked to this Google account, links one
+  // whose email matches, or creates one (201) — the server decides.
+  const handleGoogleCredential = async (credential: string) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await apiFetch<LoginResponse & { created?: boolean }>(
+        "/api/auth/google",
+        { method: "POST", body: { credential }, auth: false }
+      );
+      applySession(data);
+      toast.success(
+        data.created ? t("auth.google.welcome") : t("auth.google.signedIn")
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("auth.google.failed"));
     } finally {
       setLoading(false);
     }
@@ -901,6 +933,23 @@ export default function ProfilePage() {
               {loading ? t("auth.signingIn") : t("auth.signIn")}
             </button>
           </form>
+          {googleEnabled && (
+            <>
+              <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className="h-px flex-1 bg-line" />
+                {t("auth.google.or")}
+                <span className="h-px flex-1 bg-line" />
+              </div>
+              <div
+                className={loading ? "pointer-events-none opacity-60" : undefined}
+              >
+                <GoogleSignInButton
+                  text="continue_with"
+                  onCredential={(c) => void handleGoogleCredential(c)}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* A guest watching the order board can still set their own device's
@@ -1068,6 +1117,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              <GoogleAccountCard />
               {showStaffOrderDashboard && <PrinterStatusCard />}
             </div>
           )}
