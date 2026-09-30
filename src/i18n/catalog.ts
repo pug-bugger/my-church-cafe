@@ -18,6 +18,7 @@
  * and Metro can each do.
  */
 import auth from "./messages/auth.json";
+import card from "./messages/card.json";
 import common from "./messages/common.json";
 import errors from "./messages/errors.json";
 import home from "./messages/home.json";
@@ -51,6 +52,8 @@ export const CATALOG = {
   nav,
   /** Sign in, register, sign out. */
   auth,
+  /** The customer card and the orders under it (mobile). */
+  card,
   /** The web landing page. */
   home,
   /** The menu board (web) and Menu tab (mobile). */

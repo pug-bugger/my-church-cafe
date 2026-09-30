@@ -32,5 +32,6 @@
     "en": "Redirecting to profile…",
     "lt": "Nukreipiama į profilį…",
     "ru": "Переход в профиль…"
-  }
+  },
+  "card": { "en": "Card", "lt": "Kortelė", "ru": "Карта" }
 }

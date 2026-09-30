@@ -128,5 +128,49 @@
     "en": "Add products under Manage, or put a hidden one back on the menu.",
     "lt": "Pridėkite prekių skiltyje Valdymas arba grąžinkite paslėptą į meniu.",
     "ru": "Добавьте товары в разделе «Управление» или верните скрытый в меню."
+  },
+  "scanCustomer": { "en": "Scan customer card", "lt": "Nuskaityti kliento kortelę", "ru": "Сканировать карту клиента" },
+  "linkedCustomer": { "en": "Linked to {name}'s app", "lt": "Susieta su {name} programėle", "ru": "Привязано к приложению: {name}" },
+  "linkedCustomerHint": { "en": "They'll get a notification when it's ready.", "lt": "Gaus pranešimą, kai užsakymas bus paruoštas.", "ru": "Клиент получит уведомление, когда заказ будет готов." },
+  "unlinkCustomer": { "en": "Unlink customer", "lt": "Atsieti klientą", "ru": "Отвязать клиента" },
+  "scan": {
+    "title": {
+      "en": "Scan a customer card",
+      "lt": "Nuskaitykite kliento kortelę",
+      "ru": "Сканируйте карту клиента"
+    },
+    "hint": {
+      "en": "Point the camera at the QR code on the customer's phone.",
+      "lt": "Nukreipkite kamerą į QR kodą kliento telefone.",
+      "ru": "Наведите камеру на QR-код в телефоне клиента."
+    },
+    "notACard": {
+      "en": "That QR code isn't a Church Cafe card.",
+      "lt": "Tai ne Church Cafe kortelės QR kodas.",
+      "ru": "Этот QR-код — не карта Church Cafe."
+    },
+    "notRecognised": {
+      "en": "This card isn't recognised. It may have been reset — ask them to reopen their card.",
+      "lt": "Kortelė neatpažinta. Galbūt ji buvo atnaujinta — paprašykite iš naujo atidaryti kortelę.",
+      "ru": "Карта не распознана. Возможно, код сменили — попросите клиента заново открыть карту."
+    },
+    "checking": { "en": "Checking card…", "lt": "Tikrinama kortelė…", "ru": "Проверка карты…" },
+    "permissionTitle": {
+      "en": "Camera access needed",
+      "lt": "Reikia prieigos prie kameros",
+      "ru": "Нужен доступ к камере"
+    },
+    "permissionBody": {
+      "en": "Allow the camera to scan customer cards.",
+      "lt": "Leiskite naudoti kamerą, kad galėtumėte nuskaityti klientų korteles.",
+      "ru": "Разрешите доступ к камере, чтобы сканировать карты клиентов."
+    },
+    "allow": { "en": "Allow camera", "lt": "Leisti kamerą", "ru": "Разрешить камеру" },
+    "openSettings": {
+      "en": "Open Settings",
+      "lt": "Atidaryti nustatymus",
+      "ru": "Открыть настройки"
+    },
+    "flip": { "en": "Switch camera", "lt": "Perjungti kamerą", "ru": "Сменить камеру" }
   }
 }
