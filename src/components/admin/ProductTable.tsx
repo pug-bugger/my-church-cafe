@@ -27,6 +27,8 @@ import {
   type TranslateFn,
 } from "@/i18n";
 import { formatPrice } from "@/lib/format";
+import { getLocalizedName, getSecondaryNames } from "@/lib/productName";
+import { useProductLanguage } from "@/context/ProductLanguageContext";
 import { drinkSubtypeLabel } from "@/lib/drinkSubtypeGroups";
 import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
 import {
@@ -140,6 +142,7 @@ export function ProductTable() {
     (state) => state.toggleProductAvailableApi
   );
   const subtypeOrder = useDrinkSubtypeOrder();
+  const { primaryLang, secondaryLangs } = useProductLanguage();
 
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState(ALL_GROUPS);
@@ -444,6 +447,7 @@ export function ProductTable() {
                 const { product } = row;
                 const status = statusOf(product, t);
                 const isEditing = editingId === product.id;
+                const secondaryNames = getSecondaryNames(product, primaryLang, secondaryLangs);
                 return (
                   <tr
                     key={product.id}
@@ -473,11 +477,11 @@ export function ProductTable() {
                       onClick={() => setEditingId(product.id)}
                     >
                       <div className="text-[15px] font-bold">
-                        {product.name}
+                        {getLocalizedName(product, primaryLang)}
                       </div>
-                      {product.description ? (
+                      {secondaryNames.length > 0 ? (
                         <div className="text-xs text-muted-foreground">
-                          {product.description}
+                          {secondaryNames.join(" · ")}
                         </div>
                       ) : null}
                     </td>

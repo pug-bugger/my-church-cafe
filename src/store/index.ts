@@ -47,6 +47,8 @@ function mapApiProductToDrink(product: Record<string, unknown>): Drink {
   return {
     id: String(product.id),
     name: String(product.name ?? t("common.unnamed")),
+    nameLt: product.name_lt ? String(product.name_lt) : undefined,
+    nameRu: product.name_ru ? String(product.name_ru) : undefined,
     secondaryName: subtypeName ?? categoryName,
     categoryName: topLevel,
     subtypeName,
@@ -102,6 +104,8 @@ function productToApiBody(
     .filter((n) => Number.isFinite(n) && n > 0);
   return {
     name: product.name,
+    name_lt: product.nameLt ?? "",
+    name_ru: product.nameRu ?? "",
     description: product.description ?? "",
     base_price: product.price,
     image_url: product.imageUrl ?? null,

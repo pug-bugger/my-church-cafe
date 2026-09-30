@@ -19,6 +19,8 @@ export type DrinkOption = {
 export type Drink = {
   id: string;
   name: string;
+  nameLt?: string;
+  nameRu?: string;
   secondaryName?: string;
   /** Top-level type: Drink, Dessert, Meal */
   categoryName?: string;

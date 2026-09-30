@@ -17,6 +17,7 @@ import { OrdersDataTable } from "@/components/orders/OrdersDataTable";
 import { PrinterStatusCard } from "@/components/profile/PrinterStatusCard";
 import { ThemeSettings } from "@/components/theme/ThemeSettings";
 import { LanguageSettings } from "@/components/profile/LanguageSettings";
+import { ProductLanguageSettings } from "@/components/profile/ProductLanguageSettings";
 import { VersionFooter } from "@/components/profile/VersionFooter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
@@ -906,6 +907,7 @@ export default function ProfilePage() {
             appearance and language — both are per-device, not per-account. */}
         <ThemeSettings />
         <LanguageSettings />
+        <ProductLanguageSettings />
         <VersionFooter />
       </div>
     );
@@ -1077,6 +1079,7 @@ export default function ProfilePage() {
               </h1>
               <ThemeSettings />
               <LanguageSettings />
+              <ProductLanguageSettings />
             </div>
           )}
 

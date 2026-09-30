@@ -19,6 +19,8 @@ import { groupLabel, useTranslation, type TranslateFn } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { useWebSocket } from "@/context/WebSocketContext";
+import { useProductLanguage } from "@/context/ProductLanguageContext";
+import { getLocalizedName, getSecondaryNames } from "@/lib/productName";
 
 /**
  * The counter tablet's product picker: one row of category pills over a single
@@ -63,11 +65,17 @@ function ProductTile({
   product,
   onOpen,
   t,
+  primaryLang,
+  secondaryLangs,
 }: {
   product: Drink;
   onOpen: (id: string) => void;
   t: TranslateFn;
+  primaryLang: import("@/i18n/locales").LocaleId;
+  secondaryLangs: import("@/i18n/locales").LocaleId[];
 }) {
+  const displayName = getLocalizedName(product, primaryLang);
+  const secondary = getSecondaryNames(product, primaryLang, secondaryLangs);
   return (
     <button
       type="button"
@@ -76,11 +84,11 @@ function ProductTile({
     >
       <span className="flex flex-col gap-1">
         <span className="text-[19px] font-bold leading-[1.2] tracking-[-0.01em]">
-          {product.name}
+          {displayName}
         </span>
-        {product.description?.trim() ? (
+        {secondary.length > 0 ? (
           <span className="line-clamp-2 text-[13px] leading-snug text-muted-foreground">
-            {product.description.trim()}
+            {secondary.join(" · ")}
           </span>
         ) : null}
       </span>
@@ -100,15 +108,26 @@ function TileGrid({
   items,
   onOpen,
   t,
+  primaryLang,
+  secondaryLangs,
 }: {
   items: Drink[];
   onOpen: (id: string) => void;
   t: TranslateFn;
+  primaryLang: import("@/i18n/locales").LocaleId;
+  secondaryLangs: import("@/i18n/locales").LocaleId[];
 }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
       {items.map((product) => (
-        <ProductTile key={product.id} product={product} onOpen={onOpen} t={t} />
+        <ProductTile
+          key={product.id}
+          product={product}
+          onOpen={onOpen}
+          t={t}
+          primaryLang={primaryLang}
+          secondaryLangs={secondaryLangs}
+        />
       ))}
     </div>
   );
@@ -137,6 +156,7 @@ export function ProductPicker() {
   const loadProducts = useAppStore((state) => state.loadProducts);
   const subtypeOrder = useDrinkSubtypeOrder();
   const { productsRefreshKey } = useWebSocket();
+  const { primaryLang, secondaryLangs } = useProductLanguage();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -242,12 +262,12 @@ export function ProductPicker() {
                 name={groupLabel(section.name, t)}
                 count={section.items.length}
               />
-              <TileGrid items={section.items} onOpen={setOpenId} t={t} />
+              <TileGrid items={section.items} onOpen={setOpenId} t={t} primaryLang={primaryLang} secondaryLangs={secondaryLangs} />
             </section>
           ))}
         </div>
       ) : (
-        <TileGrid items={selected?.items ?? []} onOpen={setOpenId} t={t} />
+        <TileGrid items={selected?.items ?? []} onOpen={setOpenId} t={t} primaryLang={primaryLang} secondaryLangs={secondaryLangs} />
       )}
 
       <ProductSheet product={openProduct} onClose={() => setOpenId(null)} />

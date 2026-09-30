@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Navigation } from "@/components/Navigation";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider, languageInitScript } from "@/i18n";
+import { ProductLanguageProvider } from "@/context/ProductLanguageContext";
 import { paletteInitScript } from "@/lib/themes";
 
 const manrope = Manrope({
@@ -42,6 +43,7 @@ export default function RootLayout({
       <body className="font-sans">
         <ThemeProvider>
           <LanguageProvider>
+            <ProductLanguageProvider>
             <WebSocketProvider>
               <div className="flex min-h-screen flex-col overflow-hidden bg-background">
                 <Navigation />
@@ -51,6 +53,7 @@ export default function RootLayout({
               </div>
               <Toaster />
             </WebSocketProvider>
+            </ProductLanguageProvider>
           </LanguageProvider>
         </ThemeProvider>
       </body>

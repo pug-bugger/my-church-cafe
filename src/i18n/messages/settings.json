@@ -72,6 +72,21 @@
       }
     }
   },
+  "productLanguage": {
+    "title": { "en": "Product names", "lt": "Produktų pavadinimai", "ru": "Названия продуктов" },
+    "hint": {
+      "en": "Choose which language product names appear in on the menu and terminal.",
+      "lt": "Pasirinkite, kuria kalba rodomi produktų pavadinimai meniu ir terminale.",
+      "ru": "Выберите, на каком языке отображаются названия продуктов в меню и терминале."
+    },
+    "primaryLabel": { "en": "Primary language", "lt": "Pagrindinė kalba", "ru": "Основной язык" },
+    "secondaryLabel": { "en": "Also show in", "lt": "Taip pat rodyti", "ru": "Также показывать на" },
+    "secondaryHint": {
+      "en": "Selected languages appear below the primary name in a smaller font.",
+      "lt": "Pasirinktos kalbos rodomos mažesniu šriftu po pagrindiniu pavadinimu.",
+      "ru": "Выбранные языки отображаются мелким шрифтом под основным названием."
+    }
+  },
   "language": {
     "title": { "en": "Language", "lt": "Kalba", "ru": "Язык" },
     "hint": {

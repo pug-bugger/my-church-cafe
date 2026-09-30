@@ -9,6 +9,8 @@ import { apiFetch } from "@/lib/api";
 import { useTranslation } from "@/i18n";
 import { formatPrice } from "@/lib/format";
 import { describeSelectedOptions, lineUnitPrice } from "@/lib/drinkOptions";
+import { getLocalizedName } from "@/lib/productName";
+import { useProductLanguage } from "@/context/ProductLanguageContext";
 
 /**
  * The counter's running order: a sticky panel beside the picker on desktop,
@@ -16,6 +18,7 @@ import { describeSelectedOptions, lineUnitPrice } from "@/lib/drinkOptions";
  */
 export function CurrentOrder() {
   const { t } = useTranslation();
+  const { primaryLang } = useProductLanguage();
   const draftItems = useAppStore((state) => state.draftItems);
   // Every category is orderable, meals and "Other" included — the terminal used
   // to see only drinks and desserts because the store held just those two.
@@ -177,7 +180,7 @@ export function CurrentOrder() {
                 <li key={item.id} className="enter flex items-start gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="text-base font-bold">
-                      {drink.name}{" "}
+                      {getLocalizedName(drink, primaryLang)}{" "}
                       <span className="num text-primary">×{item.quantity}</span>
                     </div>
                     {detail ? (

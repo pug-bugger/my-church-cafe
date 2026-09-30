@@ -69,6 +69,8 @@ const buildFormSchema = () =>
     category: z.string().min(1, translate("manage.productForm.categoryRequired")),
     subtype: z.string().optional(),
     name: z.string().min(1, translate("manage.productForm.nameRequired")),
+    nameLt: z.string().optional(),
+    nameRu: z.string().optional(),
     description: z.string().optional(),
     price: z.string().min(1, translate("manage.productForm.priceRequired")),
   });
@@ -146,6 +148,8 @@ export function ProductForm({
       category: initialCategory,
       subtype: "",
       name: product?.name || "",
+      nameLt: product?.nameLt || "",
+      nameRu: product?.nameRu || "",
       description: product?.description || "",
       price: product?.price != null ? String(product.price) : "",
     },
@@ -160,6 +164,8 @@ export function ProductForm({
       category: resolveInitialCategory(product, defaultCategory),
       subtype: resolveInitialSubtype(product, drinkSubtypes),
       name: product?.name || "",
+      nameLt: product?.nameLt || "",
+      nameRu: product?.nameRu || "",
       description: product?.description || "",
       price: product?.price != null ? String(product.price) : "",
     });
@@ -253,6 +259,8 @@ export function ProductForm({
 
     const payload: Omit<Drink, "id"> = {
       name: values.name,
+      nameLt: values.nameLt || undefined,
+      nameRu: values.nameRu || undefined,
       description: values.description ?? "",
       price,
       imageUrl: product?.imageUrl ?? DEFAULT_PRODUCT_IMAGE,
@@ -285,6 +293,8 @@ export function ProductForm({
               ? String(drinkSubtypes[0].id)
               : "",
           name: "",
+          nameLt: "",
+          nameRu: "",
           description: "",
           price: "",
         });
@@ -388,6 +398,35 @@ export function ProductForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t("common.name")}</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="nameLt"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("manage.productForm.nameLt")}</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormDescription className="text-xs">
+                {t("manage.productForm.translationHint")}
+              </FormDescription>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="nameRu"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("manage.productForm.nameRu")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>

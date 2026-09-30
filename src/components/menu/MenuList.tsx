@@ -41,10 +41,14 @@ import { formatDate, formatPrice } from "@/lib/format";
 import { AUTH_EVENT, getAuthToken, getStoredUser } from "@/lib/auth";
 import { useAppStore } from "@/store";
 import { useWebSocket } from "@/context/WebSocketContext";
+import { useProductLanguage } from "@/context/ProductLanguageContext";
+import { getLocalizedName, getSecondaryNames } from "@/lib/productName";
 
 type Product = {
   id: string | number;
   name: string;
+  name_lt?: string | null;
+  name_ru?: string | null;
   description?: string | null;
   base_price?: number | string | null;
   category_name?: string | null;
@@ -229,22 +233,36 @@ function MenuListSkeleton() {
   );
 }
 
+function toTranslatable(p: Product) {
+  return { name: p.name, nameLt: p.name_lt ?? undefined, nameRu: p.name_ru ?? undefined };
+}
+
 /** One priced row: name over its description, dot leader, price. */
-function MenuRow({ product }: { product: Product }) {
-  const description = product.description?.trim();
+function MenuRow({
+  product,
+  primaryLang,
+  secondaryLangs,
+}: {
+  product: Product;
+  primaryLang: import("@/i18n/locales").LocaleId;
+  secondaryLangs: import("@/i18n/locales").LocaleId[];
+}) {
+  const tr = toTranslatable(product);
+  const displayName = getLocalizedName(tr, primaryLang);
+  const secondary = getSecondaryNames(tr, primaryLang, secondaryLangs);
   return (
     <li className="mb-[0.5em] break-inside-avoid last:mb-0">
       <div className="flex items-baseline gap-[0.6em]">
-        <span className="text-[1em]">{product.name}</span>
+        <span className="text-[1em]">{displayName}</span>
         {/* Dot leader tying the name to its price. */}
         <span aria-hidden="true" className="h-px flex-1 bg-line" />
         <span className="num text-[1em] font-semibold">
           {formatPrice(product.base_price)}
         </span>
       </div>
-      {description ? (
+      {secondary.length > 0 ? (
         <p className="mt-[0.15em] max-w-[34ch] text-[0.8em] leading-snug text-muted-foreground">
-          {description}
+          {secondary.join(" · ")}
         </p>
       ) : null}
     </li>
@@ -396,6 +414,7 @@ function MenuNoteDialog({
  */
 function MenuCard({ groups }: { groups: MenuGroup[] }) {
   const { t } = useTranslation();
+  const { primaryLang, secondaryLangs } = useProductLanguage();
   return (
     <section className="rounded-card border border-line bg-surface p-[1.4em] sm:p-[1.6em]">
       {groups.map((group) => (
@@ -405,7 +424,12 @@ function MenuCard({ groups }: { groups: MenuGroup[] }) {
           </h2>
           <ul className="columns-1 gap-[2.5em] sm:columns-2">
             {group.items.map((product) => (
-              <MenuRow key={String(product.id)} product={product} />
+              <MenuRow
+                key={String(product.id)}
+                product={product}
+                primaryLang={primaryLang}
+                secondaryLangs={secondaryLangs}
+              />
             ))}
           </ul>
         </div>

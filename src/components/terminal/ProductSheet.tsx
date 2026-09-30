@@ -10,6 +10,7 @@ import { cn, generateId } from "@/lib/utils";
 import { useTranslation, type TranslateFn } from "@/i18n";
 import { formatPrice } from "@/lib/format";
 import { lineUnitPrice } from "@/lib/drinkOptions";
+import { useProductDisplayName } from "@/context/ProductLanguageContext";
 
 /**
  * Bottom sheet for adding one product to the draft order.
@@ -36,6 +37,20 @@ function defaultValueFor(option: DrinkOption): string {
     return option.defaultValue;
   }
   return option.values[0]?.label ?? "";
+}
+
+function ProductSheetName({ product }: { product: Drink }) {
+  const { primary, secondary } = useProductDisplayName(product);
+  return (
+    <>
+      {primary}
+      {secondary.length > 0 ? (
+        <span className="ml-2 text-base font-normal text-muted-foreground">
+          {secondary.join(" · ")}
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 type Choice = { label: string; value: string; extraPrice: number };
@@ -118,7 +133,7 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <DialogPrimitive.Title className="text-2xl font-extrabold tracking-[-0.015em]">
-                {product.name}
+                <ProductSheetName product={product} />
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="num text-[15px] text-muted-foreground">
                 {t("terminal.eachPrice", { price: formatPrice(unitPrice) })}

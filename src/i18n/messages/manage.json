@@ -541,6 +541,21 @@
       "lt": "Neprivaloma — rodoma meniu",
       "ru": "Необязательно — показывается в меню"
     },
+    "nameLt": {
+      "en": "Lithuanian name",
+      "lt": "Pavadinimas lietuviškai",
+      "ru": "Название на литовском"
+    },
+    "nameRu": {
+      "en": "Russian name",
+      "lt": "Pavadinimas rusiškai",
+      "ru": "Название на русском"
+    },
+    "translationHint": {
+      "en": "Optional — shown when a device's product language is set to this.",
+      "lt": "Neprivaloma — rodoma, kai įrenginio produktų kalba nustatyta šia kalba.",
+      "ru": "Необязательно — показывается, когда язык продуктов устройства установлен на этот."
+    },
     "pricePlaceholder": {
       "en": "2.50",
       "lt": "2,50",
