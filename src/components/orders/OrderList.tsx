@@ -11,8 +11,11 @@ import { getAuthToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 // Guests have no realtime socket connection (that requires a JWT), so the
-// board polls instead while unauthenticated.
+// board polls instead while unauthenticated. Signed-in screens still poll,
+// more slowly, as a safety net: a wall-mounted TV whose socket has silently
+// dropped would otherwise never update again.
 const GUEST_POLL_INTERVAL_MS = 10000;
+const SIGNED_IN_POLL_INTERVAL_MS = 30000;
 
 function orderLabel(order: ServerOrder): string {
   return order.customer_name?.trim() || String(order.order_number ?? order.id);
@@ -70,10 +73,26 @@ export function OrderList() {
   }, [fetchOrders, ordersRefreshKey]);
 
   useEffect(() => {
-    if (!isGuest) return;
-    const interval = setInterval(fetchOrders, GUEST_POLL_INTERVAL_MS);
+    const interval = setInterval(
+      fetchOrders,
+      isGuest ? GUEST_POLL_INTERVAL_MS : SIGNED_IN_POLL_INTERVAL_MS,
+    );
     return () => clearInterval(interval);
   }, [isGuest, fetchOrders]);
+
+  // Catch up straight away when the screen wakes or the tab comes back,
+  // rather than waiting out the rest of the interval.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchOrders();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [fetchOrders]);
 
   const readyForPickup = orders.filter((o) => o.status === "ready");
   const preparingOrders = orders.filter(

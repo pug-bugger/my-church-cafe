@@ -96,6 +96,9 @@ export async function apiFetch<T = unknown>(
     body: payload,
     signal,
     credentials,
+    // Never answer from the HTTP cache — some TV browsers otherwise keep
+    // returning the first response, freezing the orders board.
+    cache: "no-store",
   });
 
   if (response.status === 204) return undefined as T;
