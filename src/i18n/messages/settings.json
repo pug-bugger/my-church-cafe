@@ -70,6 +70,14 @@
         "lt": "Vėsi pilka su švelniu žalsvai mėlynu akcentu",
         "ru": "Прохладный серый с мягким бирюзовым акцентом"
       }
+    },
+    "gold": {
+      "label": { "en": "Gold", "lt": "Auksas", "ru": "Золото" },
+      "description": {
+        "en": "Warm cream with a golden accent",
+        "lt": "Šiltas kreminis tonas su auksiniu akcentu",
+        "ru": "Тёплый кремовый с золотым акцентом"
+      }
     }
   },
   "productLanguage": {

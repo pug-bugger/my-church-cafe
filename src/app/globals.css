@@ -193,6 +193,31 @@
     --chart-5: 160 205 206;
   }
 
+  /* Gold — warm cream ground, deep ochre-gold accent. The accent sits darker
+     than a "true" gold so it still reads as text on white and carries white
+     button text (≈4.9:1). Warn is pushed to brick red, since the amber every
+     other palette uses would sit right next to the accent. */
+  [data-palette="gold"] {
+    --bg: 250 248 241;
+    --surface: 255 255 255;
+    --surface-sunken: 253 252 247;
+    --ink: 30 26 16;
+    --muted-ink: 120 113 96;
+    --line: 236 230 214;
+    --ac: 146 106 0;
+    --ac-dark: 112 80 0;
+    --ac-soft: 250 243 222;
+    --ac-mid: 214 186 112;
+    --warn: 178 58 40;
+    --warn-soft: 251 236 233;
+    --neutral-soft: 244 241 232;
+    --chart-1: 146 106 0;
+    --chart-2: 170 128 20;
+    --chart-3: 194 153 52;
+    --chart-4: 214 180 96;
+    --chart-5: 232 208 146;
+  }
+
   /* ── Palettes · dark ───────────────────────────────────────────────────────
      Each palette rotated into the dark range: the ground drops, the ink flips,
      and the accent lifts so it keeps contrast against a dark surface. A dark
@@ -313,6 +338,29 @@
     --chart-3: 138 209 211;
     --chart-4: 160 220 221;
     --chart-5: 184 231 232;
+  }
+
+  [data-palette="gold"].dark {
+    --bg: 20 18 14;
+    --surface: 28 26 20;
+    --surface-sunken: 23 21 16;
+    --ink: 240 236 224;
+    --muted-ink: 164 156 138;
+    --line: 44 40 31;
+    --ac: 232 184 64;
+    --ac-dark: 244 208 112;
+    --ac-soft: 46 38 18;
+    --ac-mid: 120 94 34;
+    --warn: 232 120 100;
+    --warn-soft: 48 26 22;
+    --neutral-soft: 36 33 26;
+    --primary-foreground: 38 28 4;
+    --destructive-foreground: 40 14 10;
+    --chart-1: 232 184 64;
+    --chart-2: 238 197 98;
+    --chart-3: 242 210 130;
+    --chart-4: 246 222 162;
+    --chart-5: 249 233 194;
   }
 }
 
