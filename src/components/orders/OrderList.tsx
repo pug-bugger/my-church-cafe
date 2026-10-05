@@ -22,7 +22,7 @@ import { PresentButton } from "@/components/PresentButton";
 // board polls instead while unauthenticated. Signed-in screens still poll,
 // more slowly, as a safety net: a wall-mounted TV whose socket has silently
 // dropped would otherwise never update again.
-const GUEST_POLL_INTERVAL_MS = 10000;
+const GUEST_POLL_INTERVAL_MS = 5000;
 const SIGNED_IN_POLL_INTERVAL_MS = 30000;
 
 /** Matches Tailwind's `md:` — where the two boards sit side by side. */
