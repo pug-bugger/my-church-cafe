@@ -29,16 +29,6 @@
     "lt": "Šiuo metu nėra prieinamų prekių.",
     "ru": "Сейчас нет доступных товаров."
   },
-  "showFullScreen": {
-    "en": "Show full screen",
-    "lt": "Rodyti visame ekrane",
-    "ru": "Во весь экран"
-  },
-  "exitFullScreen": {
-    "en": "Exit full screen",
-    "lt": "Išeiti iš viso ekrano",
-    "ru": "Выйти из полного экрана"
-  },
   "emptyTitle": {
     "en": "Nothing on the menu",
     "lt": "Meniu tuščias",

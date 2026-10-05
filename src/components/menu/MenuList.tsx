@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Maximize2, Minimize2, Pencil, Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -29,6 +29,8 @@ import {
   menuProductSubtypeLabel,
 } from "@/lib/drinkSubtypeGroups";
 import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
+import { usePresentationMode } from "@/hooks/usePresentationMode";
+import { PresentButton } from "@/components/PresentButton";
 import {
   isProductCategory,
   PRODUCT_CATEGORY,
@@ -443,48 +445,13 @@ export function MenuList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [presenting, setPresenting] = useState(false);
+  const { rootRef, presenting, togglePresenting } = usePresentationMode();
   const [note, setNote] = useState("");
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const isAdmin = useIsAdmin();
-  const rootRef = useRef<HTMLDivElement>(null);
   const subtypeOrder = useDrinkSubtypeOrder();
   const { productsRefreshKey } = useWebSocket();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  /**
-   * Presentation mode fills the screen with just the board. The real Fullscreen
-   * API is used where it exists (so browser chrome goes too); the fixed overlay
-   * is what actually hides the app header, and stands alone on browsers — iOS
-   * Safari — that refuse element fullscreen.
-   */
-  const togglePresenting = useCallback(() => {
-    setPresenting((wasPresenting) => {
-      if (wasPresenting) {
-        if (document.fullscreenElement)
-          void document.exitFullscreen().catch(() => {});
-        return false;
-      }
-      void rootRef.current?.requestFullscreen?.().catch(() => {});
-      return true;
-    });
-  }, []);
-
-  // Esc leaves native fullscreen without telling React; keep the two in step.
-  useEffect(() => {
-    const onFullscreenChange = () => {
-      if (!document.fullscreenElement) setPresenting(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPresenting(false);
-    };
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("fullscreenchange", onFullscreenChange);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, []);
 
   const loadProducts = useCallback(
     async (signal?: AbortSignal) => {
@@ -670,24 +637,7 @@ export function MenuList() {
         />
       ) : null}
 
-      <button
-        type="button"
-        onClick={togglePresenting}
-        aria-pressed={presenting}
-        title={
-          presenting ? t("menu.exitFullScreen") : t("menu.showFullScreen")
-        }
-        aria-label={
-          presenting ? t("menu.exitFullScreen") : t("menu.showFullScreen")
-        }
-        className="press fixed bottom-6 right-6 z-[60] flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface text-muted-foreground shadow-card hover:bg-ink/5 hover:text-foreground"
-      >
-        {presenting ? (
-          <Minimize2 className="h-5 w-5" />
-        ) : (
-          <Maximize2 className="h-5 w-5" />
-        )}
-      </button>
+      <PresentButton presenting={presenting} onToggle={togglePresenting} />
     </div>
   );
 }

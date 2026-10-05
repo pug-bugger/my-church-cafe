@@ -1,4 +1,14 @@
 {
+  "showFullScreen": {
+    "en": "Show full screen",
+    "lt": "Rodyti visame ekrane",
+    "ru": "Во весь экран"
+  },
+  "exitFullScreen": {
+    "en": "Exit full screen",
+    "lt": "Išeiti iš viso ekrano",
+    "ru": "Выйти из полного экрана"
+  },
   "save": {
     "en": "Save",
     "lt": "Išsaugoti",
