@@ -78,6 +78,14 @@
         "lt": "Šiltas kreminis tonas su auksiniu akcentu",
         "ru": "Тёплый кремовый с золотым акцентом"
       }
+    },
+    "honey": {
+      "label": { "en": "Honey", "lt": "Medus", "ru": "Мёд" },
+      "description": {
+        "en": "Soft cream with a light honey-yellow accent",
+        "lt": "Švelnus kreminis tonas su šviesiu medaus geltonumo akcentu",
+        "ru": "Мягкий кремовый со светлым медово-жёлтым акцентом"
+      }
     }
   },
   "productLanguage": {

@@ -218,6 +218,37 @@
     --chart-5: 232 208 146;
   }
 
+  /* Honey — soft cream ground, a light honey-yellow accent (248 192 101).
+     Too light to carry white text, so filled buttons take a dark brown
+     foreground, and the focus ring follows the deeper --ac-dark so it stays
+     visible on white. Text that sits in the accent colour uses --ac-dark,
+     which is dark enough for body text. chart-1 is a step darker than the
+     accent so the bars clear 3:1 against the card. Warn is brick red, as in
+     gold. */
+  [data-palette="honey"] {
+    --bg: 251 249 244;
+    --surface: 255 255 255;
+    --surface-sunken: 253 252 248;
+    --ink: 32 27 18;
+    --muted-ink: 122 114 99;
+    --line: 238 232 220;
+    --ac: 248 192 101;
+    --ac-dark: 140 92 14;
+    --ac-soft: 254 243 222;
+    --ac-mid: 250 216 160;
+    --warn: 178 58 40;
+    --warn-soft: 251 236 233;
+    --neutral-soft: 245 242 235;
+    --primary-foreground: 58 38 6;
+    --ring: var(--ac-dark);
+    --sidebar-ring: var(--ac-dark);
+    --chart-1: 190 132 30;
+    --chart-2: 214 160 62;
+    --chart-3: 232 180 86;
+    --chart-4: 244 202 128;
+    --chart-5: 250 224 172;
+  }
+
   /* ── Palettes · dark ───────────────────────────────────────────────────────
      Each palette rotated into the dark range: the ground drops, the ink flips,
      and the accent lifts so it keeps contrast against a dark surface. A dark
@@ -361,6 +392,29 @@
     --chart-3: 242 210 130;
     --chart-4: 246 222 162;
     --chart-5: 249 233 194;
+  }
+
+  [data-palette="honey"].dark {
+    --bg: 20 18 13;
+    --surface: 29 26 19;
+    --surface-sunken: 24 21 15;
+    --ink: 242 236 222;
+    --muted-ink: 166 157 138;
+    --line: 46 41 31;
+    --ac: 248 192 101;
+    --ac-dark: 252 214 150;
+    --ac-soft: 50 40 20;
+    --ac-mid: 128 98 46;
+    --warn: 232 120 100;
+    --warn-soft: 48 26 22;
+    --neutral-soft: 37 33 25;
+    --primary-foreground: 58 38 6;
+    --destructive-foreground: 40 14 10;
+    --chart-1: 248 192 101;
+    --chart-2: 250 204 128;
+    --chart-3: 251 215 152;
+    --chart-4: 252 225 176;
+    --chart-5: 253 235 200;
   }
 }
 

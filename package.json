@@ -1,6 +1,6 @@
 {
   "name": "my-church-cafe",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "scripts": {
     "clean": "node scripts/clean-next.mjs",
