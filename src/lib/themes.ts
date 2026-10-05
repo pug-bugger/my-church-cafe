@@ -19,7 +19,7 @@
 export const PALETTE_ATTRIBUTE = "data-palette";
 export const PALETTE_STORAGE_KEY = "church-cafe-palette";
 
-export type PaletteId = "sage" | "slate" | "stone" | "graphite" | "mist" | "gold" | "honey";
+export type PaletteId = "sage" | "slate" | "stone" | "graphite" | "mist" | "honey";
 
 export type Palette = {
   id: PaletteId;
@@ -31,7 +31,6 @@ export const PALETTES: Palette[] = [
   { id: "stone" },
   { id: "graphite" },
   { id: "mist" },
-  { id: "gold" },
   { id: "honey" },
 ];
 

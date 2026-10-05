@@ -71,20 +71,12 @@
         "ru": "Прохладный серый с мягким бирюзовым акцентом"
       }
     },
-    "gold": {
-      "label": { "en": "Gold", "lt": "Auksas", "ru": "Золото" },
-      "description": {
-        "en": "Warm cream with a golden accent",
-        "lt": "Šiltas kreminis tonas su auksiniu akcentu",
-        "ru": "Тёплый кремовый с золотым акцентом"
-      }
-    },
     "honey": {
       "label": { "en": "Honey", "lt": "Medus", "ru": "Мёд" },
       "description": {
-        "en": "Soft cream with a light honey-yellow accent",
-        "lt": "Švelnus kreminis tonas su šviesiu medaus geltonumo akcentu",
-        "ru": "Мягкий кремовый со светлым медово-жёлтым акцентом"
+        "en": "Soft cream with a warm honey-yellow accent",
+        "lt": "Švelnus kreminis tonas su šiltu medaus geltonumo akcentu",
+        "ru": "Мягкий кремовый с тёплым медово-жёлтым акцентом"
       }
     }
   },

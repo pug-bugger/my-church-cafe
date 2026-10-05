@@ -193,38 +193,14 @@
     --chart-5: 160 205 206;
   }
 
-  /* Gold — warm cream ground, deep ochre-gold accent. The accent sits darker
-     than a "true" gold so it still reads as text on white and carries white
-     button text (≈4.9:1). Warn is pushed to brick red, since the amber every
-     other palette uses would sit right next to the accent. */
-  [data-palette="gold"] {
-    --bg: 250 248 241;
-    --surface: 255 255 255;
-    --surface-sunken: 253 252 247;
-    --ink: 30 26 16;
-    --muted-ink: 120 113 96;
-    --line: 236 230 214;
-    --ac: 146 106 0;
-    --ac-dark: 112 80 0;
-    --ac-soft: 250 243 222;
-    --ac-mid: 214 186 112;
-    --warn: 178 58 40;
-    --warn-soft: 251 236 233;
-    --neutral-soft: 244 241 232;
-    --chart-1: 146 106 0;
-    --chart-2: 170 128 20;
-    --chart-3: 194 153 52;
-    --chart-4: 214 180 96;
-    --chart-5: 232 208 146;
-  }
-
-  /* Honey — soft cream ground, a light honey-yellow accent (248 192 101).
-     Too light to carry white text, so filled buttons take a dark brown
-     foreground, and the focus ring follows the deeper --ac-dark so it stays
-     visible on white. Text that sits in the accent colour uses --ac-dark,
-     which is dark enough for body text. chart-1 is a step darker than the
-     accent so the bars clear 3:1 against the card. Warn is brick red, as in
-     gold. */
+  /* Honey — soft cream ground, a warm yellow accent (232 184 64), the same in
+     light and dark. Too light to carry white text, so filled buttons take a
+     dark brown foreground, and the focus ring follows the deeper --ac-dark so
+     it stays visible on white. Text that sits in the accent colour uses
+     --ac-dark, which is dark enough for body text. chart-1 is a step darker
+     than the accent so the bars clear 3:1 against the card. Warn is pushed to
+     brick red, since the amber every other palette uses would sit right next
+     to the accent. */
   [data-palette="honey"] {
     --bg: 251 249 244;
     --surface: 255 255 255;
@@ -232,21 +208,21 @@
     --ink: 32 27 18;
     --muted-ink: 122 114 99;
     --line: 238 232 220;
-    --ac: 248 192 101;
-    --ac-dark: 140 92 14;
-    --ac-soft: 254 243 222;
-    --ac-mid: 250 216 160;
+    --ac: 232 184 64;
+    --ac-dark: 128 92 8;
+    --ac-soft: 252 244 220;
+    --ac-mid: 242 214 140;
     --warn: 178 58 40;
     --warn-soft: 251 236 233;
     --neutral-soft: 245 242 235;
     --primary-foreground: 58 38 6;
     --ring: var(--ac-dark);
     --sidebar-ring: var(--ac-dark);
-    --chart-1: 190 132 30;
-    --chart-2: 214 160 62;
-    --chart-3: 232 180 86;
-    --chart-4: 244 202 128;
-    --chart-5: 250 224 172;
+    --chart-1: 184 136 24;
+    --chart-2: 208 160 44;
+    --chart-3: 232 184 64;
+    --chart-4: 240 204 112;
+    --chart-5: 246 222 160;
   }
 
   /* ── Palettes · dark ───────────────────────────────────────────────────────
@@ -371,29 +347,6 @@
     --chart-5: 184 231 232;
   }
 
-  [data-palette="gold"].dark {
-    --bg: 20 18 14;
-    --surface: 28 26 20;
-    --surface-sunken: 23 21 16;
-    --ink: 240 236 224;
-    --muted-ink: 164 156 138;
-    --line: 44 40 31;
-    --ac: 232 184 64;
-    --ac-dark: 244 208 112;
-    --ac-soft: 46 38 18;
-    --ac-mid: 120 94 34;
-    --warn: 232 120 100;
-    --warn-soft: 48 26 22;
-    --neutral-soft: 36 33 26;
-    --primary-foreground: 38 28 4;
-    --destructive-foreground: 40 14 10;
-    --chart-1: 232 184 64;
-    --chart-2: 238 197 98;
-    --chart-3: 242 210 130;
-    --chart-4: 246 222 162;
-    --chart-5: 249 233 194;
-  }
-
   [data-palette="honey"].dark {
     --bg: 20 18 13;
     --surface: 29 26 19;
@@ -401,20 +354,20 @@
     --ink: 242 236 222;
     --muted-ink: 166 157 138;
     --line: 46 41 31;
-    --ac: 248 192 101;
-    --ac-dark: 252 214 150;
-    --ac-soft: 50 40 20;
-    --ac-mid: 128 98 46;
+    --ac: 232 184 64;
+    --ac-dark: 244 208 112;
+    --ac-soft: 46 38 18;
+    --ac-mid: 120 94 34;
     --warn: 232 120 100;
     --warn-soft: 48 26 22;
     --neutral-soft: 37 33 25;
-    --primary-foreground: 58 38 6;
+    --primary-foreground: 38 28 4;
     --destructive-foreground: 40 14 10;
-    --chart-1: 248 192 101;
-    --chart-2: 250 204 128;
-    --chart-3: 251 215 152;
-    --chart-4: 252 225 176;
-    --chart-5: 253 235 200;
+    --chart-1: 232 184 64;
+    --chart-2: 238 197 98;
+    --chart-3: 242 210 130;
+    --chart-4: 246 222 162;
+    --chart-5: 249 233 194;
   }
 }
 
