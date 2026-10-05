@@ -5,7 +5,7 @@ import { Minus, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store";
-import type { Drink, DrinkOption } from "@/types";
+import type { Drink, DrinkOption, OrderItem } from "@/types";
 import { cn, generateId } from "@/lib/utils";
 import { useTranslation, type TranslateFn } from "@/i18n";
 import { formatPrice } from "@/lib/format";
@@ -13,7 +13,9 @@ import { lineUnitPrice } from "@/lib/drinkOptions";
 import { useProductDisplayName } from "@/context/ProductLanguageContext";
 
 /**
- * Bottom sheet for adding one product to the draft order.
+ * Bottom sheet for adding one product to the draft order — or, given
+ * `editing`, for changing a line already in it (opened from the pencil in
+ * Current order). Same sheet either way, so an edit looks exactly like adding.
  *
  * The canvas puts this at the bottom of the screen rather than centre-modal so
  * a barista on the counter tablet can confirm it one-handed; every choice is a
@@ -22,6 +24,8 @@ import { useProductDisplayName } from "@/context/ProductLanguageContext";
 
 type ProductSheetProps = {
   product: Drink | null;
+  /** A draft line of `product` to edit in place instead of adding a new one. */
+  editing?: OrderItem | null;
   onClose: () => void;
 };
 
@@ -75,9 +79,10 @@ function choicesFor(option: DrinkOption, t: TranslateFn): Choice[] {
   }));
 }
 
-export function ProductSheet({ product, onClose }: ProductSheetProps) {
+export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
   const { t } = useTranslation();
   const addDraftItem = useAppStore((state) => state.addDraftItem);
+  const updateDraftItem = useAppStore((state) => state.updateDraftItem);
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [picks, setPicks] = useState<Record<string, string>>({});
@@ -87,17 +92,20 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
     [product]
   );
 
-  // Reset to the product's defaults each time a different tile opens the sheet.
+  // Reset to the product's defaults each time a different tile opens the
+  // sheet, or to the line's own answers when editing one. Defaults still fill
+  // in any option added to the product since the line was taken.
   useEffect(() => {
     if (!product) return;
     const initial: Record<string, string> = {};
     for (const option of product.availableOptions) {
-      initial[option.id] = defaultValueFor(option);
+      initial[option.id] =
+        editing?.selectedOptions[option.id] ?? defaultValueFor(option);
     }
     setPicks(initial);
-    setQuantity(1);
-    setNote("");
-  }, [product]);
+    setQuantity(editing?.quantity ?? 1);
+    setNote(editing?.comment ?? "");
+  }, [product, editing]);
 
   if (!product) return null;
 
@@ -107,6 +115,15 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
   const lineTotal = unitPrice * quantity;
 
   const handleAdd = () => {
+    if (editing) {
+      updateDraftItem(editing.id, {
+        quantity,
+        selectedOptions: picks,
+        comment: note.trim() || undefined,
+      });
+      onClose();
+      return;
+    }
     addDraftItem({
       id: generateId(),
       drinkId: product.id,
@@ -149,7 +166,11 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
             <button
               type="button"
               onClick={onClose}
-              aria-label={t("terminal.closeWithoutAdding")}
+              aria-label={
+                editing
+                  ? t("terminal.closeWithoutSaving")
+                  : t("terminal.closeWithoutAdding")
+              }
               className="press flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
             >
               <X className="h-5 w-5" />
@@ -253,7 +274,9 @@ export function ProductSheet({ product, onClose }: ProductSheetProps) {
               onClick={handleAdd}
               className="press min-h-[60px] rounded-ctl bg-primary text-lg font-bold text-primary-foreground hover:bg-ac-dark"
             >
-              {t("terminal.addToOrder", { price: formatPrice(lineTotal) })}
+              {editing
+                ? t("terminal.saveItem", { price: formatPrice(lineTotal) })
+                : t("terminal.addToOrder", { price: formatPrice(lineTotal) })}
             </button>
           </div>
         </DialogPrimitive.Content>

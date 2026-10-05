@@ -133,6 +133,18 @@
   "linkedCustomer": { "en": "Linked to {name}'s app", "lt": "Susieta su {name} programėle", "ru": "Привязано к приложению: {name}" },
   "linkedCustomerHint": { "en": "They'll get a notification when it's ready.", "lt": "Gaus pranešimą, kai užsakymas bus paruoštas.", "ru": "Клиент получит уведомление, когда заказ будет готов." },
   "unlinkCustomer": { "en": "Unlink customer", "lt": "Atsieti klientą", "ru": "Отвязать клиента" },
+  "productView": { "en": "Product layout", "lt": "Prekių išdėstymas", "ru": "Вид товаров" },
+  "viewTiles": { "en": "Tiles", "lt": "Plytelės", "ru": "Плитки" },
+  "viewList": { "en": "List", "lt": "Sąrašas", "ru": "Список" },
+  "editItem": { "en": "Edit item", "lt": "Redaguoti prekę", "ru": "Изменить позицию" },
+  "editNamed": { "en": "Edit {name}", "lt": "Redaguoti: {name}", "ru": "Изменить: {name}" },
+  "saveItem": {
+    "en": "Save changes · {price}",
+    "lt": "Išsaugoti pakeitimus · {price}",
+    "ru": "Сохранить изменения · {price}"
+  },
+  "closeWithoutSaving": { "en": "Close without saving", "lt": "Uždaryti neišsaugojus", "ru": "Закрыть без сохранения" },
+  "nameSuggestions": { "en": "Earlier customers", "lt": "Ankstesni klientai", "ru": "Прежние клиенты" },
   "scan": {
     "title": {
       "en": "Scan a customer card",

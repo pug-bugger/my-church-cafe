@@ -4,13 +4,15 @@ import { useAppStore } from "@/store";
 import { Input } from "@/components/ui/input";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useTranslation } from "@/i18n";
 import { formatPrice } from "@/lib/format";
 import { describeSelectedOptions, lineUnitPrice } from "@/lib/drinkOptions";
 import { getLocalizedName } from "@/lib/productName";
 import { useProductLanguage } from "@/context/ProductLanguageContext";
+import { ProductSheet } from "@/components/terminal/ProductSheet";
+import { CustomerNameInput } from "@/components/terminal/CustomerNameInput";
 
 /**
  * The counter's running order: a sticky panel beside the picker on desktop,
@@ -31,6 +33,8 @@ export function CurrentOrder() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComment, setOrderComment] = useState("");
   const [customerName, setCustomerName] = useState("");
+  /** The draft line open in the edit sheet, if any. */
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
@@ -143,6 +147,12 @@ export function CurrentOrder() {
   };
 
   const isEmpty = draftItems.length === 0;
+  const editingItem = editingId
+    ? draftItems.find((item) => item.id === editingId) ?? null
+    : null;
+  const editingProduct = editingItem
+    ? getProductById(editingItem.drinkId) ?? null
+    : null;
 
   return (
     <aside className="flex max-h-[calc(100dvh-8.5rem)] flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card">
@@ -200,6 +210,15 @@ export function CurrentOrder() {
                   </span>
                   <button
                     type="button"
+                    onClick={() => setEditingId(item.id)}
+                    aria-label={t("terminal.editNamed", { name: drink.name })}
+                    title={t("terminal.editItem")}
+                    className="press -mr-2 flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
+                  >
+                    <Pencil className="h-[17px] w-[17px]" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => removeDraftItem(item.id)}
                     aria-label={t("terminal.removeNamed", {
                       name: drink.name,
@@ -217,12 +236,7 @@ export function CurrentOrder() {
       </div>
 
       <div className="flex flex-col gap-3 border-t border-line bg-surface-sunken px-5 pb-5 pt-4">
-        <Input
-          placeholder={t("terminal.customerNamePlaceholder")}
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          aria-label={t("terminal.customerName")}
-        />
+        <CustomerNameInput value={customerName} onChange={setCustomerName} />
         <Input
           placeholder={t("terminal.noteForBarista")}
           value={orderComment}
@@ -258,6 +272,12 @@ export function CurrentOrder() {
           </button>
         </div>
       </div>
+
+      <ProductSheet
+        product={editingProduct}
+        editing={editingItem}
+        onClose={() => setEditingId(null)}
+      />
     </aside>
   );
 }

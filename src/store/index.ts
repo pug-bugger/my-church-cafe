@@ -143,6 +143,14 @@ interface AppState {
   removeOrderItem: (orderId: number, itemId: number) => void;
   removeOrder: (orderId: number) => void;
   addDraftItem: (item: OrderItem) => void;
+  /**
+   * Replace one draft line's quantity, options and note, keeping its place in
+   * the list. If the edit makes it identical to another line, the two merge.
+   */
+  updateDraftItem: (
+    itemId: string,
+    changes: Pick<OrderItem, "quantity" | "selectedOptions" | "comment">
+  ) => void;
   removeDraftItem: (itemId: string) => void;
   clearDraft: () => void;
 }
@@ -343,6 +351,31 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { draftItems: updated };
     }
     return { draftItems: [...state.draftItems, item] };
+  }),
+
+  updateDraftItem: (itemId, changes) => set((state) => {
+    const target = state.draftItems.find((item) => item.id === itemId);
+    if (!target) return {};
+    const edited = { ...target, ...changes };
+    // The same merge rule as adding: an edit that turns this line into a copy
+    // of another folds that other line's quantity in, rather than leaving two
+    // identical rows.
+    const twin = state.draftItems.find(
+      (item) =>
+        item.id !== itemId &&
+        item.drinkId === edited.drinkId &&
+        areSelectedOptionsEqual(item.selectedOptions, edited.selectedOptions) &&
+        (item.comment ?? "") === (edited.comment ?? "")
+    );
+    return {
+      draftItems: state.draftItems
+        .filter((item) => item.id !== twin?.id)
+        .map((item) =>
+          item.id === itemId
+            ? { ...edited, quantity: edited.quantity + (twin?.quantity ?? 0) }
+            : item
+        ),
+    };
   }),
 
   removeDraftItem: (itemId) => set((state) => ({
