@@ -11,29 +11,31 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ProductForm } from "./ProductForm";
+import { useTranslation } from "@/i18n";
 import { useAppStore } from "@/store";
 
 export function AddProductDialog() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const loadDrinks = useAppStore((state) => state.loadDrinks);
-  const loadDesserts = useAppStore((state) => state.loadDesserts);
+  const loadProducts = useAppStore((state) => state.loadProducts);
 
   function handleSuccess() {
-    loadDrinks();
-    loadDesserts();
+    loadProducts();
     setOpen(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button onClick={() => setOpen(true)}>Add menu item</Button>
+        <Button onClick={() => setOpen(true)}>
+          {t("manage.product.addMenuItem")}
+        </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add menu item</DialogTitle>
+          <DialogTitle>{t("manage.product.addMenuItem")}</DialogTitle>
           <DialogDescription>
-            Choose a category and fill in the product details.
+            {t("manage.product.addDialogDescription")}
           </DialogDescription>
         </DialogHeader>
         <ProductForm onSuccess={handleSuccess} />

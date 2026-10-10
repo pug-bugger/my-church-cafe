@@ -2,14 +2,158 @@
 
 import { useAppStore } from "@/store";
 import { useWebSocket } from "@/context/WebSocketContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { OrderStatus, ServerOrder, ServerOrderItem } from "@/types";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Trash2, X } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+import { useTranslation, type TranslateFn } from "@/i18n";
+import { getAuthToken } from "@/lib/auth";
+import { relativeAge } from "@/lib/format";
+import { describeServerOptions } from "@/lib/drinkOptions";
+
+/** Ages are rendered as "7 min"; re-render occasionally so they stay honest. */
+const AGE_TICK_MS = 20000;
+
+function orderTitle(order: ServerOrder): string {
+  const name = order.customer_name?.trim();
+  return name || `#${order.order_number ?? order.id}`;
+}
+
+/** Desserts are handed over from the counter, not made on the bar. */
+function drinkItems(order: ServerOrder): ServerOrderItem[] {
+  return order.items.filter((item) => item.category_name !== "Dessert");
+}
+
+type OrderCardProps = {
+  order: ServerOrder;
+  busy: boolean;
+  onAdvance: () => void;
+  onDelete?: () => void;
+  onRemoveItem?: (item: ServerOrderItem) => void;
+  removingKey: string | null;
+  t: TranslateFn;
+};
+
+function OrderCard({
+  order,
+  busy,
+  onAdvance,
+  onDelete,
+  onRemoveItem,
+  removingKey,
+  t,
+}: OrderCardProps) {
+  const items = drinkItems(order);
+  return (
+    <article className="enter rounded-card border border-line bg-surface p-[18px] shadow-card">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-[21px] font-extrabold tracking-[-0.015em]">
+          {orderTitle(order)}
+        </span>
+        <span className="text-xs font-semibold text-muted-foreground">
+          {relativeAge(order.created_at)}
+        </span>
+      </div>
+
+      {order.comment ? (
+        <p className="mb-3 rounded-xl bg-warn-soft px-3 py-2.5 text-[13px] font-semibold text-warn">
+          {order.comment}
+        </p>
+      ) : null}
+
+      <ul className="mb-4 flex flex-col gap-2.5">
+        {items.map((item) => {
+          const summary = describeServerOptions(item.product_item_options);
+          const detail = [summary, item.comment].filter(Boolean).join(" · ");
+          return (
+            <li key={item.id} className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-bold">
+                  {item.product_item_name ?? t("orders.queue.itemFallback")}{" "}
+                  <span className="num text-primary">×{item.quantity}</span>
+                </div>
+                {detail ? (
+                  <div className="text-[13px] text-muted-foreground">
+                    {detail}
+                  </div>
+                ) : null}
+              </div>
+              {onRemoveItem ? (
+                <button
+                  type="button"
+                  onClick={() => onRemoveItem(item)}
+                  disabled={removingKey === `${order.id}-${item.id}`}
+                  aria-label={t("orders.queue.removeNamed", {
+                    name:
+                      item.product_item_name ?? t("orders.queue.itemFallback"),
+                  })}
+                  title={t("orders.queue.removeItemTooltip")}
+                  className="press flex h-8 w-8 flex-none items-center justify-center rounded-[10px] text-muted-foreground hover:bg-ink/5 disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
+        {items.length === 0 && (
+          <li className="text-sm text-muted-foreground">
+            {t("orders.queue.noItems")}
+          </li>
+        )}
+      </ul>
+
+      <div className="flex gap-2.5">
+        <button
+          type="button"
+          onClick={onAdvance}
+          disabled={busy}
+          className="press min-h-[52px] flex-1 rounded-ctl bg-primary text-base font-bold text-primary-foreground hover:bg-ac-dark disabled:pointer-events-none disabled:bg-ac-mid"
+        >
+          {t("orders.queue.readyForPickup")}
+        </button>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            aria-label={t("orders.queue.cancelOrder")}
+            title={t("orders.queue.cancelOrder")}
+            className="press flex min-h-[52px] w-[52px] flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5 disabled:opacity-50"
+          >
+            <Trash2 className="h-[18px] w-[18px]" />
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function ColumnHeading({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="mb-3.5 flex items-center gap-2.5">
+      <h2 className="text-lg font-extrabold">{title}</h2>
+      <span className="num rounded-full border border-line bg-surface px-2.5 py-[3px] text-[13px] font-semibold text-muted-foreground">
+        {count}
+      </span>
+    </div>
+  );
+}
 
 export function OrderQueue() {
+  const { t } = useTranslation();
   const { isConnected, ordersRefreshKey } = useWebSocket();
   const orders = useAppStore((state) => state.orders);
   const setOrders = useAppStore((state) => state.setOrders);
@@ -18,120 +162,82 @@ export function OrderQueue() {
   const removeOrder = useAppStore((state) => state.removeOrder);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
+  // Deleting an order, or taking a line off one, is not undoable and the
+  // buttons sit next to the ones a barista hits all shift — both ask first.
+  const [orderToDelete, setOrderToDelete] = useState<ServerOrder | null>(null);
+  const [itemToRemove, setItemToRemove] = useState<{
+    orderId: number;
+    item: ServerOrderItem;
+  } | null>(null);
+  const [, setAgeTick] = useState(0);
 
-  const pendingOrders = orders.filter((order) => order.status === "pending");
-  const preparingOrders = orders.filter(
-    (order) => order.status === "preparing"
+  // One step: an order waits here until it is handed to the shelf or removed.
+  // `preparing` is no longer produced, but orders that were mid-flight when this
+  // shipped still carry it — fold them in so they aren't stranded invisible.
+  const queueOrders = orders.filter(
+    (order) => order.status === "pending" || order.status === "preparing"
   );
   const readyOrders = orders.filter((order) => order.status === "ready");
 
   const fetchOrders = useCallback(async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) return;
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) return;
+    if (!getAuthToken()) return;
     try {
-      const response = await fetch(`${apiUrl}/api/orders`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.error || "Failed to load orders");
-      }
-      const data = await response.json();
+      const data = await apiFetch<ServerOrder[]>("/api/orders", { auth: true });
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to load orders";
+        err instanceof Error ? err.message : t("errors.loadOrders");
       toast.error(message);
     }
-  }, [setOrders]);
+  }, [setOrders, t]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders, ordersRefreshKey]);
 
-  const handleStatusUpdate = async (
-    orderId: number,
-    status: OrderStatus
-  ) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      toast.error("Missing NEXT_PUBLIC_API_URL in your environment.");
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Login required to update order status.");
-      return;
-    }
+  useEffect(() => {
+    const timer = setInterval(() => setAgeTick((t) => t + 1), AGE_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleStatusUpdate = async (orderId: number, status: OrderStatus) => {
     try {
-      const response = await fetch(`${apiUrl}/api/orders/${orderId}/status`, {
+      await apiFetch(`/api/orders/${orderId}/status`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
+        body: { status },
+        auth: true,
+        authError: t("errors.loginRequiredForStatus"),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to update order status");
-      }
       updateOrderStatus(orderId, status);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to update order status";
+        err instanceof Error ? err.message : t("errors.updateStatus");
       toast.error(message);
     }
   };
 
   const handleRemoveItem = async (orderId: number, item: ServerOrderItem) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      toast.error("Missing NEXT_PUBLIC_API_URL in your environment.");
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Login required to remove order items.");
-      return;
-    }
-
     const key = `${orderId}-${item.id}`;
     setRemovingKey(key);
+    setItemToRemove(null);
     try {
-      const response = await fetch(
-        `${apiUrl}/api/orders/${orderId}/items/${item.id}`,
+      const data = await apiFetch<{ status?: string }>(
+        `/api/orders/${orderId}/items/${item.id}`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          auth: true,
+          authError: t("errors.loginRequiredToRemoveItems"),
         }
       );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to remove item");
-      }
       removeOrderItem(orderId, item.id);
-      if (data.status === "cancelled") {
-        toast.success("Last item removed — order cancelled");
+      if (data?.status === "cancelled") {
+        toast.success(t("orders.toast.lastItemRemoved"));
       } else {
-        toast.success("Item removed");
+        toast.success(t("orders.toast.itemRemoved"));
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to remove item";
+        err instanceof Error ? err.message : t("errors.removeItem");
       toast.error(message);
     } finally {
       setRemovingKey(null);
@@ -139,213 +245,160 @@ export function OrderQueue() {
   };
 
   const handleDeleteOrder = async (orderId: number) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      toast.error("Missing NEXT_PUBLIC_API_URL in your environment.");
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Login required to delete orders.");
-      return;
-    }
-
     setDeletingOrderId(orderId);
+    setOrderToDelete(null);
     try {
-      const response = await fetch(`${apiUrl}/api/orders/${orderId}`, {
+      await apiFetch(`/api/orders/${orderId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        auth: true,
+        authError: t("errors.loginRequiredToDeleteOrders"),
       });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.error || "Failed to delete order");
-      }
       removeOrder(orderId);
-      toast.success("Order deleted");
+      toast.success(t("orders.toast.orderDeleted"));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to delete order";
+        err instanceof Error ? err.message : t("errors.deleteOrder");
       toast.error(message);
     } finally {
       setDeletingOrderId(null);
     }
   };
 
-  const OrderCard = ({ order }: { order: ServerOrder }) => (
-    <Card key={order.id} className="mb-4">
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-        <CardTitle className="leading-tight">
-          {order.customer_name
-            ? order.customer_name
-            : `# ${order.order_number ?? order.id}`}
-        </CardTitle>
-        {order.status === "pending" ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 shrink-0 rounded-full px-3 text-xs text-destructive hover:text-destructive"
-            disabled={deletingOrderId === order.id}
-            onClick={() => handleDeleteOrder(order.id)}
-          >
-            {deletingOrderId === order.id ? "Deleting…" : "Delete order"}
-          </Button>
-        ) : null}
-      </CardHeader>
-      <CardContent>
-        {order.comment && (
-          <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-            {order.comment}
-          </p>
-        )}
-        <ul className="space-y-2 mb-4">
-          {order.items.filter((item) => item.category_name !== "Dessert").map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">
-                  {item.product_item_name ?? "Item"} × {item.quantity}
-                </div>
-                <ul className="mt-1.5 text-sm text-muted-foreground space-y-0.5 list-none pl-0">
-                  {(item.product_item_options ?? [])
-                    .filter(
-                      (opt) =>
-                        opt.option_value_name != null &&
-                        opt.option_value_name !== "" &&
-                        opt.option_value_name !== "false",
-                    )
-                    .map((option) => (
-                      <li key={option.id} className="flex flex-wrap gap-x-1">
-                        <span className="font-medium text-foreground/80">
-                          {option.option_definition_name ?? "Option"}
-                        </span>
-                        <span>: {option.option_value_name}</span>
-                      </li>
-                    ))}
-                </ul>
-                {item.comment && (
-                  <p className="mt-1 text-sm italic text-muted-foreground">
-                    {item.comment}
-                  </p>
-                )}
-              </div>
-              {order.status === "pending" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 shrink-0 rounded-full p-0 text-destructive"
-                  aria-label={`Remove ${item.product_item_name ?? "item"}`}
-                  disabled={removingKey === `${order.id}-${item.id}`}
-                  onClick={() => handleRemoveItem(order.id, item)}
-                >
-                  -
-                </Button>
-              ) : null}
-            </li>
-          ))}
-          {order.items.filter((item) => item.category_name !== "Dessert").length === 0 && (
-            <li className="text-sm text-muted-foreground">No items</li>
-          )}
-        </ul>
-
-        {order.status === "pending" && (
-          <Button
-            className="w-full"
-            disabled={deletingOrderId === order.id}
-            onClick={() => handleStatusUpdate(order.id, "preparing")}
-          >
-            Start Preparing
-          </Button>
-        )}
-
-        {order.status === "preparing" && (
-          <div className="flex flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleStatusUpdate(order.id, "pending")}
-            >
-              Back to Pending
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={() => handleStatusUpdate(order.id, "ready")}
-            >
-              Mark as Ready
-            </Button>
-          </div>
-        )}
-
-        {order.status === "ready" && (
-          <div className="flex flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleStatusUpdate(order.id, "preparing")}
-            >
-              Back to Preparing
-            </Button>
-            <Button
-              className="flex-1"
-              variant="secondary"
-              onClick={() => handleStatusUpdate(order.id, "completed")}
-            >
-              Complete Order
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <div>
+    <div className="flex flex-col gap-5">
       {!isConnected && (
-        <Alert variant="destructive" className="mb-6">
+        <Alert variant="destructive">
           <AlertDescription>
-            Login required to update order status.
+            {t("errors.loginRequiredForStatus")}
           </AlertDescription>
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Pending Orders</h2>
-          {pendingOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+      <section>
+        <ColumnHeading
+          title={t("orders.queue.inQueue")}
+          count={queueOrders.length}
+        />
+        {/* One column on a phone, two once there is width — the queue owns the
+            full page now that "preparing" no longer takes half of it. */}
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+          {queueOrders.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              busy={deletingOrderId === order.id}
+              removingKey={removingKey}
+              onAdvance={() => handleStatusUpdate(order.id, "ready")}
+              // The server only allows deleting a `pending` order, so a legacy
+              // `preparing` one is advanced or emptied item by item, not removed.
+              onDelete={
+                order.status === "pending"
+                  ? () => setOrderToDelete(order)
+                  : undefined
+              }
+              onRemoveItem={(item) =>
+                setItemToRemove({ orderId: order.id, item })
+              }
+              t={t}
+            />
           ))}
-          {pendingOrders.length === 0 && (
-            <p className="text-muted-foreground text-center py-4">
-              No pending orders
+          {queueOrders.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              {t("orders.queue.nothingWaiting")}
             </p>
           )}
         </div>
+      </section>
 
-        <div>
-          <h2 className="text-lg font-semibold mb-4">In Progress</h2>
-          {preparingOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-          {preparingOrders.length === 0 && (
-            <p className="text-muted-foreground text-center py-4">
-              No orders in progress
-            </p>
-          )}
-        </div>
-
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Ready for Pickup</h2>
+      {/* Handover shelf: tap a name to complete the order. */}
+      <div className="rounded-card border border-line bg-surface px-[18px] py-4 shadow-card">
+        <div className="flex flex-wrap items-center gap-3.5">
+          <span className="text-[13px] font-semibold text-muted-foreground">
+            {t("orders.queue.readyAwaitingPickup")}
+          </span>
           {readyOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <button
+              key={order.id}
+              type="button"
+              onClick={() => handleStatusUpdate(order.id, "completed")}
+              title={t("orders.queue.handoverTooltip")}
+              className="press enter flex min-h-[54px] items-center gap-2.5 rounded-full border border-ac bg-ac-soft px-5 text-[19px] font-extrabold text-ac-dark hover:bg-ac-mid/40"
+            >
+              {orderTitle(order)}
+              <span className="text-xs font-semibold opacity-70">
+                {relativeAge(order.created_at)}
+              </span>
+            </button>
           ))}
           {readyOrders.length === 0 && (
-            <p className="text-muted-foreground text-center py-4">
-              No orders ready
-            </p>
+            <span className="text-sm text-muted-foreground">
+              {t("orders.queue.nothingOnCounter")}
+            </span>
           )}
         </div>
       </div>
+
+      <AlertDialog
+        open={!!orderToDelete}
+        onOpenChange={(open) => !open && setOrderToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("orders.queue.deleteOrderTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("orders.queue.deleteOrderBody", {
+                name: orderToDelete ? orderTitle(orderToDelete) : "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletingOrderId === orderToDelete?.id}
+              onClick={() =>
+                orderToDelete && handleDeleteOrder(orderToDelete.id)
+              }
+            >
+              {t("orders.queue.cancelOrder")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!itemToRemove}
+        onOpenChange={(open) => !open && setItemToRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("orders.queue.removeItemTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("orders.queue.removeItemBody", {
+                name:
+                  itemToRemove?.item.product_item_name ??
+                  t("orders.queue.itemFallback"),
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() =>
+                itemToRemove &&
+                handleRemoveItem(itemToRemove.orderId, itemToRemove.item)
+              }
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

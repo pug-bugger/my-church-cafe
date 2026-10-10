@@ -1,52 +1,101 @@
-name: Deploy Frontend
+name: Deploy frontend to production
 
 on:
   push:
-    branches:
-      - staging
-      - prod
-      - master
+    branches: [prod]
+  workflow_dispatch:
+
+# Never let two deploys race for the release symlink. Queue instead of cancel,
+# so an in-flight deploy is always allowed to finish or roll itself back.
+concurrency:
+  group: church-cafe-frontend-deploy
+  cancel-in-progress: false
 
 jobs:
-  deploy_qa:
-    if: github.ref == 'refs/heads/prod'
+  deploy:
+    name: Build and release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Connect with VPS
-        uses: appleboy/ssh-action@master
+      - uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+          node-version: 22
+          cache: npm
 
-            mkdir -p apps/frontend && cd apps/frontend
+      - name: Install dependencies
+        run: npm ci
 
-            if [ -d ".git" ]; then
-              git stash
-              git pull origin prod
-            else
-              git clone -b prod https://github.com/pug-bugger/my-church-cafe.git .
-            fi
+      # `next build` type-checks and fails the job on a TS error, so a broken
+      # build never reaches the server. `build:standalone` also copies in
+      # public/ and .next/static, which output:"standalone" omits by design
+      # (Vercel-style hosts serve those from a CDN; self-hosting can't).
+      #
+      # NEXT_PUBLIC_* values are INLINED INTO THE CLIENT BUNDLE at build time,
+      # not read at runtime - so they must be set here, and changing one means
+      # a rebuild, not just a PM2 restart.
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_ORG_NAME: ${{ vars.NEXT_PUBLIC_ORG_NAME }}
+        run: |
+          test -n "$NEXT_PUBLIC_API_URL" || {
+            echo "::error::repository variable NEXT_PUBLIC_API_URL is not set - the built app would have no backend to call"
+            exit 1
+          }
+          npm run build:standalone
 
-            npm install --force
-            npm run build
+      - name: Assemble release bundle
+        run: |
+          cp deploy/ecosystem.config.js .next/standalone/
+          # Next copies any repo-root .env into the bundle. There is none in a
+          # clean checkout, but drop it if one ever appears so a developer's
+          # localhost config can't reach production.
+          rm -f .next/standalone/.env
+          tar -czf release.tar.gz -C .next/standalone .
+          ls -lh release.tar.gz
 
-            pid=$(pm2 pid "church-cafe-front-app" 2>/dev/null)
-            if [ -n "$pid" ]; then
-              echo "Reloading application"
-              pm2 reload "church-cafe-front-app"
-              pm2 save
-            else
-              echo "New application"
-              pm2 start npm --name "church-cafe-front-app" -- start
-              pm2 startup
-              pm2 save
-            fi
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          # Pinning the host key means a hijacked DNS record can't harvest the
+          # deploy key. Never replace this with StrictHostKeyChecking=no.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      # Both church-cafe apps deploy to the same box, so each stages into its
+      # own /tmp directory rather than dropping release.tar.gz at /tmp/ where
+      # the other repo's deploy could overwrite it mid-flight.
+      - name: Upload release
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+        run: |
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_deploy \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p /tmp/church-cafe-frontend'
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_deploy \
+            release.tar.gz deploy/release.sh \
+            "$DEPLOY_USER@$DEPLOY_HOST:/tmp/church-cafe-frontend/"
+
+      - name: Activate release
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          SHA: ${{ github.sha }}
+        run: |
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_deploy \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "chmod +x /tmp/church-cafe-frontend/release.sh && /tmp/church-cafe-frontend/release.sh /tmp/church-cafe-frontend/release.tar.gz '$SHA'"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/id_deploy

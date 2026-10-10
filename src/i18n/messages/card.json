@@ -1,0 +1,91 @@
+{
+  "title": { "en": "My card", "lt": "Mano kortelė", "ru": "Моя карта" },
+  "subtitle": {
+    "en": "Show it at the counter when you order",
+    "lt": "Parodykite ją prie prekystalio užsakydami",
+    "ru": "Покажите её на кассе, когда делаете заказ"
+  },
+  "tapToEnlarge": {
+    "en": "Tap the code to enlarge it",
+    "lt": "Paspauskite kodą, kad padidintumėte",
+    "ru": "Нажмите на код, чтобы увеличить"
+  },
+  "enlargedHint": {
+    "en": "Hold your screen up to the counter tablet",
+    "lt": "Atsukite ekraną į prekystalio planšetę",
+    "ru": "Поднесите экран к планшету на кассе"
+  },
+  "qrLabel": {
+    "en": "Your card's QR code",
+    "lt": "Jūsų kortelės QR kodas",
+    "ru": "QR-код вашей карты"
+  },
+  "reset": { "en": "Reset code", "lt": "Atnaujinti kodą", "ru": "Сменить код" },
+  "resetConfirmTitle": {
+    "en": "Reset your card?",
+    "lt": "Atnaujinti kortelę?",
+    "ru": "Сменить код карты?"
+  },
+  "resetConfirmBody": {
+    "en": "Your old code stops working straight away. Do this if someone else has a photo of it.",
+    "lt": "Senas kodas iškart nustos veikti. Tai verta padaryti, jei kas nors turi jo nuotrauką.",
+    "ru": "Старый код сразу перестанет работать. Сделайте это, если у кого-то есть его фото."
+  },
+  "resetDone": {
+    "en": "Your card has a new code",
+    "lt": "Jūsų kortelė turi naują kodą",
+    "ru": "У вашей карты новый код"
+  },
+  "orders": {
+    "title": { "en": "Your orders", "lt": "Jūsų užsakymai", "ru": "Ваши заказы" },
+    "empty": { "en": "No orders yet", "lt": "Užsakymų dar nėra", "ru": "Заказов пока нет" },
+    "emptyHint": {
+      "en": "Orders the barista rings up with your card show up here.",
+      "lt": "Čia matysite užsakymus, kuriuos baristas užregistruos su jūsų kortele.",
+      "ru": "Здесь появятся заказы, которые бариста оформит по вашей карте."
+    },
+    "number": { "en": "Order #{number}", "lt": "Užsakymas #{number}", "ru": "Заказ №{number}" },
+    "placedAt": { "en": "Placed {time}", "lt": "Pateiktas {time}", "ru": "Оформлен {time}" },
+    "note": { "en": "Note", "lt": "Pastaba", "ru": "Заметка" },
+    "items": { "en": "Items", "lt": "Prekės", "ru": "Позиции" },
+    "gone": {
+      "en": "That order is no longer on your list.",
+      "lt": "Šio užsakymo jūsų sąraše nebėra.",
+      "ru": "Этого заказа больше нет в вашем списке."
+    }
+  },
+  "notifications": {
+    "title": {
+      "en": "Know when it's ready",
+      "lt": "Sužinokite, kai bus paruošta",
+      "ru": "Узнайте, когда будет готово"
+    },
+    "body": {
+      "en": "Turn on notifications and we'll tell you when your order is ready to pick up.",
+      "lt": "Įjunkite pranešimus ir pranešime, kai jūsų užsakymą bus galima atsiimti.",
+      "ru": "Включите уведомления, и мы сообщим, когда заказ можно будет забрать."
+    },
+    "enable": { "en": "Turn on", "lt": "Įjungti", "ru": "Включить" },
+    "blocked": {
+      "en": "Notifications are off for Church Cafe. Turn them on in Settings to hear when your order is ready.",
+      "lt": "Church Cafe pranešimai išjungti. Įjunkite juos Nustatymuose, kad sužinotumėte, kai užsakymas bus paruoštas.",
+      "ru": "Уведомления Church Cafe выключены. Включите их в настройках, чтобы узнать, когда заказ будет готов."
+    },
+    "openSettings": { "en": "Open Settings", "lt": "Atidaryti nustatymus", "ru": "Открыть настройки" },
+    "enabled": {
+      "en": "Notifications are on",
+      "lt": "Pranešimai įjungti",
+      "ru": "Уведомления включены"
+    },
+    "failed": {
+      "en": "Couldn't turn on notifications: {message}",
+      "lt": "Nepavyko įjungti pranešimų: {message}",
+      "ru": "Не удалось включить уведомления: {message}"
+    },
+    "channelName": {
+      "en": "Order updates",
+      "lt": "Užsakymų naujienos",
+      "ru": "Статус заказов"
+    }
+  }
+}

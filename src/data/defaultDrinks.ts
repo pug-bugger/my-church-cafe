@@ -1,54 +1,61 @@
-import { Drink, DrinkOption } from "@/types";
+import { Drink, DrinkOption, DrinkOptionValue } from "@/types";
+
+/**
+ * The offline fallback menu, so plain labels are enough — nothing here carries
+ * a surcharge, and the real catalogue's prices come from the API.
+ */
+const choices = (...labels: string[]): DrinkOptionValue[] =>
+  labels.map((label) => ({ label, extraPrice: 0 }));
 
 const defaultOptions: Record<string, DrinkOption> = {
   coffeeSize: {
     id: "size-1",
     name: "Size",
     type: "size",
-    values: ["Small (230ml)", "Medium (350ml)", "Large (470ml)"],
+    values: choices("Small (230ml)", "Medium (350ml)", "Large (470ml)"),
   },
   temperature: {
     id: "temp-1",
     name: "Temperature",
     type: "temperature",
-    values: ["Hot", "Iced"],
+    values: choices("Hot", "Iced"),
   },
   sugarLevel: {
     id: "sugar-1",
     name: "Sugar",
     type: "sugar",
-    values: ["No Sugar", "Light Sweet", "Regular Sweet", "Extra Sweet"],
+    values: choices("No Sugar", "Light Sweet", "Regular Sweet", "Extra Sweet"),
   },
   milkType: {
     id: "milk-1",
     name: "Milk",
     type: "custom",
-    values: ["Whole Milk", "2% Milk", "Oat Milk", "Almond Milk", "No Milk"],
+    values: choices("Whole Milk", "2% Milk", "Oat Milk", "Almond Milk", "No Milk"),
   },
   espressoShots: {
     id: "shots-1",
     name: "Espresso Shots",
     type: "custom",
-    values: ["Single", "Double", "Triple"],
+    values: choices("Single", "Double", "Triple"),
   },
   whippedCream: {
     id: "whip-1",
     name: "Whipped Cream",
     type: "checkbox",
-    values: [],
+    values: choices(),
     defaultValue: false,
   },
   syrupFlavor: {
     id: "syrup-1",
     name: "Syrup Flavor",
     type: "custom",
-    values: ["No Syrup", "Vanilla", "Caramel", "Hazelnut", "Chocolate"],
+    values: choices("No Syrup", "Vanilla", "Caramel", "Hazelnut", "Chocolate"),
   },
   cupType: {
     id: "cup-1",
     name: "Take away",
     type: "checkbox",
-    values: [],
+    values: choices(),
     defaultValue: false,
   },
 };

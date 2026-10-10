@@ -36,29 +36,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import type { ServerUser } from "@/types";
 import { resolveMediaUrl } from "@/lib/imageUrl";
+import { apiFetch, ApiError } from "@/lib/api";
+import { formatDate } from "@/lib/format";
+import {
+	roleLabel,
+	t as translate,
+	useTranslation,
+	type TranslateFn,
+} from "@/i18n";
+import { getAuthToken, getStoredUser } from "@/lib/auth";
 
 const ROLES = ["admin", "personal", "parishioner"] as const;
-
-function getToken(): string | null {
-	if (typeof window === "undefined") return null;
-	return (
-		localStorage.getItem("token") ??
-		localStorage.getItem("jwt") ??
-		localStorage.getItem("accessToken")
-	);
-}
-
-function getStoredRole(): string | null {
-	if (typeof window === "undefined") return null;
-	try {
-		const raw = localStorage.getItem("user");
-		if (!raw) return null;
-		const u = JSON.parse(raw) as { role?: string };
-		return u.role ?? null;
-	} catch {
-		return null;
-	}
-}
 
 function initials(name: string) {
 	return name
@@ -70,6 +58,7 @@ function initials(name: string) {
 }
 
 export function UserManagement() {
+	const { t } = useTranslation();
 	const apiUrl = useMemo(
 		() => process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "",
 		[]
@@ -84,55 +73,38 @@ export function UserManagement() {
 
 	const isAdmin = viewerRole === "admin";
 
-	const authHeaders = useCallback((): HeadersInit => {
-		const token = getToken();
-		const h: Record<string, string> = {
-			"Content-Type": "application/json",
-		};
-		if (token) h.Authorization = `Bearer ${token}`;
-		return h;
-	}, []);
-
 	const loadUsers = useCallback(async () => {
 		if (!apiUrl) {
-			setListError("Missing NEXT_PUBLIC_API_URL.");
+			setListError(t("manage.user.missingApiUrl"));
 			setLoading(false);
 			return;
 		}
-		const token = getToken();
-		if (!token) {
-			setListError("Sign in as staff to view users.");
+		if (!getAuthToken()) {
+			setListError(t("manage.user.signInAsStaff"));
 			setLoading(false);
 			setUsers([]);
 			return;
 		}
 		setLoading(true);
 		setListError(null);
-		setViewerRole(getStoredRole());
+		setViewerRole(getStoredUser<{ role?: string }>()?.role ?? null);
 		try {
-			const res = await fetch(`${apiUrl}/api/users`, {
-				headers: { Authorization: `Bearer ${token}` },
-			});
-			if (res.status === 403) {
-				setListError("You do not have access to the user list.");
+			const data = await apiFetch<ServerUser[]>("/api/users", { auth: true });
+			setUsers(Array.isArray(data) ? data : []);
+		} catch (e) {
+			if (e instanceof ApiError && e.status === 403) {
+				setListError(t("manage.user.noAccess"));
 				setUsers([]);
 				return;
 			}
-			if (!res.ok) {
-				const data = await res.json().catch(() => ({}));
-				throw new Error(
-					typeof data?.error === "string" ? data.error : "Failed to load users"
-				);
-			}
-			const data = (await res.json()) as ServerUser[];
-			setUsers(Array.isArray(data) ? data : []);
-		} catch (e) {
-			setListError(e instanceof Error ? e.message : "Failed to load users");
+			setListError(
+				e instanceof Error ? e.message : t("manage.user.loadFailed")
+			);
 			setUsers([]);
 		} finally {
 			setLoading(false);
 		}
-	}, [apiUrl]);
+	}, [apiUrl, t]);
 
 	useEffect(() => {
 		loadUsers();
@@ -150,11 +122,10 @@ export function UserManagement() {
 				<div>
 					<CardTitle className="flex items-center gap-2">
 						<UserRound className="h-5 w-5" />
-						Users
+						{t("manage.user.title")}
 					</CardTitle>
 					<p className="text-sm text-muted-foreground font-normal mt-1">
-						Admins can create, edit, and delete users. Personal staff can view
-						the directory.
+						{t("manage.user.subtitle")}
 					</p>
 				</div>
 				{isAdmin && (
@@ -162,21 +133,19 @@ export function UserManagement() {
 						<DialogTrigger asChild>
 							<Button type="button" onClick={() => setAddOpen(true)}>
 								<Plus className="h-4 w-4 mr-1" />
-								Add user
+								{t("manage.user.addUser")}
 							</Button>
 						</DialogTrigger>
 						<DialogContent className="max-w-md">
 							<DialogHeader>
-								<DialogTitle>New user</DialogTitle>
+								<DialogTitle>{t("manage.user.newUser")}</DialogTitle>
 								<DialogDescription>
-									Creates an account with a temporary password you share
-									securely.
+									{t("manage.user.newUserDescription")}
 								</DialogDescription>
 							</DialogHeader>
 							<UserForm
+								t={t}
 								mode="create"
-								apiUrl={apiUrl}
-								authHeaders={authHeaders}
 								onDone={() => {
 									setAddOpen(false);
 									loadUsers();
@@ -190,9 +159,7 @@ export function UserManagement() {
 			<CardContent className="space-y-4">
 				{!apiUrl && (
 					<Alert variant="destructive">
-						<AlertDescription>
-							Set NEXT_PUBLIC_API_URL to use user management.
-						</AlertDescription>
+						<AlertDescription>{t("manage.user.unavailable")}</AlertDescription>
 					</Alert>
 				)}
 				{listError && (
@@ -201,22 +168,32 @@ export function UserManagement() {
 					</Alert>
 				)}
 				{loading ? (
-					<p className="text-sm text-muted-foreground">Loading users…</p>
+					<p className="text-sm text-muted-foreground">
+						{t("profile.users.loadingUsers")}
+					</p>
 				) : users.length === 0 ? (
-					<p className="text-sm text-muted-foreground">No users to show.</p>
+					<p className="text-sm text-muted-foreground">
+						{t("manage.user.none")}
+					</p>
 				) : (
 					<div className="rounded-md border overflow-x-auto">
 						<table className="w-full text-sm">
 							<thead>
 								<tr className="border-b bg-muted/50 text-left">
 									<th className="p-3 font-medium w-14" />
-									<th className="p-3 font-medium">Name</th>
-									<th className="p-3 font-medium">Email</th>
-									<th className="p-3 font-medium">Role</th>
-									<th className="p-3 font-medium hidden sm:table-cell">
-										Joined
+									<th className="p-3 font-medium">{t("common.name")}</th>
+									<th className="p-3 font-medium">{t("common.email")}</th>
+									<th className="p-3 font-medium">
+										{t("profile.account.role")}
 									</th>
-									{isAdmin && <th className="p-3 font-medium w-28">Actions</th>}
+									<th className="p-3 font-medium hidden sm:table-cell">
+										{t("profile.users.joined")}
+									</th>
+									{isAdmin && (
+										<th className="p-3 font-medium w-28">
+											{t("manage.user.actions")}
+										</th>
+									)}
 								</tr>
 							</thead>
 							<tbody>
@@ -239,11 +216,9 @@ export function UserManagement() {
 										</td>
 										<td className="p-3 font-medium">{u.name}</td>
 										<td className="p-3 text-muted-foreground">{u.email}</td>
-										<td className="p-3 capitalize">{u.role ?? "—"}</td>
+										<td className="p-3">{roleLabel(u.role, t) || "—"}</td>
 										<td className="p-3 text-muted-foreground hidden sm:table-cell">
-											{u.created_at
-												? new Date(u.created_at).toLocaleDateString()
-												: "—"}
+											{u.created_at ? formatDate(u.created_at, {}) : "—"}
 										</td>
 										{isAdmin && (
 											<td className="p-3">
@@ -254,7 +229,9 @@ export function UserManagement() {
 														size="icon"
 														className="h-8 w-8"
 														onClick={() => setEditUser(u)}
-														aria-label={`Edit ${u.name}`}
+														aria-label={t("manage.user.editNamed", {
+															name: u.name,
+														})}
 													>
 														<Pencil className="h-4 w-4" />
 													</Button>
@@ -264,7 +241,9 @@ export function UserManagement() {
 														size="icon"
 														className="h-8 w-8 text-destructive"
 														onClick={() => setDeleteUser(u)}
-														aria-label={`Delete ${u.name}`}
+														aria-label={t("manage.user.deleteNamed", {
+															name: u.name,
+														})}
 													>
 														<Trash2 className="h-4 w-4" />
 													</Button>
@@ -282,18 +261,17 @@ export function UserManagement() {
 			<Dialog open={!!editUser} onOpenChange={(o) => !o && setEditUser(null)}>
 				<DialogContent className="max-w-md">
 					<DialogHeader>
-						<DialogTitle>Edit user</DialogTitle>
+						<DialogTitle>{t("manage.user.editUser")}</DialogTitle>
 						<DialogDescription>
-							Update profile, role, or set a new password (optional).
+							{t("manage.user.editUserDescription")}
 						</DialogDescription>
 					</DialogHeader>
 					{editUser && (
 						<UserForm
 							key={editUser.id}
+							t={t}
 							mode="edit"
 							initial={editUser}
-							apiUrl={apiUrl}
-							authHeaders={authHeaders}
 							onDone={() => {
 								setEditUser(null);
 								loadUsers();
@@ -310,51 +288,35 @@ export function UserManagement() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete user?</AlertDialogTitle>
+						<AlertDialogTitle>{t("manage.user.deleteTitle")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							This removes{" "}
-							<span className="font-medium text-foreground">
-								{deleteUser?.name}
-							</span>{" "}
-							permanently. Orders history may still reference this user where
-							applicable.
+							{t("manage.user.deleteBody", { name: deleteUser?.name ?? "" })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							onClick={async () => {
-								if (!deleteUser || !apiUrl) return;
-								const token = getToken();
-								if (!token) return;
+								if (!deleteUser) return;
 								try {
-									const res = await fetch(
-										`${apiUrl}/api/users/${deleteUser.id}`,
-										{
-											method: "DELETE",
-											headers: { Authorization: `Bearer ${token}` },
-										}
-									);
-									if (!res.ok) {
-										const data = await res.json().catch(() => ({}));
-										throw new Error(
-											typeof data?.error === "string"
-												? data.error
-												: "Delete failed"
-										);
-									}
-									toast.success("User deleted");
+									await apiFetch(`/api/users/${deleteUser.id}`, {
+										method: "DELETE",
+										auth: true,
+									});
+									toast.success(t("manage.user.deleted"));
 									setDeleteUser(null);
 									loadUsers();
 								} catch (err) {
 									toast.error(
-										err instanceof Error ? err.message : "Delete failed"
+										err instanceof Error
+											? err.message
+											: t("manage.user.deleteFailed")
 									);
 								}
 							}}
 						>
-							Delete
+							{t("common.delete")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -366,42 +328,24 @@ export function UserManagement() {
 type UserFormProps = {
 	mode: "create" | "edit";
 	initial?: ServerUser;
-	apiUrl: string;
-	authHeaders: () => HeadersInit;
 	onDone: () => void;
 	onCancel: () => void;
+	/** Passed down rather than re-read, so the form and its parent agree. */
+	t: TranslateFn;
 };
 
-async function postUserAvatar(
-	apiUrl: string,
-	userId: number,
-	file: File
-): Promise<void> {
-	const token = getToken();
-	if (!token) throw new Error("Not signed in");
+async function postUserAvatar(userId: number, file: File): Promise<void> {
 	const fd = new FormData();
 	fd.append("image", file);
-	const res = await fetch(`${apiUrl}/api/users/${userId}/image`, {
+	await apiFetch(`/api/users/${userId}/image`, {
 		method: "POST",
-		headers: { Authorization: `Bearer ${token}` },
-		body: fd,
+		formData: fd,
+		auth: true,
+		authError: translate("manage.user.notSignedIn"),
 	});
-	const data = await res.json().catch(() => ({}));
-	if (!res.ok) {
-		throw new Error(
-			typeof data?.error === "string" ? data.error : "Upload failed"
-		);
-	}
 }
 
-function UserForm({
-	mode,
-	initial,
-	apiUrl,
-	authHeaders,
-	onDone,
-	onCancel,
-}: UserFormProps) {
+function UserForm({ mode, initial, onDone, onCancel, t }: UserFormProps) {
 	const [name, setName] = useState(initial?.name ?? "");
 	const [email, setEmail] = useState(initial?.email ?? "");
 	const [password, setPassword] = useState("");
@@ -433,46 +377,36 @@ function UserForm({
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		if (!apiUrl) {
-			toast.error("Missing API URL");
-			return;
-		}
 		setSubmitting(true);
 		try {
 			if (mode === "create") {
 				if (!password.trim()) {
-					toast.error("Password is required for new users");
+					toast.error(t("manage.user.passwordRequired"));
 					return;
 				}
-				const res = await fetch(`${apiUrl}/api/users`, {
+				const data = await apiFetch<{ id?: number }>("/api/users", {
 					method: "POST",
-					headers: authHeaders(),
-					body: JSON.stringify({
+					body: {
 						name: name.trim(),
 						email: email.trim(),
 						password,
 						role,
-					}),
+					},
+					auth: true,
 				});
-				const data = await res.json().catch(() => ({}));
-				if (!res.ok) {
-					throw new Error(
-						typeof data?.error === "string" ? data.error : "Create failed"
-					);
-				}
-				const id = typeof data.id === "number" ? data.id : null;
+				const id = typeof data?.id === "number" ? data.id : null;
 				if (imageFile && id != null) {
 					try {
-						await postUserAvatar(apiUrl, id, imageFile);
+						await postUserAvatar(id, imageFile);
 					} catch (uploadErr) {
 						toast.error(
 							uploadErr instanceof Error
 								? uploadErr.message
-								: "User created but photo upload failed"
+								: t("manage.user.photoUploadFailed")
 						);
 					}
 				}
-				toast.success("User created");
+				toast.success(t("manage.user.created"));
 				onDone();
 			} else if (initial) {
 				const body: Record<string, unknown> = {
@@ -482,25 +416,21 @@ function UserForm({
 				};
 				if (password.trim()) body.password = password.trim();
 				if (clearPicture) body.picture_url = null;
-				const res = await fetch(`${apiUrl}/api/users/${initial.id}`, {
+				await apiFetch(`/api/users/${initial.id}`, {
 					method: "PUT",
-					headers: authHeaders(),
-					body: JSON.stringify(body),
+					body,
+					auth: true,
 				});
-				const data = await res.json().catch(() => ({}));
-				if (!res.ok) {
-					throw new Error(
-						typeof data?.error === "string" ? data.error : "Update failed"
-					);
-				}
 				if (imageFile) {
-					await postUserAvatar(apiUrl, initial.id, imageFile);
+					await postUserAvatar(initial.id, imageFile);
 				}
-				toast.success("User updated");
+				toast.success(t("manage.user.updated"));
 				onDone();
 			}
 		} catch (err) {
-			toast.error(err instanceof Error ? err.message : "Request failed");
+			toast.error(
+				err instanceof Error ? err.message : t("errors.generic")
+			);
 		} finally {
 			setSubmitting(false);
 		}
@@ -509,7 +439,7 @@ function UserForm({
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
 			<div className="space-y-2">
-				<Label>Photo</Label>
+				<Label>{t("manage.productForm.photo")}</Label>
 				<div className="flex items-center gap-4">
 					<Avatar className="h-16 w-16">
 						<AvatarImage src={displaySrc ?? undefined} alt="" />
@@ -534,14 +464,14 @@ function UserForm({
 									setImageFile(null);
 								}}
 							>
-								Remove photo
+								{t("profile.account.removePhoto")}
 							</Button>
 						)}
 					</div>
 				</div>
 			</div>
 			<div className="space-y-2">
-				<Label htmlFor="um-name">Name</Label>
+				<Label htmlFor="um-name">{t("common.name")}</Label>
 				<Input
 					id="um-name"
 					value={name}
@@ -550,7 +480,7 @@ function UserForm({
 				/>
 			</div>
 			<div className="space-y-2">
-				<Label htmlFor="um-email">Email</Label>
+				<Label htmlFor="um-email">{t("common.email")}</Label>
 				<Input
 					id="um-email"
 					type="email"
@@ -560,15 +490,15 @@ function UserForm({
 				/>
 			</div>
 			<div className="space-y-2">
-				<Label>Role</Label>
+				<Label>{t("profile.account.role")}</Label>
 				<Select value={role} onValueChange={setRole}>
 					<SelectTrigger>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
 						{ROLES.map((r) => (
-							<SelectItem key={r} value={r} className="capitalize">
-								{r}
+							<SelectItem key={r} value={r}>
+								{roleLabel(r, t)}
 							</SelectItem>
 						))}
 					</SelectContent>
@@ -576,7 +506,7 @@ function UserForm({
 			</div>
 			{mode === "create" ? (
 				<div className="space-y-2">
-					<Label htmlFor="um-password">Password</Label>
+					<Label htmlFor="um-password">{t("common.password")}</Label>
 					<Input
 						id="um-password"
 						type="password"
@@ -588,23 +518,29 @@ function UserForm({
 				</div>
 			) : (
 				<div className="space-y-2">
-					<Label htmlFor="um-password-new">New password (optional)</Label>
+					<Label htmlFor="um-password-new">
+						{t("manage.user.newPasswordOptional")}
+					</Label>
 					<Input
 						id="um-password-new"
 						type="password"
 						autoComplete="new-password"
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
-						placeholder="Leave blank to keep current"
+						placeholder={t("manage.user.keepCurrentPassword")}
 					/>
 				</div>
 			)}
 			<div className="flex justify-end gap-2 pt-2">
 				<Button type="button" variant="outline" onClick={onCancel}>
-					Cancel
+					{t("common.cancel")}
 				</Button>
 				<Button type="submit" disabled={submitting}>
-					{submitting ? "Saving…" : mode === "create" ? "Create" : "Save"}
+					{submitting
+						? t("common.saving")
+						: mode === "create"
+							? t("manage.user.create")
+							: t("common.save")}
 				</Button>
 			</div>
 		</form>

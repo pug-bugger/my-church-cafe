@@ -2,13 +2,16 @@ import { create } from 'zustand';
 import { Drink, OrderItem, ServerOrder, OrderStatus } from '@/types';
 import { defaultDrinks } from '@/data/defaultDrinks';
 import { mapProductApiToDrinkOptions } from '@/lib/drinkOptions';
+import { apiFetch, getApiBaseUrl } from '@/lib/api';
+import { t } from '@/i18n';
 import {
   fetchCategories,
   findSubtypeByName,
-  getCategoryId,
   getDrinkParentCategory,
+  getTopLevelCategory,
   isProductCategory,
   PRODUCT_CATEGORY,
+  type ProductCategoryName,
 } from '@/lib/productCategories';
 
 function areSelectedOptionsEqual(
@@ -22,15 +25,6 @@ function areSelectedOptionsEqual(
     if (a[key] !== b[key]) return false;
   }
   return true;
-}
-
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return (
-    localStorage.getItem("token") ??
-    localStorage.getItem("jwt") ??
-    localStorage.getItem("accessToken")
-  );
 }
 
 function mapApiProductToDrink(product: Record<string, unknown>): Drink {
@@ -52,7 +46,9 @@ function mapApiProductToDrink(product: Record<string, unknown>): Drink {
 
   return {
     id: String(product.id),
-    name: String(product.name ?? "Unnamed"),
+    name: String(product.name ?? t("common.unnamed")),
+    nameLt: product.name_lt ? String(product.name_lt) : undefined,
+    nameRu: product.name_ru ? String(product.name_ru) : undefined,
     secondaryName: subtypeName ?? categoryName,
     categoryName: topLevel,
     subtypeName,
@@ -65,22 +61,37 @@ function mapApiProductToDrink(product: Record<string, unknown>): Drink {
     ),
     active: product.available !== 0 && product.available !== false,
     available_until: product.available_until != null ? String(product.available_until) : null,
+    sortOrder:
+      product.sort_order != null ? Number(product.sort_order) : undefined,
   };
 }
 
-async function resolveDrinkCategoryId(
+/**
+ * The `categories` row a product should be filed under.
+ *
+ * Drinks are a special case: they hang off a *subtype* (Coffee, Season drinks)
+ * rather than the Drink row itself. Every other top-level category — Meal,
+ * Dessert, Other, or one an admin adds later — resolves by name, which is what
+ * makes adding a category a migration rather than a code change.
+ */
+async function resolveCategoryId(
   apiUrl: string,
-  drink: Omit<Drink, "id">
+  product: Omit<Drink, "id">
 ): Promise<number | undefined> {
   const categories = await fetchCategories(apiUrl);
-  if (drink.categoryId != null) {
-    const match = categories.find((c) => c.id === drink.categoryId);
-    if (match) return match.id;
+  const topLevel = product.categoryName ?? PRODUCT_CATEGORY.DRINK;
+
+  if (isProductCategory(topLevel, PRODUCT_CATEGORY.DRINK)) {
+    if (product.categoryId != null) {
+      const match = categories.find((c) => c.id === product.categoryId);
+      if (match) return match.id;
+    }
+    const fromSubtype = findSubtypeByName(categories, product.subtypeName);
+    if (fromSubtype) return fromSubtype.id;
+    return getDrinkParentCategory(categories)?.id;
   }
-  const fromSubtype = findSubtypeByName(categories, drink.subtypeName);
-  if (fromSubtype) return fromSubtype.id;
-  const drinkParent = getDrinkParentCategory(categories);
-  return drinkParent?.id;
+
+  return getTopLevelCategory(categories, topLevel)?.id;
 }
 
 /** Map frontend product (without id) to backend POST/PUT /api/products body. */
@@ -93,6 +104,8 @@ function productToApiBody(
     .filter((n) => Number.isFinite(n) && n > 0);
   return {
     name: product.name,
+    name_lt: product.nameLt ?? "",
+    name_ru: product.nameRu ?? "",
     description: product.description ?? "",
     base_price: product.price,
     image_url: product.imageUrl ?? null,
@@ -103,369 +116,215 @@ function productToApiBody(
 }
 
 interface AppState {
-  drinks: Drink[];
-  drinksLoading: boolean;
-  desserts: Drink[];
-  dessertsLoading: boolean;
+  /**
+   * Every product, whatever its category — one unfiltered load, the shape the
+   * mobile client has always used. It replaced separate `drinks`/`desserts`
+   * arrays, which were why meals could never be ordered on the web terminal.
+   */
+  products: Drink[];
+  productsLoading: boolean;
   orders: ServerOrder[];
   draftItems: OrderItem[];
-  addDrink: (drink: Drink) => void;
-  updateDrink: (id: string, drink: Partial<Drink>) => void;
-  deleteDrink: (id: string) => void;
-  loadDrinks: () => Promise<void>;
-  loadDesserts: () => Promise<void>;
-  createDrinkApi: (drink: Omit<Drink, "id">) => Promise<Drink>;
-  updateDrinkApi: (id: string, drink: Omit<Drink, "id">) => Promise<void>;
-  deleteDrinkApi: (id: string) => Promise<void>;
-  createDessertApi: (dessert: Omit<Drink, "id">) => Promise<Drink>;
-  updateDessertApi: (id: string, dessert: Omit<Drink, "id">) => Promise<void>;
-  deleteDessertApi: (id: string) => Promise<void>;
+  loadProducts: () => Promise<void>;
+  createProductApi: (product: Omit<Drink, "id">) => Promise<Drink>;
+  updateProductApi: (id: string, product: Omit<Drink, "id">) => Promise<void>;
+  deleteProductApi: (id: string) => Promise<void>;
+  /**
+   * Persist the running order products are shown in. Takes the whole sequence
+   * of product ids, in the order the terminal and the menu should list them.
+   */
+  reorderProductsApi: (orderedIds: string[]) => Promise<void>;
   uploadProductImage: (productId: string, file: File) => Promise<string>;
   toggleProductAvailableApi: (id: string, active: boolean, hideUntilMidnight?: boolean) => Promise<void>;
+  /** Replace the small-print note under the menu board; "" clears it. Admin only. */
+  saveMenuNoteApi: (note: string) => Promise<string>;
   setOrders: (orders: ServerOrder[]) => void;
   updateOrderStatus: (orderId: number, status: OrderStatus) => void;
   removeOrderItem: (orderId: number, itemId: number) => void;
   removeOrder: (orderId: number) => void;
   addDraftItem: (item: OrderItem) => void;
+  /**
+   * Replace one draft line's quantity, options and note, keeping its place in
+   * the list. If the edit makes it identical to another line, the two merge.
+   */
+  updateDraftItem: (
+    itemId: string,
+    changes: Pick<OrderItem, "quantity" | "selectedOptions" | "comment">
+  ) => void;
   removeDraftItem: (itemId: string) => void;
   clearDraft: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  drinks: [],
-  drinksLoading: false,
-  desserts: [],
-  dessertsLoading: false,
+export const useAppStore = create<AppState>((set, get) => ({
+  products: [],
+  productsLoading: false,
   orders: [],
   draftItems: [],
-  
-  addDrink: (drink) => set((state) => ({
-    drinks: [...state.drinks, drink]
-  })),
-  
-  updateDrink: (id, updatedDrink) => set((state) => ({
-    drinks: state.drinks.map((drink) => 
-      drink.id === id ? { ...drink, ...updatedDrink } : drink
-    )
-  })),
-  
-  deleteDrink: (id) => set((state) => ({
-    drinks: state.drinks.filter((drink) => drink.id !== id)
-  })),
 
-  loadDrinks: async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      set(() => ({ drinks: defaultDrinks, drinksLoading: false }));
-      return;
-    }
-    set(() => ({ drinksLoading: true }));
+  loadProducts: async () => {
+    set(() => ({ productsLoading: true }));
     try {
-      const categories = await fetchCategories(apiUrl);
-      const drinkParent = getDrinkParentCategory(categories);
-      const url = drinkParent
-        ? `${apiUrl}/api/products?parent_category_id=${drinkParent.id}`
-        : `${apiUrl}/api/products`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Failed to load products");
-      }
-      const data = await response.json();
+      // One unfiltered request for every category. The old pair of
+      // category-filtered loads is why meals existed in the database but were
+      // unreachable from the web terminal.
+      const data = await apiFetch<Record<string, unknown>[]>("/api/products");
       if (!Array.isArray(data) || data.length === 0) {
-        set(() => ({ drinks: defaultDrinks, drinksLoading: false }));
+        // Keep the offline/empty menu working, as the drink load always has.
+        set(() => ({ products: defaultDrinks, productsLoading: false }));
         return;
       }
-      const mapped = data.map((product) => mapApiProductToDrink(product));
-      set(() => ({ drinks: mapped, drinksLoading: false }));
+      set(() => ({
+        products: data.map((product) => mapApiProductToDrink(product)),
+        productsLoading: false,
+      }));
     } catch (_err) {
-      set(() => ({ drinks: defaultDrinks, drinksLoading: false }));
+      set(() => ({ products: defaultDrinks, productsLoading: false }));
     }
   },
 
-  loadDesserts: async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      set(() => ({ desserts: [], dessertsLoading: false }));
-      return;
+  createProductApi: async (product) => {
+    const apiUrl = getApiBaseUrl();
+    const categoryId = await resolveCategoryId(apiUrl, product);
+    const categoryName = product.categoryName ?? PRODUCT_CATEGORY.DRINK;
+    if (!categoryId) {
+      throw new Error(t("errors.categoryMissing", { category: categoryName }));
     }
-    set(() => ({ dessertsLoading: true }));
+    const body = productToApiBody(product, categoryId);
+    const data = await apiFetch<{ id?: string | number }>("/api/products", {
+      method: "POST",
+      body,
+      auth: true,
+      authError: t("errors.loginRequiredToCreateProducts"),
+    });
+    const id = String(data?.id ?? "");
+    if (!id) throw new Error(t("errors.noProductId"));
+    const categories = await fetchCategories(apiUrl);
+    const categoryRow = categories.find((c) => c.id === categoryId);
+    const isDrink = isProductCategory(categoryName, PRODUCT_CATEGORY.DRINK);
+    const created: Drink = {
+      ...product,
+      id,
+      categoryName,
+      // Only a drink hangs off a subtype; for anything else the resolved row
+      // *is* the top-level category.
+      subtypeName: isDrink ? categoryRow?.name ?? product.subtypeName : undefined,
+      categoryId,
+    };
+    set((state) => ({ products: [...state.products, created] }));
+    return created;
+  },
+
+  updateProductApi: async (id, product) => {
+    const apiUrl = getApiBaseUrl();
+    const categoryId = await resolveCategoryId(apiUrl, product);
+    const categoryName = product.categoryName ?? PRODUCT_CATEGORY.DRINK;
+    if (!categoryId) {
+      throw new Error(
+        t("errors.categoryUnresolved", { category: categoryName })
+      );
+    }
+    const body = productToApiBody(product, categoryId);
+    await apiFetch(`/api/products/${id}`, {
+      method: "PUT",
+      body,
+      auth: true,
+      authError: t("errors.loginRequiredToUpdateProducts"),
+    });
+    const categories = await fetchCategories(apiUrl);
+    const categoryRow = categories.find((c) => c.id === categoryId);
+    const isDrink = isProductCategory(categoryName, PRODUCT_CATEGORY.DRINK);
+    const updated: Drink = {
+      ...product,
+      id,
+      categoryName,
+      subtypeName: isDrink ? categoryRow?.name ?? product.subtypeName : undefined,
+      categoryId,
+    };
+    set((state) => ({
+      products: state.products.map((p) => (p.id === id ? updated : p)),
+    }));
+  },
+
+  deleteProductApi: async (id) => {
+    await apiFetch(`/api/products/${id}`, {
+      method: "DELETE",
+      auth: true,
+      authError: t("errors.loginRequiredToDeleteProducts"),
+    });
+    set((state) => ({
+      products: state.products.filter((p) => p.id !== id),
+    }));
+  },
+
+  saveMenuNoteApi: async (note) => {
+    const saved = await apiFetch<{ note: string }>("/api/settings/menu-note", {
+      method: "PUT",
+      body: { note },
+      auth: true,
+      authError: t("errors.loginRequiredToUpdateProducts"),
+    });
+    return saved?.note ?? "";
+  },
+
+  reorderProductsApi: async (orderedIds) => {
+    // Move the list locally first: the table this is driven from must not lag
+    // a tap behind, and the API answers with nothing worth waiting for.
+    const previous = get().products;
+    const byId = new Map(previous.map((p) => [p.id, p]));
+    const named = new Set(orderedIds);
+    const moved = orderedIds
+      .map((id) => byId.get(id))
+      .filter((p): p is Drink => Boolean(p));
+    const rest = previous.filter((p) => !named.has(p.id));
+    set(() => ({ products: [...moved, ...rest] }));
     try {
-      const categoryIds = await fetchCategories(apiUrl).then((rows) => {
-        const map = new Map<string, number>();
-        for (const row of rows) {
-          map.set(row.name.trim().toLowerCase(), row.id);
-        }
-        return map;
+      await apiFetch("/api/products/reorder", {
+        method: "PUT",
+        body: { ids: orderedIds.map((id) => Number(id)) },
+        auth: true,
+        authError: t("errors.loginRequiredToUpdateProducts"),
       });
-      const dessertCategoryId = getCategoryId(
-        categoryIds,
-        PRODUCT_CATEGORY.DESSERT
-      );
-      if (!dessertCategoryId) {
-        set(() => ({ desserts: [], dessertsLoading: false }));
-        return;
-      }
-      const response = await fetch(
-        `${apiUrl}/api/products?category_id=${dessertCategoryId}`
-      );
-      if (!response.ok) {
-        throw new Error("Failed to load desserts");
-      }
-      const data = await response.json();
-      const mapped = Array.isArray(data)
-        ? data.map((product) => mapApiProductToDrink(product))
-        : [];
-      set(() => ({ desserts: mapped, dessertsLoading: false }));
-    } catch (_err) {
-      set(() => ({ desserts: [], dessertsLoading: false }));
+    } catch (err) {
+      // Put the old order back rather than leaving the screen showing a
+      // sequence the server never accepted.
+      set(() => ({ products: previous }));
+      throw err;
     }
-  },
-
-  createDrinkApi: async (drink) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to create drinks");
-    const categoryId = await resolveDrinkCategoryId(apiUrl, drink);
-    if (!categoryId) {
-      throw new Error(
-        "Drink category is missing. Run migration_drink_subtypes.sql and assign a subtype."
-      );
-    }
-    const body = productToApiBody(drink, categoryId);
-    const response = await fetch(`${apiUrl}/api/products`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to create drink");
-    }
-    const id = String(data?.id ?? "");
-    if (!id) throw new Error("Server did not return product id");
-    const categories = await fetchCategories(apiUrl);
-    const subtypeRow = categories.find((c) => c.id === categoryId);
-    const created: Drink = {
-      ...drink,
-      id,
-      categoryName: PRODUCT_CATEGORY.DRINK,
-      subtypeName: subtypeRow?.name ?? drink.subtypeName,
-      categoryId,
-    };
-    set((state) => ({ drinks: [...state.drinks, created] }));
-    return created;
-  },
-
-  updateDrinkApi: async (id, drink) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to update drinks");
-    const categoryId = await resolveDrinkCategoryId(apiUrl, drink);
-    if (!categoryId) {
-      throw new Error("Could not resolve drink subtype category.");
-    }
-    const body = productToApiBody(drink, categoryId);
-    const response = await fetch(`${apiUrl}/api/products/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to update drink");
-    }
-    const categories = await fetchCategories(apiUrl);
-    const subtypeRow = categories.find((c) => c.id === categoryId);
-    const updated: Drink = {
-      ...drink,
-      id,
-      categoryName: PRODUCT_CATEGORY.DRINK,
-      subtypeName: subtypeRow?.name ?? drink.subtypeName,
-      categoryId,
-    };
-    set((state) => ({
-      drinks: state.drinks.map((d) => (d.id === id ? updated : d)),
-    }));
-  },
-
-  deleteDrinkApi: async (id) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to delete drinks");
-    const response = await fetch(`${apiUrl}/api/products/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data?.error ?? "Failed to delete drink");
-    }
-    set((state) => ({
-      drinks: state.drinks.filter((d) => d.id !== id),
-    }));
-  },
-
-  createDessertApi: async (dessert) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to create desserts");
-    const categories = await fetchCategories(apiUrl);
-    const map = new Map(
-      categories.map((c) => [c.name.trim().toLowerCase(), c.id])
-    );
-    const categoryId = getCategoryId(map, PRODUCT_CATEGORY.DESSERT);
-    if (!categoryId) {
-      throw new Error(
-        "Dessert category is missing in the database. Run the dessert category migration."
-      );
-    }
-    const body = productToApiBody(
-      { ...dessert, availableOptions: [] },
-      categoryId
-    );
-    const response = await fetch(`${apiUrl}/api/products`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to create dessert");
-    }
-    const id = String(data?.id ?? "");
-    if (!id) throw new Error("Server did not return product id");
-    const created: Drink = {
-      ...dessert,
-      id,
-      availableOptions: [],
-      categoryName: PRODUCT_CATEGORY.DESSERT,
-    };
-    set((state) => ({ desserts: [...state.desserts, created] }));
-    return created;
-  },
-
-  updateDessertApi: async (id, dessert) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to update desserts");
-    const categories = await fetchCategories(apiUrl);
-    const map = new Map(
-      categories.map((c) => [c.name.trim().toLowerCase(), c.id])
-    );
-    const categoryId = getCategoryId(map, PRODUCT_CATEGORY.DESSERT);
-    const body = productToApiBody(
-      { ...dessert, availableOptions: [] },
-      categoryId
-    );
-    const response = await fetch(`${apiUrl}/api/products/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to update dessert");
-    }
-    const updated: Drink = {
-      ...dessert,
-      id,
-      availableOptions: [],
-      categoryName: PRODUCT_CATEGORY.DESSERT,
-    };
-    set((state) => ({
-      desserts: state.desserts.map((d) => (d.id === id ? updated : d)),
-    }));
-  },
-
-  deleteDessertApi: async (id) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to delete desserts");
-    const response = await fetch(`${apiUrl}/api/products/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data?.error ?? "Failed to delete dessert");
-    }
-    set((state) => ({
-      desserts: state.desserts.filter((d) => d.id !== id),
-    }));
   },
 
   uploadProductImage: async (productId, file) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required to upload images");
     const formData = new FormData();
     formData.append("image", file);
-    const response = await fetch(`${apiUrl}/api/products/${productId}/image`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to upload image");
-    }
+    const data = await apiFetch<{ image_url?: string }>(
+      `/api/products/${productId}/image`,
+      {
+        method: "POST",
+        formData,
+        auth: true,
+        authError: t("errors.loginRequiredToUploadImages"),
+      }
+    );
     const imageUrl = typeof data?.image_url === "string" ? data.image_url : "";
-    if (!imageUrl) throw new Error("Server did not return image_url");
+    if (!imageUrl) throw new Error(t("errors.noImageUrl"));
     set((state) => ({
-      drinks: state.drinks.map((d) =>
-        d.id === productId ? { ...d, imageUrl } : d
-      ),
-      desserts: state.desserts.map((d) =>
-        d.id === productId ? { ...d, imageUrl } : d
+      products: state.products.map((p) =>
+        p.id === productId ? { ...p, imageUrl } : p
       ),
     }));
     return imageUrl;
   },
   
   toggleProductAvailableApi: async (id, active, hideUntilMidnight) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL is not set");
-    const token = getAuthToken();
-    if (!token) throw new Error("Login required");
-    const response = await fetch(`${apiUrl}/api/products/${id}/availability`, {
+    await apiFetch(`/api/products/${id}/availability`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ available: active, hide_until_midnight: hideUntilMidnight ?? false }),
+      body: { available: active, hide_until_midnight: hideUntilMidnight ?? false },
+      auth: true,
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Failed to update product availability");
-    }
     // available_until is non-null only for the temporary-hide case (value used only for the label)
     const available_until = !active && hideUntilMidnight ? "scheduled" : null;
     set((state) => ({
-      drinks: state.drinks.map((d) =>
-        d.id === id ? { ...d, active, available_until } : d
-      ),
-      desserts: state.desserts.map((d) =>
-        d.id === id ? { ...d, active, available_until } : d
+      products: state.products.map((p) =>
+        p.id === id ? { ...p, active, available_until } : p
       ),
     }));
   },
@@ -492,6 +351,31 @@ export const useAppStore = create<AppState>((set) => ({
       return { draftItems: updated };
     }
     return { draftItems: [...state.draftItems, item] };
+  }),
+
+  updateDraftItem: (itemId, changes) => set((state) => {
+    const target = state.draftItems.find((item) => item.id === itemId);
+    if (!target) return {};
+    const edited = { ...target, ...changes };
+    // The same merge rule as adding: an edit that turns this line into a copy
+    // of another folds that other line's quantity in, rather than leaving two
+    // identical rows.
+    const twin = state.draftItems.find(
+      (item) =>
+        item.id !== itemId &&
+        item.drinkId === edited.drinkId &&
+        areSelectedOptionsEqual(item.selectedOptions, edited.selectedOptions) &&
+        (item.comment ?? "") === (edited.comment ?? "")
+    );
+    return {
+      draftItems: state.draftItems
+        .filter((item) => item.id !== twin?.id)
+        .map((item) =>
+          item.id === itemId
+            ? { ...edited, quantity: edited.quantity + (twin?.quantity ?? 0) }
+            : item
+        ),
+    };
   }),
 
   removeDraftItem: (itemId) => set((state) => ({
@@ -530,10 +414,10 @@ export const useAppStore = create<AppState>((set) => ({
   })),
 }));
 
-/** Drinks and desserts available for terminal ordering. */
-export function getOrderableProducts(state: {
-  drinks: Drink[];
-  desserts: Drink[];
-}): Drink[] {
-  return [...state.drinks, ...state.desserts];
+/** Products of one top-level category, for a menu section or a filter pill. */
+export function productsInCategory(
+  products: Drink[],
+  category: ProductCategoryName
+): Drink[] {
+  return products.filter((p) => isProductCategory(p.categoryName, category));
 }

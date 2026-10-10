@@ -1,0 +1,9 @@
+{
+  "tagline": {
+    "en": "Take an order at the counter, watch it move across the bar, and call it out on the board — all in one place.",
+    "lt": "Priimkite užsakymą prie kasos, sekite jį baro eigoje ir paskelbkite lentoje — viskas vienoje vietoje.",
+    "ru": "Примите заказ у стойки, проследите его на баре и объявите на табло — всё в одном месте."
+  },
+  "pickupBoard": { "en": "Pickup board", "lt": "Atsiėmimo lenta", "ru": "Табло выдачи" },
+  "todaysMenu": { "en": "Today's menu", "lt": "Šios dienos meniu", "ru": "Меню на сегодня" }
+}

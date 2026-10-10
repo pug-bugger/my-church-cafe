@@ -7,6 +7,11 @@ import {
   PRODUCT_CATEGORY,
 } from "@/lib/productCategories";
 
+/**
+ * Bucket key for a drink with no subtype. A *key*, not a label: rows are
+ * grouped under it, and `subtypeLabel()` from `@/i18n` translates it when the
+ * heading is rendered.
+ */
 export const UNCATEGORIZED_DRINK_LABEL = "Uncategorized";
 
 export type DrinkSubtypeSection<T> = {

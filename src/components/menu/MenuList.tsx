@@ -1,24 +1,56 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Pencil, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DrinkSubtypeSections } from "@/components/drinks/DrinkSubtypeSections";
+import { DataState } from "@/components/ui/data-state";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { defaultDrinks } from "@/data/defaultDrinks";
 import {
   groupByDrinkSubtype,
   menuProductSubtypeLabel,
 } from "@/lib/drinkSubtypeGroups";
 import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
+import { usePresentationMode } from "@/hooks/usePresentationMode";
+import { PresentButton } from "@/components/PresentButton";
 import {
   isProductCategory,
   PRODUCT_CATEGORY,
+  PRODUCT_CATEGORY_ORDER,
+  UNCATEGORIZED_LABEL,
   type ProductCategoryName,
 } from "@/lib/productCategories";
+import { subtypeLabel, useTranslation } from "@/i18n";
+import { formatDate, formatPrice } from "@/lib/format";
+import { AUTH_EVENT, getAuthToken, getStoredUser } from "@/lib/auth";
+import { useAppStore } from "@/store";
+import { useWebSocket } from "@/context/WebSocketContext";
+import { useProductLanguage } from "@/context/ProductLanguageContext";
+import { getLocalizedName, getSecondaryNames } from "@/lib/productName";
 
 type Product = {
   id: string | number;
   name: string;
+  name_lt?: string | null;
+  name_ru?: string | null;
   description?: string | null;
   base_price?: number | string | null;
   category_name?: string | null;
@@ -26,15 +58,20 @@ type Product = {
   available?: boolean | number | null;
 };
 
+/**
+ * `name` is the canonical category or subtype name from the database, not a
+ * heading: it is the React key and the bucket identity, and `subtypeLabel()`
+ * turns it into a heading at render. Translating it here would make the
+ * grouping itself language-dependent.
+ */
+type MenuGroup = { name: string; items: Product[] };
+
 function productTypeName(product: Product): string | null {
   return product.parent_category_name ?? product.category_name ?? null;
 }
 
-const MENU_SECTIONS: { title: string; category: ProductCategoryName }[] = [
-  { title: "Drinks", category: PRODUCT_CATEGORY.DRINK },
-  { title: "Meals", category: PRODUCT_CATEGORY.MEAL },
-  { title: "Desserts", category: PRODUCT_CATEGORY.DESSERT },
-];
+const MENU_SECTIONS: { category: ProductCategoryName }[] =
+  PRODUCT_CATEGORY_ORDER.map((category) => ({ category }));
 
 function isAvailable(value: Product["available"]): boolean {
   if (value === null || value === undefined) return true;
@@ -42,183 +79,565 @@ function isAvailable(value: Product["available"]): boolean {
   return value;
 }
 
+/** "Sunday, 1 September" — the day the board is being read, in the active language. */
+function dateline(): string {
+  return formatDate(new Date(), {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+/**
+ * The board is meant to be read across a room from a portrait screen, so the
+ * card's type is sized to whatever makes the whole menu fit — never scroll.
+ * Everything inside the card is sized in `em`, so changing this one font-size
+ * reflows the columns properly instead of just squashing them.
+ */
+/** In the page it stays at a comfortable reading size; on a room screen it
+ *  grows to whatever the display can hold. */
+/**
+ * The board's headline cycles slowly so a screen left up all morning still has
+ * something to say. Swapping is a fade out, change, fade back in — one element,
+ * so the line never jumps while both strings are on screen.
+ */
+const TAGLINE_KEYS = [
+  "menu.tagline1",
+  "menu.tagline2",
+  "menu.tagline3",
+  "menu.tagline4",
+] as const;
+const TAGLINE_INTERVAL_MS = 10_000;
+const TAGLINE_FADE_MS = 400;
+
+function useRotatingTagline() {
+  const { t } = useTranslation();
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (TAGLINE_KEYS.length < 2) return;
+
+    // With motion reduced the fade is disabled in CSS, so hiding first would
+    // just blank the line for 400ms — swap straight over instead.
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    let swap: ReturnType<typeof setTimeout>;
+    const advance = () => setIndex((i) => (i + 1) % TAGLINE_KEYS.length);
+    const cycle = setInterval(() => {
+      if (reducedMotion) {
+        advance();
+        return;
+      }
+      setVisible(false);
+      swap = setTimeout(() => {
+        advance();
+        setVisible(true);
+      }, TAGLINE_FADE_MS);
+    }, TAGLINE_INTERVAL_MS);
+
+    return () => {
+      clearInterval(cycle);
+      clearTimeout(swap);
+    };
+  }, []);
+
+  return { tagline: t(TAGLINE_KEYS[index]), visible };
+}
+
+const MAX_BOARD_FONT_PX = 22;
+const MAX_BOARD_FONT_PRESENTING_PX = 48;
+const MIN_BOARD_FONT_PX = 9;
+const BOARD_FONT_STEP_PX = 0.5;
+
+/** Below this the board scrolls normally — shrinking to fit a phone is unreadable. */
+const FIT_MIN_VIEWPORT_PX = 640;
+
+/** Breathing room kept under the board (and clear of the full-screen button). */
+const BOARD_BOTTOM_GUTTER_PX = 28;
+
+/** Guests hold no JWT, so they get no socket — the board polls for them. */
+const GUEST_POLL_INTERVAL_MS = 30000;
+
+function useFitToBox(maxFontPx: number, deps: unknown[]) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const fit = useCallback(() => {
+    const box = boxRef.current;
+    const content = contentRef.current;
+    if (!box || !content) return;
+
+    if (window.innerWidth < FIT_MIN_VIEWPORT_PX) {
+      content.style.fontSize = "";
+      return;
+    }
+
+    // Measure against the viewport, not the box: the box is free to grow with
+    // its content, so its own height would always look like it fits.
+    const available =
+      window.innerHeight -
+      box.getBoundingClientRect().top -
+      BOARD_BOTTOM_GUTTER_PX;
+    if (available <= 0) return;
+
+    // Start at the largest comfortable size and step down until it fits. Each
+    // step reflows, so the column balance stays correct at the final size.
+    let size = maxFontPx;
+    content.style.fontSize = `${size}px`;
+    while (size > MIN_BOARD_FONT_PX && content.scrollHeight > available) {
+      size -= BOARD_FONT_STEP_PX;
+      content.style.fontSize = `${size}px`;
+    }
+  }, [maxFontPx]);
+
+  useLayoutEffect(() => {
+    fit();
+    const box = boxRef.current;
+    if (!box) return;
+    // Observe the box only — observing the content we resize would loop.
+    const observer = new ResizeObserver(fit);
+    observer.observe(box);
+    window.addEventListener("resize", fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fit, ...deps]);
+
+  return { boxRef, contentRef };
+}
+
 function MenuListSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-full" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            {/* <Skeleton className="h-4 w-full" /> */}
-          </CardContent>
-        </Card>
+    <div className="flex flex-col gap-5">
+      {[3, 1].map((sections, card) => (
+        <div
+          key={card}
+          className="rounded-card border border-line bg-surface p-6 sm:p-8"
+        >
+          {Array.from({ length: sections }).map((_, i) => (
+            <div key={i} className="mb-6 space-y-3.5 last:mb-0">
+              <Skeleton className="h-5 w-28" />
+              <div className="columns-1 gap-10 sm:columns-2">
+                {Array.from({ length: 4 }).map((_, row) => (
+                  <Skeleton key={row} className="mb-3 h-4 w-full" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ))}
     </div>
   );
 }
 
-function ProductGrid({ products }: { products: Product[] }) {
+function toTranslatable(p: Product) {
+  return { name: p.name, nameLt: p.name_lt ?? undefined, nameRu: p.name_ru ?? undefined };
+}
+
+/** One priced row: name over its description, dot leader, price. */
+function MenuRow({
+  product,
+  primaryLang,
+  secondaryLangs,
+}: {
+  product: Product;
+  primaryLang: import("@/i18n/locales").LocaleId;
+  secondaryLangs: import("@/i18n/locales").LocaleId[];
+}) {
+  const tr = toTranslatable(product);
+  const displayName = getLocalizedName(tr, primaryLang);
+  const secondary = getSecondaryNames(tr, primaryLang, secondaryLangs);
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {products.map((product) => (
-        <Card key={String(product.id)} className="h-full">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-lg">{product.name}</CardTitle>
-            {product.description?.trim() ? (
-              <p className="text-sm text-muted-foreground leading-snug">
-                {product.description.trim()}
-              </p>
-            ) : null}
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-xl font-semibold">
-              ${Number(product.base_price ?? 0).toFixed(2)}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
+    <li className="mb-[0.5em] break-inside-avoid last:mb-0">
+      <div className="flex items-baseline gap-[0.6em]">
+        <span className="text-[1em]">{displayName}</span>
+        {/* Dot leader tying the name to its price. */}
+        <span aria-hidden="true" className="h-px flex-1 bg-line" />
+        <span className="num text-[1em] font-semibold">
+          {formatPrice(product.base_price)}
+        </span>
+      </div>
+      {secondary.length > 0 ? (
+        <p className="mt-[0.15em] max-w-[34ch] text-[0.8em] leading-snug text-muted-foreground">
+          {secondary.join(" · ")}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+/** Matches the server's cap in `routes/settings.js`. */
+const MENU_NOTE_MAX_LENGTH = 1000;
+
+/** Whether the signed-in user is an admin — re-checked on every login/logout. */
+function useIsAdmin(): boolean {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      setIsAdmin(getStoredUser<{ role?: string }>()?.role === "admin");
+    check();
+    window.addEventListener(AUTH_EVENT, check);
+    return () => window.removeEventListener(AUTH_EVENT, check);
+  }, []);
+  return isAdmin;
+}
+
+/**
+ * The admin's small print under the board — which milks can be swapped, what
+ * to ask the barista about. Line breaks are kept as written. Admins get an
+ * edit control beside it, except while presenting: the room screen shows only
+ * what guests see.
+ */
+function MenuNote({
+  note,
+  editable,
+  onEdit,
+}: {
+  note: string;
+  editable: boolean;
+  onEdit: () => void;
+}) {
+  const { t } = useTranslation();
+  if (!note && !editable) return null;
+
+  if (!note) {
+    return (
+      <button
+        type="button"
+        onClick={onEdit}
+        className="press flex items-center gap-2 self-start rounded-ctl border border-dashed border-line px-3 py-2 text-sm text-muted-foreground hover:bg-ink/5 hover:text-foreground"
+      >
+        <Plus className="h-4 w-4" />
+        {t("menu.noteAdd")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-[0.5em] px-[0.4em]">
+      <p className="flex-1 whitespace-pre-line text-[0.75em] leading-snug text-muted-foreground">
+        {note}
+      </p>
+      {editable ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          title={t("menu.noteEdit")}
+          aria-label={t("menu.noteEdit")}
+          className="press -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-ink/5 hover:text-foreground"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+      ) : null}
     </div>
+  );
+}
+
+function MenuNoteDialog({
+  open,
+  note,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean;
+  note: string;
+  onOpenChange: (open: boolean) => void;
+  onSaved: (note: string) => void;
+}) {
+  const { t } = useTranslation();
+  const saveMenuNoteApi = useAppStore((s) => s.saveMenuNoteApi);
+  const [draft, setDraft] = useState(note);
+  const [saving, setSaving] = useState(false);
+
+  // Start from what is on the board each time the dialog opens.
+  useEffect(() => {
+    if (open) setDraft(note);
+  }, [open, note]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const saved = await saveMenuNoteApi(draft);
+      onSaved(saved);
+      toast.success(t("menu.noteSaved"));
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : t("errors.generic"),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t("menu.noteEdit")}</DialogTitle>
+          <DialogDescription>{t("menu.noteDialogDescription")}</DialogDescription>
+        </DialogHeader>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={MENU_NOTE_MAX_LENGTH}
+          rows={5}
+          placeholder={t("menu.notePlaceholder")}
+          className="w-full resize-y rounded-ctl border border-input bg-surface px-4 py-3 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        />
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
+            {t("common.cancel")}
+          </Button>
+          <Button type="button" onClick={() => void save()} disabled={saving}>
+            {saving ? t("common.saving") : t("common.save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * A card of categories. Each category's items run in two columns, and the next
+ * category always starts on a fresh line below rather than flowing alongside.
+ */
+function MenuCard({ groups }: { groups: MenuGroup[] }) {
+  const { t } = useTranslation();
+  const { primaryLang, secondaryLangs } = useProductLanguage();
+  return (
+    <section className="rounded-card border border-line bg-surface p-[1.4em] sm:p-[1.6em]">
+      {groups.map((group) => (
+        <div key={group.name} className="mb-[1.4em] last:mb-0">
+          <h2 className="mb-[0.7em] text-[1.05em] font-bold text-ac-dark">
+            {subtypeLabel(group.name, t)}
+          </h2>
+          <ul className="columns-1 gap-[2.5em] sm:columns-2">
+            {group.items.map((product) => (
+              <MenuRow
+                key={String(product.id)}
+                product={product}
+                primaryLang={primaryLang}
+                secondaryLangs={secondaryLangs}
+              />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
   );
 }
 
 export function MenuList() {
+  const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { rootRef, presenting, togglePresenting } = usePresentationMode();
+  const [note, setNote] = useState("");
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const isAdmin = useIsAdmin();
   const subtypeOrder = useDrinkSubtypeOrder();
+  const { productsRefreshKey } = useWebSocket();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      setProducts(
-        defaultDrinks.map((drink) => ({
-          id: drink.id,
-          name: drink.name,
-          description: drink.description,
-          base_price: drink.price,
-          category_name: drink.subtypeName ?? PRODUCT_CATEGORY.DRINK,
-          parent_category_name: PRODUCT_CATEGORY.DRINK,
-          available: true,
-        }))
-      );
-      setLoading(false);
-      return;
-    }
+  const loadProducts = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!apiUrl) {
+        setProducts(
+          defaultDrinks.map((drink) => ({
+            id: drink.id,
+            name: drink.name,
+            description: drink.description,
+            base_price: drink.price,
+            category_name: drink.subtypeName ?? PRODUCT_CATEGORY.DRINK,
+            parent_category_name: PRODUCT_CATEGORY.DRINK,
+            available: true,
+          })),
+        );
+        setLoading(false);
+        return;
+      }
 
-    const controller = new AbortController();
-    const loadProducts = async () => {
       try {
-        setLoading(true);
         setError(null);
-        const response = await fetch(`${apiUrl}/api/products`, {
-          signal: controller.signal,
+        // The note is small print: if it fails to load, the menu still shows.
+        const notePromise = apiFetch<{ note?: string }>(
+          "/api/settings/menu-note",
+          { auth: false, signal },
+        ).catch(() => null);
+        const data = await apiFetch<Product[]>("/api/products", {
+          auth: false,
+          signal,
         });
-        if (!response.ok) throw new Error("Failed to load menu");
-        const data = await response.json();
+        const noteData = await notePromise;
+        if (noteData) setNote(noteData.note?.trim() ?? "");
         if (!Array.isArray(data)) {
-          throw new Error("Invalid response while loading menu");
+          throw new Error(t("errors.invalidMenuResponse"));
         }
         setProducts(data);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setError("Could not load menu right now.");
+        setError(t("errors.loadMenu"));
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [apiUrl, t],
+  );
 
-    loadProducts();
+  // First load, then again whenever a product is created, edited, hidden or
+  // deleted — `productsRefreshKey` is bumped by the product:* socket events.
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadProducts(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [loadProducts, productsRefreshKey]);
+
+  /**
+   * The board is usually shown signed-out, and the socket needs a JWT — so a
+   * guest never receives product events. Poll instead, exactly as the pickup
+   * board does.
+   */
+  useEffect(() => {
+    // Signed-in screens get the socket; with no API there is nothing to poll.
+    if (!apiUrl || getAuthToken()) return;
+    const timer = setInterval(() => {
+      void loadProducts();
+    }, GUEST_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [apiUrl, loadProducts]);
 
   const availableProducts = useMemo(
     () => products.filter((product) => isAvailable(product.available)),
-    [products]
+    [products],
   );
 
-  const drinkSubtypeSections = useMemo(() => {
+  /** Drink subtypes in menu order — these share one card. */
+  const drinkGroups = useMemo<MenuGroup[]>(() => {
     const drinkItems = availableProducts.filter((p) =>
-      isProductCategory(productTypeName(p), PRODUCT_CATEGORY.DRINK)
+      isProductCategory(productTypeName(p), PRODUCT_CATEGORY.DRINK),
     );
     return groupByDrinkSubtype(
       drinkItems,
       menuProductSubtypeLabel,
-      subtypeOrder
-    );
+      subtypeOrder,
+    ).map((section) => ({ name: section.title, items: section.items }));
   }, [availableProducts, subtypeOrder]);
 
-  const nonDrinkSections = useMemo(() => {
-    return MENU_SECTIONS.filter(
-      ({ category }) => category !== PRODUCT_CATEGORY.DRINK
-    )
-      .map(({ title, category }) => ({
-        title,
-        items: availableProducts.filter((p) =>
-          isProductCategory(productTypeName(p), category)
-        ),
-      }))
-      .filter((s) => s.items.length > 0);
-  }, [availableProducts]);
+  /**
+   * Everything that is not a drink — desserts, meals, anything uncategorised.
+   * Each gets its own card, so a dessert is never read as a drink.
+   */
+  const otherGroups = useMemo<MenuGroup[]>(() => {
+    const result: MenuGroup[] = [];
 
-  const uncategorized = useMemo(() => {
-    return availableProducts.filter((p) => {
+    for (const { category } of MENU_SECTIONS) {
+      if (category === PRODUCT_CATEGORY.DRINK) continue;
+      const items = availableProducts.filter((p) =>
+        isProductCategory(productTypeName(p), category),
+      );
+      if (items.length) result.push({ name: category, items });
+    }
+
+    const uncategorized = availableProducts.filter((p) => {
       const type = productTypeName(p);
       if (!type) return true;
       return !MENU_SECTIONS.some(({ category }) =>
-        isProductCategory(type, category)
+        isProductCategory(type, category),
       );
     });
+    if (uncategorized.length) {
+      // Not "Other" — that is now a real category an admin can file things
+      // under, and these are products that match no category at all.
+      result.push({ name: UNCATEGORIZED_LABEL, items: uncategorized });
+    }
+
+    return result;
   }, [availableProducts]);
 
-  if (loading) return <MenuListSkeleton />;
+  const { tagline, visible: taglineVisible } = useRotatingTagline();
 
-  if (error) {
-    return (
-      <p className="text-sm text-destructive" role="alert">
-        {error}
-      </p>
-    );
-  }
-
-  if (availableProducts.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No products are currently available.
-      </p>
-    );
-  }
+  // A longer headline can wrap to a second line and push the board down, so the
+  // fit has to re-run whenever the line changes.
+  const { boxRef, contentRef } = useFitToBox(
+    presenting ? MAX_BOARD_FONT_PRESENTING_PX : MAX_BOARD_FONT_PX,
+    [drinkGroups, otherGroups, presenting, tagline, note, isAdmin],
+  );
 
   return (
-    <div className="space-y-10">
-      {drinkSubtypeSections.length > 0 ? (
-        <section className="space-y-6">
-          <h2 className="text-lg font-semibold">Drinks</h2>
-          <DrinkSubtypeSections
-            variant="nested"
-            sections={drinkSubtypeSections}
-            className="space-y-8 pl-0 sm:pl-1"
-            renderItems={(items) => <ProductGrid products={items} />}
-          />
-        </section>
+    <div
+      ref={rootRef}
+      className={cn(
+        "flex flex-col",
+        presenting &&
+          "fixed inset-0 z-50 h-full overflow-auto bg-background p-5 sm:overflow-hidden sm:p-8",
+      )}
+    >
+      <DataState
+        loading={loading}
+        error={error}
+        isEmpty={availableProducts.length === 0}
+        loadingFallback={<MenuListSkeleton />}
+        emptyMessage={t("menu.empty")}
+      >
+        <h1
+          className={cn(
+            "mb-1 text-[28px] font-extrabold tracking-[-0.02em] transition-[opacity,transform] ease-out motion-reduce:transition-none",
+            taglineVisible
+              ? "translate-y-0 opacity-100"
+              : "-translate-y-1 opacity-0",
+          )}
+          style={{ transitionDuration: `${TAGLINE_FADE_MS}ms` }}
+        >
+          {tagline}
+        </h1>
+        <p className="mb-[22px] text-sm text-muted-foreground">
+          {t("menu.dateline", { date: dateline() })}
+        </p>
+
+        {/* The box is the space the board may occupy; the cards inside are
+            sized down until they fit, so the whole menu is visible at once. */}
+        <div ref={boxRef} className="min-h-0 flex-1 sm:overflow-hidden">
+          <div
+            ref={contentRef}
+            className="flex flex-col gap-[1.2em] text-[15px]"
+          >
+            {drinkGroups.length > 0 ? <MenuCard groups={drinkGroups} /> : null}
+            {otherGroups.map((group) => (
+              <MenuCard key={group.name} groups={[group]} />
+            ))}
+            <MenuNote
+              note={note}
+              editable={isAdmin && !presenting}
+              onEdit={() => setNoteDialogOpen(true)}
+            />
+          </div>
+        </div>
+      </DataState>
+
+      {isAdmin ? (
+        <MenuNoteDialog
+          open={noteDialogOpen}
+          note={note}
+          onOpenChange={setNoteDialogOpen}
+          onSaved={setNote}
+        />
       ) : null}
 
-      {nonDrinkSections.map((section) => (
-        <section key={section.title} className="space-y-4">
-          <h2 className="text-lg font-semibold">{section.title}</h2>
-          <ProductGrid products={section.items} />
-        </section>
-      ))}
-
-      {uncategorized.length > 0 ? (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Other</h2>
-          <ProductGrid products={uncategorized} />
-        </section>
-      ) : null}
+      <PresentButton presenting={presenting} onToggle={togglePresenting} />
     </div>
   );
 }

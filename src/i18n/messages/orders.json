@@ -1,0 +1,138 @@
+{
+  "board": {
+    "preparing": {
+      "en": "Preparing",
+      "lt": "Gaminama",
+      "ru": "Готовится"
+    },
+    "readyToPickUp": {
+      "en": "Ready to pick up",
+      "lt": "Galima atsiimti",
+      "ru": "Можно забирать"
+    },
+    "nothingPreparing": {
+      "en": "Nothing in preparation.",
+      "lt": "Nieko negaminama.",
+      "ru": "Ничего не готовится."
+    },
+    "nothingReady": {
+      "en": "Nothing ready yet.",
+      "lt": "Kol kas nieko nėra paruošta.",
+      "ru": "Пока ничего не готово."
+    }
+  },
+  "queue": {
+    "inQueue": {
+      "en": "In queue",
+      "lt": "Eilėje",
+      "ru": "В очереди"
+    },
+    "readyForPickup": {
+      "en": "Ready for pickup",
+      "lt": "Paruošta atsiimti",
+      "ru": "Готово к выдаче"
+    },
+    "nothingWaiting": {
+      "en": "Nothing waiting. New orders slide in here.",
+      "lt": "Nieko nelaukia. Nauji užsakymai atsiras čia.",
+      "ru": "Ничего не ждёт. Новые заказы появятся здесь."
+    },
+    "readyAwaitingPickup": {
+      "en": "Ready · awaiting pickup",
+      "lt": "Paruošta · laukia atsiėmimo",
+      "ru": "Готово · ожидает выдачи"
+    },
+    "nothingOnCounter": {
+      "en": "Nothing waiting on the counter.",
+      "lt": "Ant baro nieko nelaukia.",
+      "ru": "На стойке ничего не ждёт."
+    },
+    "handoverTooltip": {
+      "en": "Tap when handed over — completes the order",
+      "lt": "Paspauskite atidavę — užsakymas bus įvykdytas",
+      "ru": "Нажмите после выдачи — заказ будет выполнен"
+    },
+    "cancelOrder": {
+      "en": "Cancel this order",
+      "lt": "Atšaukti šį užsakymą",
+      "ru": "Отменить этот заказ"
+    },
+    "removeItemTooltip": {
+      "en": "Remove this item from the order",
+      "lt": "Pašalinti šią prekę iš užsakymo",
+      "ru": "Убрать эту позицию из заказа"
+    },
+    "removeNamed": {
+      "en": "Remove {name}",
+      "lt": "Pašalinti: {name}",
+      "ru": "Убрать: {name}"
+    },
+    "noItems": {
+      "en": "No items",
+      "lt": "Prekių nėra",
+      "ru": "Нет позиций"
+    },
+    "itemFallback": {
+      "en": "Item",
+      "lt": "Prekė",
+      "ru": "Позиция"
+    },
+    "noOrdersYet": {
+      "en": "No orders yet",
+      "lt": "Užsakymų dar nėra",
+      "ru": "Заказов пока нет"
+    },
+    "noOrdersYetHint": {
+      "en": "Orders taken at the terminal show up here the moment they’re sent.",
+      "lt": "Terminale priimti užsakymai čia atsiranda vos juos išsiuntus.",
+      "ru": "Заказы, принятые в терминале, появляются здесь сразу после отправки."
+    },
+    "deleteOrderTitle": {
+      "en": "Cancel this order?",
+      "lt": "Atšaukti šį užsakymą?",
+      "ru": "Отменить этот заказ?"
+    },
+    "deleteOrderBody": {
+      "en": "Order {name} and everything on it will be deleted. This cannot be undone.",
+      "lt": "Užsakymas {name} ir visos jo prekės bus ištrinti. Šio veiksmo negalima atšaukti.",
+      "ru": "Заказ {name} и всё, что в нём, будут удалены. Это действие нельзя отменить."
+    },
+    "removeItemTitle": {
+      "en": "Remove this item?",
+      "lt": "Pašalinti šią prekę?",
+      "ru": "Убрать эту позицию?"
+    },
+    "removeItemBody": {
+      "en": "\"{name}\" comes off the order and the total is worked out again. Removing the last item cancels the order.",
+      "lt": "„{name}“ bus pašalinta iš užsakymo, o suma perskaičiuota. Pašalinus paskutinę prekę, užsakymas atšaukiamas.",
+      "ru": "«{name}» будет убрана из заказа, сумма пересчитается. Если убрать последнюю позицию, заказ отменяется."
+    }
+  },
+  "toast": {
+    "itemRemoved": {
+      "en": "Item removed",
+      "lt": "Prekė pašalinta",
+      "ru": "Позиция убрана"
+    },
+    "lastItemRemoved": {
+      "en": "Last item removed — order cancelled",
+      "lt": "Pašalinta paskutinė prekė — užsakymas atšauktas",
+      "ru": "Убрана последняя позиция — заказ отменён"
+    },
+    "orderDeleted": {
+      "en": "Order deleted",
+      "lt": "Užsakymas ištrintas",
+      "ru": "Заказ удалён"
+    }
+  },
+  "subtitleStaff": {
+    "en": "The bar’s working queue",
+    "lt": "Baro darbo eilė",
+    "ru": "Рабочая очередь бара"
+  },
+  "subtitleGuest": {
+    "en": "Ready for pickup",
+    "lt": "Paruošta atsiimti",
+    "ru": "Готово к выдаче"
+  }
+}
