@@ -16,12 +16,14 @@ module.exports = {
       script: "server.js",
 
       // Cluster mode lets `pm2 reload` boot new workers before retiring the old
-      // ones, so deploys don't drop requests. The app is entirely client
-      // components with no server-side state, so workers share nothing and the
-      // instance count is a pure memory/throughput trade. Drop to 1 if the VPS
-      // is tight on RAM -- it already runs furniture-shop and the cafe backend.
+      // ones, so deploys don't drop requests -- even with a single instance.
+      // The app is entirely client components with no server-side state, so the
+      // instance count is a pure memory/throughput trade. The VPS has 1 GB of
+      // RAM shared with MySQL and the backend, so one worker (~85 MB) it is.
+      // `startOrReload` doesn't scale an app down: after changing this, run
+      // `pm2 scale church-cafe-frontend <n>` once on the server.
       exec_mode: "cluster",
-      instances: 2,
+      instances: 1,
 
       env: {
         NODE_ENV: "production",
@@ -35,7 +37,9 @@ module.exports = {
       // Next finishes in-flight requests on SIGINT; give it room to drain.
       kill_timeout: 10000,
       listen_timeout: 10000,
-      max_memory_restart: "400M",
+      // Well under the box's 1 GB: restart a leaking worker before it starves
+      // MySQL. It idles at ~85 MB.
+      max_memory_restart: "250M",
       autorestart: true,
 
       error_file: "/var/www/church-cafe-frontend/logs/error.log",
