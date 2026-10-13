@@ -3,6 +3,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Minus, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store";
 import type { Drink, DrinkOption, OrderItem } from "@/types";
@@ -11,6 +12,8 @@ import { useTranslation, type TranslateFn } from "@/i18n";
 import { formatPrice } from "@/lib/format";
 import { lineUnitPrice } from "@/lib/drinkOptions";
 import { useProductDisplayName } from "@/context/ProductLanguageContext";
+import { EyeClockIcon } from "@/components/icons/EyeClockIcon";
+import { isCheckboxAvailable, isValueAvailable } from "@/lib/availability";
 
 /**
  * Bottom sheet for adding one product to the draft order — or, given
@@ -33,14 +36,24 @@ type ProductSheetProps = {
 const CHECKBOX_ON = "true";
 const CHECKBOX_OFF = "false";
 
+/**
+ * The answer an option opens on: its default, unless that is sold out — then
+ * the first choice that isn't. A picklist with every choice sold out opens on
+ * nothing, which the server reads as "not asked".
+ */
 function defaultValueFor(option: DrinkOption): string {
   if (option.type === "checkbox") {
-    return option.defaultValue === true ? CHECKBOX_ON : CHECKBOX_OFF;
+    return option.defaultValue === true && isCheckboxAvailable(option)
+      ? CHECKBOX_ON
+      : CHECKBOX_OFF;
   }
+  const open = option.values.filter((v) => isValueAvailable(v));
   if (typeof option.defaultValue === "string" && option.defaultValue) {
-    return option.defaultValue;
+    if (open.some((v) => v.label === option.defaultValue)) {
+      return option.defaultValue;
+    }
   }
-  return option.values[0]?.label ?? "";
+  return open[0]?.label ?? "";
 }
 
 function ProductSheetName({ product }: { product: Drink }) {
@@ -57,18 +70,36 @@ function ProductSheetName({ product }: { product: Drink }) {
   );
 }
 
-type Choice = { label: string; value: string; extraPrice: number };
+type Choice = {
+  label: string;
+  value: string;
+  extraPrice: number;
+  /** false while sold out until tomorrow: shown, struck through, not pickable. */
+  available: boolean;
+  /**
+   * What a sold-out toggle is sent against; absent for a choice that can't be
+   * sold out ("No" on a checkbox, or an offline default drink with no ids).
+   */
+  target?: { definitionId: string; valueId?: number };
+};
 
 function choicesFor(option: DrinkOption, t: TranslateFn): Choice[] {
   if (option.type === "checkbox") {
     // The only two choices the app words itself; every other label is an
     // option value an admin typed, and stays as typed.
     return [
-      { label: t("common.no"), value: CHECKBOX_OFF, extraPrice: 0 },
+      {
+        label: t("common.no"),
+        value: CHECKBOX_OFF,
+        extraPrice: 0,
+        available: true,
+      },
       {
         label: t("common.yes"),
         value: CHECKBOX_ON,
         extraPrice: option.checkboxExtraPrice ?? 0,
+        available: isCheckboxAvailable(option),
+        target: { definitionId: option.id },
       },
     ];
   }
@@ -76,16 +107,30 @@ function choicesFor(option: DrinkOption, t: TranslateFn): Choice[] {
     label: v.label,
     value: v.label,
     extraPrice: v.extraPrice,
+    available: isValueAvailable(v),
+    target:
+      v.id != null ? { definitionId: option.id, valueId: v.id } : undefined,
   }));
+}
+
+/** Stable key for a toggle in flight. */
+function targetKey(target: { definitionId: string; valueId?: number }): string {
+  return `${target.definitionId}:${target.valueId ?? "box"}`;
 }
 
 export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
   const { t } = useTranslation();
   const addDraftItem = useAppStore((state) => state.addDraftItem);
   const updateDraftItem = useAppStore((state) => state.updateDraftItem);
+  const setOptionAvailableApi = useAppStore(
+    (state) => state.setOptionAvailableApi
+  );
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [picks, setPicks] = useState<Record<string, string>>({});
+  /** Tapping a choice marks it sold out / back, instead of picking it. */
+  const [managing, setManaging] = useState(false);
+  const [pending, setPending] = useState<ReadonlySet<string>>(() => new Set());
 
   const options = useMemo(
     () => product?.availableOptions ?? [],
@@ -95,6 +140,11 @@ export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
   // Reset to the product's defaults each time a different tile opens the
   // sheet, or to the line's own answers when editing one. Defaults still fill
   // in any option added to the product since the line was taken.
+  //
+  // Keyed on the product's id, not the object: the catalogue reloads on every
+  // product event — including a barista's own sold-out tap in this sheet — and
+  // that must not throw away a half-set quantity and note.
+  const productId = product?.id;
   useEffect(() => {
     if (!product) return;
     const initial: Record<string, string> = {};
@@ -105,9 +155,62 @@ export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
     setPicks(initial);
     setQuantity(editing?.quantity ?? 1);
     setNote(editing?.comment ?? "");
-  }, [product, editing]);
+    setManaging(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId, editing]);
+
+  // A choice that is picked but has just sold out (here, or on another
+  // terminal) moves to the option's next best answer.
+  useEffect(() => {
+    setPicks((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const option of options) {
+        const current = choicesFor(option, t).find(
+          (c) => c.value === prev[option.id]
+        );
+        if (current && !current.available) {
+          next[option.id] = defaultValueFor(option);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [options, t]);
 
   if (!product) return null;
+
+  const canManage = options.some((option) =>
+    choicesFor(option, t).some((choice) => choice.target)
+  );
+
+  const toggleChoice = async (choice: Choice) => {
+    if (!choice.target) return;
+    const key = targetKey(choice.target);
+    const available = !choice.available;
+    const name =
+      choice.target.valueId != null
+        ? choice.label
+        : options.find((o) => o.id === choice.target?.definitionId)?.name ??
+          choice.label;
+    setPending((prev) => new Set(prev).add(key));
+    try {
+      await setOptionAvailableApi(choice.target, available);
+      toast.success(
+        available
+          ? t("terminal.broughtBack", { name })
+          : t("terminal.markedSoldOut", { name })
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("errors.generic"));
+    } finally {
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
 
   // The options chosen are part of the price, so the sheet quotes what the
   // server will charge rather than the bare product price.
@@ -163,19 +266,47 @@ export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
                 ) : null}
               </DialogPrimitive.Description>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={
-                editing
-                  ? t("terminal.closeWithoutSaving")
-                  : t("terminal.closeWithoutAdding")
-              }
-              className="press flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex flex-none items-center gap-1.5">
+              {canManage ? (
+                <button
+                  type="button"
+                  aria-pressed={managing}
+                  aria-label={t("terminal.optionAvailability")}
+                  onClick={() => setManaging((on) => !on)}
+                  className={cn(
+                    "press flex min-h-11 items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold",
+                    managing
+                      ? "border-ac bg-primary text-primary-foreground"
+                      : "border-line text-muted-foreground hover:bg-ink/5 hover:text-foreground"
+                  )}
+                >
+                  <EyeClockIcon className="h-[18px] w-[18px]" />
+                  {/* Icon only on a phone, where the title needs the room. */}
+                  <span aria-hidden="true" className="hidden sm:inline">
+                    {managing ? t("common.done") : t("terminal.optionAvailability")}
+                  </span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={
+                  editing
+                    ? t("terminal.closeWithoutSaving")
+                    : t("terminal.closeWithoutAdding")
+                }
+                className="press flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
+
+          {managing ? (
+            <p className="-mt-2 mb-5 rounded-ctl bg-warn-soft px-4 py-3 text-sm text-warn">
+              {t("terminal.optionAvailabilityHint")}
+            </p>
+          ) : null}
 
           <div className="flex flex-col gap-6">
             {options.map((option) => (
@@ -185,25 +316,55 @@ export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
                 </div>
                 <div className="flex flex-wrap gap-2.5">
                   {choicesFor(option, t).map((choice) => {
-                    const selected = picks[option.id] === choice.value;
+                    // While managing, the pills show sale state, not the pick.
+                    const selected =
+                      !managing && picks[option.id] === choice.value;
+                    const busy =
+                      choice.target != null &&
+                      pending.has(targetKey(choice.target));
+                    const disabled = managing
+                      ? !choice.target || busy
+                      : !choice.available;
                     return (
                       <button
                         key={choice.value}
                         type="button"
-                        aria-pressed={selected}
-                        onClick={() =>
+                        aria-pressed={managing ? !choice.available : selected}
+                        disabled={disabled}
+                        title={
+                          choice.available
+                            ? undefined
+                            : t("terminal.choiceSoldOut", { label: choice.label })
+                        }
+                        onClick={() => {
+                          if (managing) {
+                            void toggleChoice(choice);
+                            return;
+                          }
                           setPicks((prev) => ({
                             ...prev,
                             [option.id]: choice.value,
-                          }))
-                        }
+                          }));
+                        }}
                         className={cn(
                           "press min-h-[50px] rounded-full border px-5 text-[15px] font-semibold",
                           selected
                             ? "border-ac bg-primary text-primary-foreground"
-                            : "border-line bg-surface text-foreground hover:bg-ink/5"
+                            : choice.available
+                              ? "border-line bg-surface text-foreground hover:bg-ink/5"
+                              : "border-dashed border-line bg-surface/50 text-muted-foreground line-through",
+                          managing && !choice.available && "border-warn text-warn",
+                          disabled && (managing ? "opacity-40" : "cursor-not-allowed")
                         )}
                       >
+                        {managing && choice.target ? (
+                          <EyeClockIcon
+                            className={cn(
+                              "-ml-1 mr-1.5 inline h-4 w-4 align-[-3px]",
+                              choice.available && "opacity-40"
+                            )}
+                          />
+                        ) : null}
                         {choice.label}
                         {choice.extraPrice > 0 ? (
                           <span

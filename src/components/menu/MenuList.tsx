@@ -45,6 +45,7 @@ import { useAppStore } from "@/store";
 import { useWebSocket } from "@/context/WebSocketContext";
 import { useProductLanguage } from "@/context/ProductLanguageContext";
 import { getLocalizedName, getSecondaryNames } from "@/lib/productName";
+import { productAvailability } from "@/lib/availability";
 
 type Product = {
   id: string | number;
@@ -56,6 +57,8 @@ type Product = {
   category_name?: string | null;
   parent_category_name?: string | null;
   available?: boolean | number | null;
+  /** Set while sold out until tomorrow; null for a permanent hide. */
+  available_until?: string | null;
 };
 
 /**
@@ -77,6 +80,18 @@ function isAvailable(value: Product["available"]): boolean {
   if (value === null || value === undefined) return true;
   if (typeof value === "number") return value === 1;
   return value;
+}
+
+/** Sold out until tomorrow: listed, but struck through. */
+function isSoldOut(product: Product): boolean {
+  return availabilityOf(product) === "soldOut";
+}
+
+function availabilityOf(product: Product) {
+  return productAvailability({
+    active: isAvailable(product.available),
+    available_until: product.available_until ?? null,
+  });
 }
 
 /** "Sunday, 1 September" — the day the board is being read, in the active language. */
@@ -249,16 +264,32 @@ function MenuRow({
   primaryLang: import("@/i18n/locales").LocaleId;
   secondaryLangs: import("@/i18n/locales").LocaleId[];
 }) {
+  const { t } = useTranslation();
   const tr = toTranslatable(product);
   const displayName = getLocalizedName(tr, primaryLang);
   const secondary = getSecondaryNames(tr, primaryLang, secondaryLangs);
+  const soldOut = isSoldOut(product);
   return (
-    <li className="mb-[0.5em] break-inside-avoid last:mb-0">
+    <li
+      className={cn(
+        "mb-[0.5em] break-inside-avoid last:mb-0",
+        soldOut && "text-muted-foreground"
+      )}
+    >
       <div className="flex items-baseline gap-[0.6em]">
-        <span className="text-[1em]">{displayName}</span>
+        <span className={cn("text-[1em]", soldOut && "line-through")}>
+          {displayName}
+        </span>
+        {soldOut ? (
+          <span className="whitespace-nowrap text-[0.75em] font-semibold text-warn">
+            {t("menu.soldOut")}
+          </span>
+        ) : null}
         {/* Dot leader tying the name to its price. */}
         <span aria-hidden="true" className="h-px flex-1 bg-line" />
-        <span className="num text-[1em] font-semibold">
+        <span
+          className={cn("num text-[1em] font-semibold", soldOut && "line-through")}
+        >
           {formatPrice(product.base_price)}
         </span>
       </div>
@@ -520,8 +551,25 @@ export function MenuList() {
     return () => clearInterval(timer);
   }, [apiUrl, loadProducts]);
 
+  // A signed-in board gets no poll, so reload when the first sold-out item is
+  // due back — otherwise a screen left up overnight keeps it struck through.
+  useEffect(() => {
+    if (!apiUrl) return;
+    const now = Date.now();
+    const dueTimes = products
+      .filter(isSoldOut)
+      .map((p) => Date.parse(p.available_until ?? ""))
+      .filter((at) => at > now);
+    if (!dueTimes.length) return;
+    const delay = Math.min(Math.min(...dueTimes) - now + 1000, 2 ** 31 - 1);
+    const timer = setTimeout(() => void loadProducts(), delay);
+    return () => clearTimeout(timer);
+  }, [apiUrl, products, loadProducts]);
+
+  // Sold out until tomorrow stays on the board, struck through — a guest can
+  // see it exists and that it's back tomorrow. Only a permanent hide drops it.
   const availableProducts = useMemo(
-    () => products.filter((product) => isAvailable(product.available)),
+    () => products.filter((product) => availabilityOf(product) !== "hidden"),
     [products],
   );
 

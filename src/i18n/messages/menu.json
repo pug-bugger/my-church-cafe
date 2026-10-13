@@ -58,5 +58,10 @@
     "en": "Menu note saved",
     "lt": "Meniu pastaba išsaugota",
     "ru": "Примечание к меню сохранено"
+  },
+  "soldOut": {
+    "en": "sold out today",
+    "lt": "šiandien išparduota",
+    "ru": "сегодня нет"
   }
 }

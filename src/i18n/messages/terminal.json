@@ -184,5 +184,50 @@
       "ru": "Открыть настройки"
     },
     "flip": { "en": "Switch camera", "lt": "Perjungti kamerą", "ru": "Сменить камеру" }
+  },
+  "soldOut": {
+    "en": "Sold out today",
+    "lt": "Šiandien išparduota",
+    "ru": "Сегодня нет"
+  },
+  "markSoldOut": {
+    "en": "Sold out until tomorrow",
+    "lt": "Išparduota iki rytojaus",
+    "ru": "Нет в наличии до завтра"
+  },
+  "bringBack": {
+    "en": "Back on sale",
+    "lt": "Vėl parduodama",
+    "ru": "Снова в продаже"
+  },
+  "markedSoldOut": {
+    "en": "{name} is sold out until tomorrow",
+    "lt": "{name} išparduota iki rytojaus",
+    "ru": "{name} — нет в наличии до завтра"
+  },
+  "broughtBack": {
+    "en": "{name} is back on sale",
+    "lt": "{name} vėl parduodama",
+    "ru": "{name} снова в продаже"
+  },
+  "openMenuBoard": {
+    "en": "Menu board",
+    "lt": "Meniu lenta",
+    "ru": "Меню"
+  },
+  "optionAvailability": {
+    "en": "Sold-out options",
+    "lt": "Išparduoti pasirinkimai",
+    "ru": "Нет в наличии"
+  },
+  "optionAvailabilityHint": {
+    "en": "Tap a choice to mark it sold out until tomorrow, for every drink that offers it. Tap it again to bring it back.",
+    "lt": "Paspauskite pasirinkimą, kad jis būtų išparduotas iki rytojaus visuose gėrimuose. Paspauskite dar kartą, kad grąžintumėte.",
+    "ru": "Нажмите на вариант, чтобы отметить его отсутствующим до завтра во всех напитках. Нажмите ещё раз, чтобы вернуть."
+  },
+  "choiceSoldOut": {
+    "en": "{label} — sold out until tomorrow",
+    "lt": "{label} — išparduota iki rytojaus",
+    "ru": "{label} — нет в наличии до завтра"
   }
 }

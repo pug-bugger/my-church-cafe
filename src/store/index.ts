@@ -135,7 +135,22 @@ interface AppState {
    */
   reorderProductsApi: (orderedIds: string[]) => Promise<void>;
   uploadProductImage: (productId: string, file: File) => Promise<string>;
+  /**
+   * Put a product on or off sale. `hideUntilMidnight` makes it "sold out until
+   * tomorrow" — the only kind of hide a barista may do; a permanent hide is an
+   * admin's.
+   */
   toggleProductAvailableApi: (id: string, active: boolean, hideUntilMidnight?: boolean) => Promise<void>;
+  /**
+   * Mark a drink option sold out until tomorrow, or bring it back. With
+   * `valueId` it is one choice of a picklist ("Oat milk"); without, the whole
+   * checkbox option ("Whipped cream"). Options are shared, so every product
+   * offering it changes at once.
+   */
+  setOptionAvailableApi: (
+    target: { definitionId: string; valueId?: number },
+    available: boolean
+  ) => Promise<void>;
   /** Replace the small-print note under the menu board; "" clears it. Admin only. */
   saveMenuNoteApi: (note: string) => Promise<string>;
   setOrders: (orders: ServerOrder[]) => void;
@@ -315,17 +330,55 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   toggleProductAvailableApi: async (id, active, hideUntilMidnight) => {
-    await apiFetch(`/api/products/${id}/availability`, {
-      method: "PATCH",
-      body: { available: active, hide_until_midnight: hideUntilMidnight ?? false },
-      auth: true,
-    });
-    // available_until is non-null only for the temporary-hide case (value used only for the label)
-    const available_until = !active && hideUntilMidnight ? "scheduled" : null;
+    const saved = await apiFetch<{ available_until?: string | null }>(
+      `/api/products/${id}/availability`,
+      {
+        method: "PATCH",
+        body: { available: active, hide_until_midnight: hideUntilMidnight ?? false },
+        auth: true,
+      }
+    );
+    // The server says when it comes back; an older one answers without it, so
+    // fall back to a placeholder that still reads as "temporary".
+    const available_until =
+      !active && hideUntilMidnight
+        ? saved?.available_until ?? "scheduled"
+        : null;
     set((state) => ({
       products: state.products.map((p) =>
         p.id === id ? { ...p, active, available_until } : p
       ),
+    }));
+  },
+
+  setOptionAvailableApi: async ({ definitionId, valueId }, available) => {
+    const path =
+      valueId != null
+        ? `/api/drink-options/values/${valueId}/availability`
+        : `/api/drink-options/${definitionId}/availability`;
+    const saved = await apiFetch<{ unavailable_until?: string | null }>(path, {
+      method: "PATCH",
+      body: { available },
+      auth: true,
+    });
+    const unavailableUntil = available ? null : saved?.unavailable_until ?? null;
+    set((state) => ({
+      products: state.products.map((p) => {
+        if (!p.availableOptions.some((o) => o.id === definitionId)) return p;
+        return {
+          ...p,
+          availableOptions: p.availableOptions.map((o) => {
+            if (o.id !== definitionId) return o;
+            if (valueId == null) return { ...o, unavailableUntil };
+            return {
+              ...o,
+              values: o.values.map((v) =>
+                v.id === valueId ? { ...v, unavailableUntil } : v
+              ),
+            };
+          }),
+        };
+      }),
     }));
   },
 

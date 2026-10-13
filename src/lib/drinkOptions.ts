@@ -6,6 +6,8 @@ export type DrinkOptionValueApi = {
   extra_price: number;
   /** The choice this option opens on; at most one per definition. */
   is_default?: boolean;
+  /** Sold out until this moment; the server sends only a future one. */
+  unavailable_until?: string | null;
 };
 
 export type DrinkOptionDefinitionApi = {
@@ -16,6 +18,8 @@ export type DrinkOptionDefinitionApi = {
   checkbox_extra_price: number;
   /** Whether a checkbox option opens ticked. */
   checkbox_default?: boolean;
+  /** Checkbox options only: sold out until this moment. */
+  unavailable_until?: string | null;
   sort_order?: number;
   values: DrinkOptionValueApi[];
 };
@@ -31,10 +35,14 @@ export function mapDefinitionToDrinkOption(
     // the draft total has to include it. (It used to be dropped here, which is
     // why a priced option was decoration.)
     values: (d.values ?? []).map((v) => ({
+      id: v.id,
       label: v.label,
       extraPrice: Number(v.extra_price ?? 0),
+      unavailableUntil: v.unavailable_until ?? null,
     })),
     checkboxExtraPrice: Number(d.checkbox_extra_price ?? 0),
+    unavailableUntil:
+      d.type === "checkbox" ? d.unavailable_until ?? null : null,
     // The answer the sheet opens on. A picklist with no default falls back to
     // its first choice, which is what every option did before defaults existed.
     defaultValue:

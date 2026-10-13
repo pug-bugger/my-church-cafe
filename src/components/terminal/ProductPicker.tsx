@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, List } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, Eye, LayoutGrid, List } from "lucide-react";
+import { toast } from "sonner";
 import { useAppStore } from "@/store";
 import type { Drink } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +25,8 @@ import { useWebSocket } from "@/context/WebSocketContext";
 import { useProductLanguage } from "@/context/ProductLanguageContext";
 import { getLocalizedName, getSecondaryNames } from "@/lib/productName";
 import type { LocaleId } from "@/i18n/locales";
+import { EyeClockIcon } from "@/components/icons/EyeClockIcon";
+import { nextRestoreAt, productAvailability } from "@/lib/availability";
 
 /**
  * The counter tablet's product picker: one row of category pills over a single
@@ -77,10 +81,67 @@ function usePickerView(): [PickerView, (view: PickerView) => void] {
 type ItemsProps = {
   items: Drink[];
   onOpen: (id: string) => void;
+  /** Flip a product between on sale and sold out until tomorrow. */
+  onToggleSoldOut: (product: Drink) => void;
+  /** Products whose toggle is waiting on the server. */
+  pendingIds: ReadonlySet<string>;
   t: TranslateFn;
   primaryLang: LocaleId;
   secondaryLangs: LocaleId[];
 };
+
+/**
+ * The corner button on every product: an eye with a clock to take it off sale
+ * until tomorrow, an open eye to bring a sold-out one back. A sibling of the
+ * product button rather than inside it — a button can't hold a button.
+ */
+function SoldOutToggle({
+  product,
+  soldOut,
+  pending,
+  onToggle,
+  t,
+  className,
+}: {
+  product: Drink;
+  soldOut: boolean;
+  pending: boolean;
+  onToggle: (product: Drink) => void;
+  t: TranslateFn;
+  className?: string;
+}) {
+  const label = soldOut ? t("terminal.bringBack") : t("terminal.markSoldOut");
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(product)}
+      disabled={pending}
+      aria-label={`${label}: ${product.name}`}
+      title={label}
+      className={cn(
+        "press flex h-10 w-10 items-center justify-center rounded-full disabled:opacity-50",
+        soldOut
+          ? "bg-primary text-primary-foreground hover:bg-ac-dark"
+          : "text-muted-foreground hover:bg-ink/5 hover:text-foreground",
+        className
+      )}
+    >
+      {soldOut ? (
+        <Eye className="h-[18px] w-[18px]" />
+      ) : (
+        <EyeClockIcon className="h-5 w-5" />
+      )}
+    </button>
+  );
+}
+
+function SoldOutBadge({ t }: { t: TranslateFn }) {
+  return (
+    <span className="rounded-full bg-warn-soft px-2.5 py-[5px] text-xs font-semibold text-warn">
+      {t("terminal.soldOut")}
+    </span>
+  );
+}
 
 function optionsLabel(product: Drink, t: TranslateFn): string {
   const count = product.availableOptions.length;
@@ -105,74 +166,81 @@ function PickerSkeleton() {
   );
 }
 
-/** One tappable product: name, price, and how many questions it will ask. */
+/**
+ * One tappable product: name, price, and how many questions it will ask. A
+ * sold-out one stays in its place, greyed and not tappable, so the grid never
+ * shifts under a barista's finger and the way back is right where it was.
+ */
 function ProductTile({
   product,
   onOpen,
+  onToggleSoldOut,
+  pendingIds,
   t,
   primaryLang,
   secondaryLangs,
-}: {
-  product: Drink;
-  onOpen: (id: string) => void;
-  t: TranslateFn;
-  primaryLang: import("@/i18n/locales").LocaleId;
-  secondaryLangs: import("@/i18n/locales").LocaleId[];
-}) {
+}: Omit<ItemsProps, "items"> & { product: Drink }) {
   const displayName = getLocalizedName(product, primaryLang);
   const secondary = getSecondaryNames(product, primaryLang, secondaryLangs);
+  const soldOut = productAvailability(product) === "soldOut";
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(product.id)}
-      className="press tile flex min-h-[126px] flex-col justify-between gap-3 rounded-card border border-line bg-surface p-[18px] text-left text-foreground"
-    >
-      <span className="flex flex-col gap-1">
-        <span className="text-[19px] font-bold leading-[1.2] tracking-[-0.01em]">
-          {displayName}
-        </span>
-        {secondary.length > 0 ? (
-          <span className="line-clamp-2 text-[13px] leading-snug text-muted-foreground">
-            {secondary.join(" · ")}
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => onOpen(product.id)}
+        disabled={soldOut}
+        className={cn(
+          "press tile flex h-full min-h-[126px] w-full flex-col justify-between gap-3 rounded-card border p-[18px] text-left",
+          soldOut
+            ? "border-dashed border-line bg-surface/50 text-muted-foreground"
+            : "border-line bg-surface text-foreground"
+        )}
+      >
+        <span className="flex flex-col gap-1 pr-9">
+          <span
+            className={cn(
+              "text-[19px] font-bold leading-[1.2] tracking-[-0.01em]",
+              soldOut && "line-through decoration-2"
+            )}
+          >
+            {displayName}
           </span>
-        ) : null}
-      </span>
-      <span className="flex items-center justify-between gap-2.5">
-        <span className="num text-[17px] font-semibold">
-          {formatPrice(product.price)}
+          {secondary.length > 0 ? (
+            <span className="line-clamp-2 text-[13px] leading-snug text-muted-foreground">
+              {secondary.join(" · ")}
+            </span>
+          ) : null}
         </span>
-        <span className="rounded-full bg-ac-soft px-2.5 py-[5px] text-xs font-semibold text-ac-dark">
-          {optionsLabel(product, t)}
+        <span className="flex items-center justify-between gap-2.5">
+          <span className="num text-[17px] font-semibold">
+            {formatPrice(product.price)}
+          </span>
+          {soldOut ? (
+            <SoldOutBadge t={t} />
+          ) : (
+            <span className="rounded-full bg-ac-soft px-2.5 py-[5px] text-xs font-semibold text-ac-dark">
+              {optionsLabel(product, t)}
+            </span>
+          )}
         </span>
-      </span>
-    </button>
+      </button>
+      <SoldOutToggle
+        product={product}
+        soldOut={soldOut}
+        pending={pendingIds.has(product.id)}
+        onToggle={onToggleSoldOut}
+        t={t}
+        className="absolute right-2 top-2"
+      />
+    </div>
   );
 }
 
-function TileGrid({
-  items,
-  onOpen,
-  t,
-  primaryLang,
-  secondaryLangs,
-}: {
-  items: Drink[];
-  onOpen: (id: string) => void;
-  t: TranslateFn;
-  primaryLang: import("@/i18n/locales").LocaleId;
-  secondaryLangs: import("@/i18n/locales").LocaleId[];
-}) {
+function TileGrid({ items, ...rest }: ItemsProps) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
       {items.map((product) => (
-        <ProductTile
-          key={product.id}
-          product={product}
-          onOpen={onOpen}
-          t={t}
-          primaryLang={primaryLang}
-          secondaryLangs={secondaryLangs}
-        />
+        <ProductTile key={product.id} product={product} {...rest} />
       ))}
     </div>
   );
@@ -182,35 +250,65 @@ function TileGrid({
 function ProductRow({
   product,
   onOpen,
+  onToggleSoldOut,
+  pendingIds,
   t,
   primaryLang,
   secondaryLangs,
 }: Omit<ItemsProps, "items"> & { product: Drink }) {
   const displayName = getLocalizedName(product, primaryLang);
   const secondary = getSecondaryNames(product, primaryLang, secondaryLangs);
+  const soldOut = productAvailability(product) === "soldOut";
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(product.id)}
-      className="press tile flex min-h-[64px] w-full items-center gap-3 rounded-ctl border border-line bg-surface px-4 py-3 text-left text-foreground"
-    >
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-[17px] font-bold leading-tight tracking-[-0.01em]">
-          {displayName}
-        </span>
-        {secondary.length > 0 ? (
-          <span className="truncate text-[13px] text-muted-foreground">
-            {secondary.join(" · ")}
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => onOpen(product.id)}
+        disabled={soldOut}
+        className={cn(
+          "press tile flex min-h-[64px] w-full items-center gap-3 rounded-ctl border py-3 pl-4 pr-14 text-left",
+          soldOut
+            ? "border-dashed border-line bg-surface/50 text-muted-foreground"
+            : "border-line bg-surface text-foreground"
+        )}
+      >
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span
+            className={cn(
+              "truncate text-[17px] font-bold leading-tight tracking-[-0.01em]",
+              soldOut && "line-through decoration-2"
+            )}
+          >
+            {displayName}
           </span>
-        ) : null}
-      </span>
-      <span className="hidden flex-none rounded-full bg-ac-soft px-2.5 py-[5px] text-xs font-semibold text-ac-dark sm:inline">
-        {optionsLabel(product, t)}
-      </span>
-      <span className="num w-16 flex-none text-right text-[17px] font-semibold">
-        {formatPrice(product.price)}
-      </span>
-    </button>
+          {secondary.length > 0 ? (
+            <span className="truncate text-[13px] text-muted-foreground">
+              {secondary.join(" · ")}
+            </span>
+          ) : null}
+        </span>
+        {soldOut ? (
+          <span className="flex-none">
+            <SoldOutBadge t={t} />
+          </span>
+        ) : (
+          <span className="hidden flex-none rounded-full bg-ac-soft px-2.5 py-[5px] text-xs font-semibold text-ac-dark sm:inline">
+            {optionsLabel(product, t)}
+          </span>
+        )}
+        <span className="num w-16 flex-none text-right text-[17px] font-semibold">
+          {formatPrice(product.price)}
+        </span>
+      </button>
+      <SoldOutToggle
+        product={product}
+        soldOut={soldOut}
+        pending={pendingIds.has(product.id)}
+        onToggle={onToggleSoldOut}
+        t={t}
+        className="absolute right-2 top-1/2 -translate-y-1/2"
+      />
+    </div>
   );
 }
 
@@ -274,6 +372,24 @@ function ViewToggle({
 }
 
 /**
+ * The menu board, one tap from the counter — the same shortcut the mobile
+ * terminal has, where staff get no Menu tab at all.
+ */
+function MenuBoardLink({ t }: { t: TranslateFn }) {
+  const label = t("terminal.openMenuBoard");
+  return (
+    <Link
+      href="/menu"
+      aria-label={label}
+      title={label}
+      className="press flex h-12 w-12 flex-none items-center justify-center rounded-full border border-line bg-surface text-muted-foreground hover:bg-ink/5 hover:text-foreground"
+    >
+      <BookOpen className="h-[18px] w-[18px]" />
+    </Link>
+  );
+}
+
+/**
  * Caption above a run of tiles. Only shown under "All", where the pill row no
  * longer tells you which group you are looking at.
  */
@@ -294,6 +410,9 @@ export function ProductPicker() {
   const products = useAppStore((state) => state.products);
   const productsLoading = useAppStore((state) => state.productsLoading);
   const loadProducts = useAppStore((state) => state.loadProducts);
+  const toggleProductAvailableApi = useAppStore(
+    (state) => state.toggleProductAvailableApi
+  );
   const subtypeOrder = useDrinkSubtypeOrder();
   const { productsRefreshKey } = useWebSocket();
   const { primaryLang, secondaryLangs } = useProductLanguage();
@@ -301,6 +420,9 @@ export function ProductPicker() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [view, setView] = usePickerView();
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
 
   // Reload whenever a `product:*` socket event fires, as the menu board and the
   // mobile terminal already do — a price, a new drink or a reorder done in
@@ -310,13 +432,69 @@ export function ProductPicker() {
     loadProducts();
   }, [loadProducts, productsRefreshKey]);
 
+  // Reload the moment the first sold-out product or option comes back, so a
+  // tablet left on overnight doesn't open on yesterday's sold-outs. (The
+  // server clears them on that read; nothing has to be pushed.)
+  useEffect(() => {
+    const at = nextRestoreAt(products);
+    if (at === null) return;
+    const delay = Math.min(Math.max(at - Date.now(), 0) + 1000, 2 ** 31 - 1);
+    const timer = setTimeout(() => void loadProducts(), delay);
+    return () => clearTimeout(timer);
+  }, [products, loadProducts]);
+
+  const setSoldOut = useCallback(
+    async (product: Drink, soldOut: boolean) => {
+      setPendingIds((prev) => new Set(prev).add(product.id));
+      try {
+        await toggleProductAvailableApi(product.id, !soldOut, soldOut);
+        return true;
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t("errors.generic"));
+        return false;
+      } finally {
+        setPendingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(product.id);
+          return next;
+        });
+      }
+    },
+    [toggleProductAvailableApi, t]
+  );
+
+  /** One tap, no confirm — the toast's Undo is the safety net. */
+  const toggleSoldOut = useCallback(
+    async (product: Drink) => {
+      const soldOut = productAvailability(product) !== "soldOut";
+      if (!(await setSoldOut(product, soldOut))) return;
+      const name = getLocalizedName(product, primaryLang);
+      toast.success(
+        soldOut
+          ? t("terminal.markedSoldOut", { name })
+          : t("terminal.broughtBack", { name }),
+        {
+          action: {
+            label: t("common.undo"),
+            onClick: () => void setSoldOut(product, !soldOut),
+          },
+        }
+      );
+    },
+    [setSoldOut, primaryLang, t]
+  );
+
   /**
    * "All" first, then drink subtypes in menu order, then every other category
    * in the shared order. The All tab is what a barista reaches for when they
    * know the drink but not its group.
    */
   const sections = useMemo<Category[]>(() => {
-    const sellable = products.filter((p) => p.active !== false);
+    // Sold out until tomorrow stays listed (greyed); only a product an admin
+    // hid for good drops off the counter.
+    const sellable = products.filter(
+      (p) => productAvailability(p) !== "hidden"
+    );
     const drinks = sellable.filter((p) =>
       isProductCategory(p.categoryName, PRODUCT_CATEGORY.DRINK)
     );
@@ -354,7 +532,18 @@ export function ProductPicker() {
     return products.find((product) => product.id === openId) ?? null;
   }, [openId, products]);
 
-  if (productsLoading) {
+  const itemProps = {
+    onOpen: setOpenId,
+    onToggleSoldOut: toggleSoldOut,
+    pendingIds,
+    t,
+    primaryLang,
+    secondaryLangs,
+  };
+
+  // Only the first load shows the skeleton. Later ones (a socket event, a
+  // sold-out tap echoing back) swap the list in place rather than blanking it.
+  if (productsLoading && products.length === 0) {
     return <PickerSkeleton />;
   }
 
@@ -397,6 +586,7 @@ export function ProductPicker() {
           })}
         </div>
         <ViewToggle view={view} onChange={setView} t={t} />
+        <MenuBoardLink t={t} />
       </div>
 
       {selected?.name === ALL_CATEGORY ? (
@@ -407,12 +597,12 @@ export function ProductPicker() {
                 name={groupLabel(section.name, t)}
                 count={section.items.length}
               />
-              <ProductItems view={view} items={section.items} onOpen={setOpenId} t={t} primaryLang={primaryLang} secondaryLangs={secondaryLangs} />
+              <ProductItems view={view} items={section.items} {...itemProps} />
             </section>
           ))}
         </div>
       ) : (
-        <ProductItems view={view} items={selected?.items ?? []} onOpen={setOpenId} t={t} primaryLang={primaryLang} secondaryLangs={secondaryLangs} />
+        <ProductItems view={view} items={selected?.items ?? []} {...itemProps} />
       )}
 
       <ProductSheet product={openProduct} onClose={() => setOpenId(null)} />

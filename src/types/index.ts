@@ -1,8 +1,12 @@
 /** One choice of a select-style option, with what picking it adds to the line. */
 export type DrinkOptionValue = {
+  /** `drink_option_values.id` — what a "sold out" toggle is sent against. */
+  id?: number;
   label: string;
   /** Surcharge in euros; 0 for most choices. */
   extraPrice: number;
+  /** Sold out until this moment (ISO); absent or null when it can be picked. */
+  unavailableUntil?: string | null;
 };
 
 export type DrinkOption = {
@@ -14,6 +18,11 @@ export type DrinkOption = {
   /** Surcharge added when a checkbox-style option is ticked. */
   checkboxExtraPrice?: number;
   defaultValue?: string | boolean;
+  /**
+   * Checkbox options only: sold out until this moment (ISO), so it can't be
+   * ticked. A picklist is never sold out as a whole — its values are.
+   */
+  unavailableUntil?: string | null;
 };
 
 export type Drink = {
@@ -33,7 +42,11 @@ export type Drink = {
   imageUrl?: string;
   iconName?: string;
   availableOptions: DrinkOption[];
-  /** false means hidden from menu and terminal (soft-deleted) */
+  /**
+   * false means not on sale. With `available_until` set it is only sold out
+   * until then — shown greyed out on the menu and the terminal; without it,
+   * hidden from both (see `productAvailability` in `@/lib/availability`).
+   */
   active?: boolean;
   /**
    * Position in the cafe's hand-picked running order (`products.sort_order`).
@@ -41,7 +54,7 @@ export type Drink = {
    * move up / move down, not for re-sorting on the client.
    */
   sortOrder?: number;
-  /** ISO datetime until which the product is hidden; null means permanent or not hidden */
+  /** ISO datetime until which the product is sold out; null means permanent or not hidden */
   available_until?: string | null;
 };
 

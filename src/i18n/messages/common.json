@@ -211,5 +211,15 @@
     "en": "Close without saving",
     "lt": "Uždaryti neišsaugojus",
     "ru": "Закрыть без сохранения"
+  },
+  "undo": {
+    "en": "Undo",
+    "lt": "Atšaukti",
+    "ru": "Отменить"
+  },
+  "done": {
+    "en": "Done",
+    "lt": "Baigta",
+    "ru": "Готово"
   }
 }
