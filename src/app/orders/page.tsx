@@ -1,9 +1,10 @@
 import { OrderList } from "@/components/orders/OrderList";
+import { PageContainer } from "@/components/ui/page-container";
 
 export default function OrdersPage() {
   return (
-    <div className="w-full max-w-none px-4 py-6">
+    <PageContainer fullWidth className="py-5 sm:p-[26px]">
       <OrderList />
-    </div>
+    </PageContainer>
   );
 }

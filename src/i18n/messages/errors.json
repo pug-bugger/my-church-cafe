@@ -1,0 +1,132 @@
+{
+  "generic": {
+    "en": "Something went wrong.",
+    "lt": "Kažkas nutiko ne taip.",
+    "ru": "Что-то пошло не так."
+  },
+  "requestFailed": {
+    "en": "Request failed ({status})",
+    "lt": "Užklausa nepavyko ({status})",
+    "ru": "Запрос не выполнен ({status})"
+  },
+  "apiNotConfigured": {
+    "en": "The backend address is not configured.",
+    "lt": "Serverio adresas nesukonfigūruotas.",
+    "ru": "Адрес сервера не настроен."
+  },
+  "loginRequired": {
+    "en": "Login required",
+    "lt": "Reikia prisijungti",
+    "ru": "Требуется вход"
+  },
+  "loginRequiredToOrder": {
+    "en": "Login required to place an order.",
+    "lt": "Norint pateikti užsakymą reikia prisijungti.",
+    "ru": "Чтобы оформить заказ, нужно войти."
+  },
+  "loginRequiredForStatus": {
+    "en": "Login required to update order status.",
+    "lt": "Norint pakeisti užsakymo būseną reikia prisijungti.",
+    "ru": "Чтобы изменить статус заказа, нужно войти."
+  },
+  "loginRequiredToRemoveItems": {
+    "en": "Login required to remove order items.",
+    "lt": "Norint pašalinti užsakymo prekes reikia prisijungti.",
+    "ru": "Чтобы удалить позиции заказа, нужно войти."
+  },
+  "loginRequiredToDeleteOrders": {
+    "en": "Login required to delete orders.",
+    "lt": "Norint ištrinti užsakymus reikia prisijungti.",
+    "ru": "Чтобы удалить заказы, нужно войти."
+  },
+  "loadOrders": {
+    "en": "Unable to load orders",
+    "lt": "Nepavyko įkelti užsakymų",
+    "ru": "Не удалось загрузить заказы"
+  },
+  "updateStatus": {
+    "en": "Unable to update order status",
+    "lt": "Nepavyko pakeisti užsakymo būsenos",
+    "ru": "Не удалось изменить статус заказа"
+  },
+  "removeItem": {
+    "en": "Unable to remove item",
+    "lt": "Nepavyko pašalinti prekės",
+    "ru": "Не удалось убрать позицию"
+  },
+  "deleteOrder": {
+    "en": "Unable to delete order",
+    "lt": "Nepavyko ištrinti užsakymo",
+    "ru": "Не удалось удалить заказ"
+  },
+  "placeOrder": {
+    "en": "Unable to place order",
+    "lt": "Nepavyko pateikti užsakymo",
+    "ru": "Не удалось оформить заказ"
+  },
+  "loadMenu": {
+    "en": "Could not load menu right now.",
+    "lt": "Šiuo metu nepavyko įkelti meniu.",
+    "ru": "Сейчас не удалось загрузить меню."
+  },
+  "loadCategories": {
+    "en": "Failed to load categories",
+    "lt": "Nepavyko įkelti kategorijų",
+    "ru": "Не удалось загрузить категории"
+  },
+  "loginRequiredToCreateProducts": {
+    "en": "Login required to create products",
+    "lt": "Norint kurti prekes reikia prisijungti",
+    "ru": "Чтобы создавать товары, нужно войти"
+  },
+  "loginRequiredToUpdateProducts": {
+    "en": "Login required to update products",
+    "lt": "Norint atnaujinti prekes reikia prisijungti",
+    "ru": "Чтобы изменять товары, нужно войти"
+  },
+  "loginRequiredToDeleteProducts": {
+    "en": "Login required to delete products",
+    "lt": "Norint ištrinti prekes reikia prisijungti",
+    "ru": "Чтобы удалять товары, нужно войти"
+  },
+  "loginRequiredToUploadImages": {
+    "en": "Login required to upload images",
+    "lt": "Norint įkelti vaizdus reikia prisijungti",
+    "ru": "Чтобы загружать изображения, нужно войти"
+  },
+  "noProductId": {
+    "en": "The server did not return a product id.",
+    "lt": "Serveris negrąžino prekės id.",
+    "ru": "Сервер не вернул id товара."
+  },
+  "noImageUrl": {
+    "en": "The server did not return an image address.",
+    "lt": "Serveris negrąžino vaizdo adreso.",
+    "ru": "Сервер не вернул адрес изображения."
+  },
+  "categoryMissing": {
+    "en": "The \"{category}\" category is missing in the database. Run the category migrations.",
+    "lt": "Kategorijos „{category}“ nėra duomenų bazėje. Įvykdykite kategorijų migracijas.",
+    "ru": "Категории «{category}» нет в базе данных. Выполните миграции категорий."
+  },
+  "categoryUnresolved": {
+    "en": "Could not resolve the \"{category}\" category.",
+    "lt": "Nepavyko nustatyti kategorijos „{category}“.",
+    "ru": "Не удалось определить категорию «{category}»."
+  },
+  "invalidMenuResponse": {
+    "en": "The server sent an unreadable menu.",
+    "lt": "Serveris atsiuntė neperskaitomą meniu.",
+    "ru": "Сервер прислал нечитаемое меню."
+  },
+  "couldNotLoad": {
+    "en": "Could not load",
+    "lt": "Nepavyko įkelti",
+    "ru": "Не удалось загрузить"
+  },
+  "cannotReach": {
+    "en": "Can’t reach {url}: {cause}",
+    "lt": "Nepavyksta pasiekti {url}: {cause}",
+    "ru": "Не удаётся связаться с {url}: {cause}"
+  }
+}

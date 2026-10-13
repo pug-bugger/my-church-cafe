@@ -1,28 +1,30 @@
 "use client";
 
-import { getOrderableProducts, useAppStore } from "@/store";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/store";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+import { useTranslation } from "@/i18n";
+import { formatPrice } from "@/lib/format";
+import { describeSelectedOptions, lineUnitPrice } from "@/lib/drinkOptions";
+import { getLocalizedName } from "@/lib/productName";
+import { useProductLanguage } from "@/context/ProductLanguageContext";
+import { ProductSheet } from "@/components/terminal/ProductSheet";
+import { CustomerNameInput } from "@/components/terminal/CustomerNameInput";
 
+/**
+ * The counter's running order: a sticky panel beside the picker on desktop,
+ * stacked underneath it on phones and tablets.
+ */
 export function CurrentOrder() {
+  const { t } = useTranslation();
+  const { primaryLang } = useProductLanguage();
   const draftItems = useAppStore((state) => state.draftItems);
-  const drinks = useAppStore((state) => state.drinks);
-  const desserts = useAppStore((state) => state.desserts);
-  const orderableProducts = useMemo(
-    () => getOrderableProducts({ drinks, desserts }),
-    [drinks, desserts]
-  );
+  // Every category is orderable, meals and "Other" included — the terminal used
+  // to see only drinks and desserts because the store held just those two.
+  const orderableProducts = useAppStore((state) => state.products);
   const removeDraftItem = useAppStore((state) => state.removeDraftItem);
   const clearDraft = useAppStore((state) => state.clearDraft);
   const [products, setProducts] = useState<
@@ -31,6 +33,8 @@ export function CurrentOrder() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComment, setOrderComment] = useState("");
   const [customerName, setCustomerName] = useState("");
+  /** The draft line open in the edit sheet, if any. */
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
@@ -39,8 +43,17 @@ export function CurrentOrder() {
 
   const total = draftItems.reduce((sum, item) => {
     const product = getProductById(item.drinkId);
-    return sum + (product ? product.price * item.quantity : 0);
+    if (!product) return sum;
+    // Option surcharges are part of the line, exactly as the server bills it.
+    const unit = lineUnitPrice(
+      product.price,
+      product.availableOptions,
+      item.selectedOptions
+    );
+    return sum + unit * item.quantity;
   }, 0);
+
+  const itemCount = draftItems.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
     if (draftItems.length === 0) {
@@ -54,12 +67,10 @@ export function CurrentOrder() {
     let isActive = true;
     const loadProducts = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/products`);
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data?.error || "Failed to load products");
-        }
-        const data = await response.json();
+        const data = await apiFetch<{ id: number; name: string | null }[]>(
+          "/api/products",
+          { auth: false }
+        );
         if (isActive) {
           setProducts(
             Array.isArray(data)
@@ -82,8 +93,7 @@ export function CurrentOrder() {
   const resolveProductId = (drinkId: string) => {
     const drink = getProductById(drinkId);
     if (!drink) return null;
-    const normalized = (value?: string) =>
-      (value || "").trim().toLowerCase();
+    const normalized = (value?: string) => (value || "").trim().toLowerCase();
     const byId =
       Number.isFinite(Number(drink.id)) &&
       products.find((item) => item.id === Number(drink.id));
@@ -98,18 +108,6 @@ export function CurrentOrder() {
 
   const handleConfirmOrder = async () => {
     if (draftItems.length === 0) return;
-    if (!apiUrl) {
-      toast.error("Missing NEXT_PUBLIC_API_URL in your environment.");
-      return;
-    }
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
-    if (!token) {
-      toast.error("Login required to place an order.");
-      return;
-    }
 
     const orderItemsPayload = draftItems.map((item) => ({
       quantity: item.quantity,
@@ -119,152 +117,167 @@ export function CurrentOrder() {
     }));
     const missing = orderItemsPayload.find((item) => !item.productId);
     if (missing) {
-      toast.error("Some items could not be matched to backend products.");
+      toast.error(t("terminal.unmatchedItems"));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${apiUrl}/api/orders`, {
+      await apiFetch("/api/orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+        auth: true,
+        authError: t("errors.loginRequiredToOrder"),
+        body: {
           order: {
             comment: orderComment.trim() || null,
             customer_name: customerName.trim() || null,
             order_items: orderItemsPayload,
           },
-        }),
+        },
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to place order");
-      }
       clearDraft();
-      toast.success("Order placed");
+      toast.success(t("terminal.orderSent"));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unable to place order";
+        err instanceof Error ? err.message : t("errors.placeOrder");
       toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const isEmpty = draftItems.length === 0;
+  const editingItem = editingId
+    ? draftItems.find((item) => item.id === editingId) ?? null
+    : null;
+  const editingProduct = editingItem
+    ? getProductById(editingItem.drinkId) ?? null
+    : null;
+
   return (
-    <Card className="flex max-h-[calc(100dvh-4rem-3rem)] flex-col">
-      <CardHeader className="shrink-0">
-        <CardTitle>Current Order</CardTitle>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1 overflow-y-auto scrollbar-hide">
-        {draftItems.length === 0 ? (
-          <Alert>
-            <AlertDescription>
-              No items added yet. Select a drink or dessert to begin.
-            </AlertDescription>
-          </Alert>
+    <aside className="flex max-h-[calc(100dvh-8.5rem)] flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card">
+      <div className="px-5 pb-3 pt-5">
+        <div className="flex items-baseline justify-between gap-2.5">
+          <h3 className="text-lg font-extrabold tracking-[-0.01em]">
+            {t("terminal.currentOrder")}
+          </h3>
+          <span className="num text-[13px] text-muted-foreground">
+            {itemCount === 0
+              ? t("common.empty")
+              : t("common.itemCount", { count: itemCount })}
+          </span>
+        </div>
+      </div>
+
+      <div className="scroll min-h-[120px] flex-1 px-5">
+        {isEmpty ? (
+          <p className="my-2 text-sm leading-relaxed text-muted-foreground">
+            {t("terminal.emptyHint")}
+          </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="flex flex-col gap-3.5">
             {draftItems.map((item) => {
               const drink = getProductById(item.drinkId);
               if (!drink) return null;
+              const summary = describeSelectedOptions(
+                drink.availableOptions,
+                item.selectedOptions
+              );
+              const detail = [summary, item.comment]
+                .filter(Boolean)
+                .join(" · ");
               return (
-                <li
-                  key={item.id}
-                  className="flex items-start justify-between gap-3"
-                >
+                <li key={item.id} className="enter flex items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-base">
-                      {drink.name}
-                      <span className="text-sm text-muted-foreground">
-                        {" "}
-                        × {item.quantity}
-                      </span>
+                    <div className="text-base font-bold">
+                      {getLocalizedName(drink, primaryLang)}{" "}
+                      <span className="num text-primary">×{item.quantity}</span>
                     </div>
-                    <ul className="text-sm text-muted-foreground">
-                      {Object.entries(item.selectedOptions).map(
-                        ([optionId, value]) => {
-                          const option = drink.availableOptions.find(
-                            (opt) => opt.id === optionId
-                          );
-                          return option ? (
-                            <li key={optionId}>
-                              {option.name}: {value}
-                            </li>
-                          ) : null;
-                        }
-                      )}
-                    </ul>
-                    {item.comment && (
-                      <p className="mt-1 text-sm italic text-muted-foreground">
-                        {item.comment}
-                      </p>
+                    {detail ? (
+                      <div className="text-[13px] leading-snug text-muted-foreground">
+                        {detail}
+                      </div>
+                    ) : null}
+                  </div>
+                  <span className="num whitespace-nowrap text-base font-semibold">
+                    {formatPrice(
+                      lineUnitPrice(
+                        drink.price,
+                        drink.availableOptions,
+                        item.selectedOptions
+                      ) * item.quantity
                     )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="whitespace-nowrap font-medium text-base">
-                      ${(drink.price * item.quantity).toFixed(2)}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-14 w-14 shrink-0 rounded-full p-0 text-destructive hover:bg-destructive/10 hover:text-destructive [&_svg]:size-7"
-                      aria-label={`Remove ${drink.name}`}
-                      onClick={() => removeDraftItem(item.id)}
-                    >
-                      <X />
-                    </Button>
-                  </div>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(item.id)}
+                    aria-label={t("terminal.editNamed", { name: drink.name })}
+                    title={t("terminal.editItem")}
+                    className="press -mr-2 flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
+                  >
+                    <Pencil className="h-[17px] w-[17px]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeDraftItem(item.id)}
+                    aria-label={t("terminal.removeNamed", {
+                      name: drink.name,
+                    })}
+                    title={t("terminal.removeFromOrder")}
+                    className="press flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
+                  >
+                    <X className="h-[18px] w-[18px]" />
+                  </button>
                 </li>
               );
             })}
           </ul>
         )}
-        {draftItems.length > 0 && (
-          <div className="mt-4 pt-3 border-t space-y-2">
-            <Input
-              placeholder="Customer name..."
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="text-sm"
-            />
-            <Input
-              placeholder="Order note..."
-              value={orderComment}
-              onChange={(e) => setOrderComment(e.target.value)}
-              className="text-sm"
-            />
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex shrink-0 flex-col items-start gap-3">
-        <div className="w-full whitespace-nowrap text-left font-semibold">
-          Total: ${total.toFixed(2)}
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-line bg-surface-sunken px-5 pb-5 pt-4">
+        <CustomerNameInput value={customerName} onChange={setCustomerName} />
+        <Input
+          placeholder={t("terminal.noteForBarista")}
+          value={orderComment}
+          onChange={(e) => setOrderComment(e.target.value)}
+          aria-label={t("terminal.noteForBarista")}
+        />
+        <div className="flex items-baseline justify-between pt-0.5">
+          <span className="text-[13px] text-muted-foreground">
+            {t("common.total")}
+          </span>
+          <span className="num text-3xl font-extrabold tracking-[-0.02em]">
+            {formatPrice(total)}
+          </span>
         </div>
-        <div className="flex w-full min-w-0 gap-3">
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-14 w-14 shrink-0 rounded-full p-0 [&_svg]:size-6"
-            aria-label="Clear order"
+        <div className="flex gap-2.5">
+          <button
+            type="button"
             onClick={clearDraft}
-            disabled={draftItems.length === 0}
+            disabled={isEmpty}
+            aria-label={t("terminal.clearOrder")}
+            title={t("terminal.clearOrderTooltip")}
+            className="press flex min-h-14 w-14 flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5 disabled:pointer-events-none disabled:opacity-50"
           >
-            <Trash2 />
-          </Button>
-          <Button
-            size="lg"
-            className="min-w-0 flex-1 text-base"
+            <Trash2 className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
             onClick={handleConfirmOrder}
-            disabled={draftItems.length === 0 || isSubmitting}
+            disabled={isEmpty || isSubmitting}
+            className="press min-h-14 flex-1 rounded-ctl bg-primary text-[17px] font-bold text-primary-foreground hover:bg-ac-dark disabled:pointer-events-none disabled:bg-ac-mid"
           >
-            {isSubmitting ? "Loading..." : "Confirm"}
-          </Button>
+            {isSubmitting ? t("terminal.sending") : t("terminal.sendToBarista")}
+          </button>
         </div>
-      </CardFooter>
-    </Card>
+      </div>
+
+      <ProductSheet
+        product={editingProduct}
+        editing={editingItem}
+        onClose={() => setEditingId(null)}
+      />
+    </aside>
   );
 }

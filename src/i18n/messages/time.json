@@ -1,0 +1,14 @@
+{
+  "justNow": { "en": "just now", "lt": "ką tik", "ru": "только что" },
+  "minutesShort": { "en": "{count} min", "lt": "{count} min.", "ru": "{count} мин" },
+  "minutesAgo": { "en": "{count} min ago", "lt": "prieš {count} min.", "ru": "{count} мин назад" },
+  "hoursAgo": { "en": "{count} hr ago", "lt": "prieš {count} val.", "ru": "{count} ч назад" },
+  "yesterday": { "en": "yesterday", "lt": "vakar", "ru": "вчера" },
+  "today": { "en": "Today", "lt": "Šiandien", "ru": "Сегодня" },
+  "yesterdayCap": { "en": "Yesterday", "lt": "Vakar", "ru": "Вчера" },
+  "daysAgo": {
+    "en": { "one": "{count} day ago", "other": "{count} days ago" },
+    "lt": { "one": "prieš {count} dieną", "few": "prieš {count} dienas", "other": "prieš {count} dienų" },
+    "ru": { "one": "{count} день назад", "few": "{count} дня назад", "many": "{count} дней назад" }
+  }
+}

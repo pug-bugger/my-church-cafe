@@ -5,106 +5,110 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
-import { ModeToggle } from "@/components/mode-toggle";
+import { Menu, X } from "lucide-react";
+import { ThemeMenu } from "@/components/theme/ThemeMenu";
 import { CafeIcon } from "@/components/CafeIcon";
+import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api";
+import { useTranslation, type MessageKey } from "@/i18n";
+import { getAuthToken, getStoredUser } from "@/lib/auth";
+import { initialsFromName } from "@/lib/format";
+import { useWebSocket } from "@/context/WebSocketContext";
 
 /** Who sees this nav item (guest = not signed in → same as parishioner). */
 type NavVisibility = "public" | "staff" | "admin";
 
-const BASE_LINKS = [
+type NavLink = {
+  href: string;
+  /** Catalogue key rather than a string — the nav is rebuilt on a language
+   *  switch, and `BASE_LINKS` is module scope, evaluated once. */
+  labelKey: MessageKey;
+  available: boolean;
+  visibility: NavVisibility;
+};
+
+const BASE_LINKS: NavLink[] = [
   {
     href: "/terminal",
-    label: "Terminal",
+    labelKey: "nav.terminal",
     available: true,
-    visibility: "staff" satisfies NavVisibility,
-  },
-  {
-    href: "/menu",
-    label: "Menu",
-    available: true,
-    visibility: "public" satisfies NavVisibility,
-  },
-  {
-    href: "/orders",
-    label: "Orders",
-    available: true,
-    visibility: "public" satisfies NavVisibility,
+    visibility: "staff",
   },
   {
     href: "/barista",
-    label: "Barista",
+    labelKey: "nav.barista",
     available: true,
-    visibility: "staff" satisfies NavVisibility,
+    visibility: "staff",
   },
   {
-    href: "/admin",
-    label: "Manage",
+    href: "/orders",
+    labelKey: "nav.board",
     available: true,
-    visibility: "admin" satisfies NavVisibility,
+    visibility: "public",
+  },
+  { href: "/menu", labelKey: "nav.menu", available: true, visibility: "public" },
+  {
+    href: "/admin",
+    labelKey: "nav.manage",
+    available: true,
+    visibility: "admin",
   },
   {
     href: "/profile",
-    label: "Profile",
+    labelKey: "nav.profile",
     available: true,
-    visibility: "public" satisfies NavVisibility,
+    visibility: "public",
   },
-] as const;
+];
 
 function navLinkVisible(
   visibility: NavVisibility,
-  role: string | null
+  role: string | null,
 ): boolean {
   if (visibility === "public") return true;
-  if (visibility === "staff")
-    return role === "admin" || role === "personal";
+  if (visibility === "staff") return role === "admin" || role === "personal";
   return role === "admin";
 }
 
+type SessionUser = { name?: string; role?: string };
+
 export function Navigation() {
   const pathname = usePathname();
+  const { isConnected } = useWebSocket();
+  const { t } = useTranslation();
   /** Role from session; null when not signed in (nav treats like parishioner). */
   const [navRole, setNavRole] = useState<string | null>(null);
-  const [links, setLinks] = useState([...BASE_LINKS]);
-  const [showOnOrders, setShowOnOrders] = useState(false);
-  const isOrdersPage = false;//pathname === "/orders";
+  const [navName, setNavName] = useState<string | null>(null);
+  const [links, setLinks] = useState<NavLink[]>(BASE_LINKS);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const fetchUserRole = useCallback(async () => {
-    const token =
-      localStorage.getItem("token") ??
-      localStorage.getItem("jwt") ??
-      localStorage.getItem("accessToken");
+    const token = getAuthToken();
     if (!token) {
       setNavRole(null);
+      setNavName(null);
       return;
     }
-    const stored = localStorage.getItem("user");
+    const stored = getStoredUser<SessionUser>();
     if (stored) {
-      try {
-        const user = JSON.parse(stored) as { role?: string };
-        setNavRole(user?.role ?? null);
-        return;
-      } catch {
-        // fall through to fetch
-      }
-    }
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      setNavRole(null);
+      setNavRole(stored.role ?? null);
+      setNavName(stored.name ?? null);
       return;
     }
     try {
-      const res = await fetch(`${apiUrl}/api/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const user = await apiFetch<SessionUser>("/api/users/me", {
+        auth: true,
       });
-      if (!res.ok) {
-        setNavRole(null);
-        return;
+      // Cache the fetched user without broadcasting a session change (that
+      // would needlessly reconnect the socket / re-run route guards).
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("user", JSON.stringify(user));
       }
-      const user = await res.json();
-      localStorage.setItem("user", JSON.stringify(user));
       setNavRole(user?.role ?? null);
+      setNavName(user?.name ?? null);
     } catch {
       setNavRole(null);
+      setNavName(null);
     }
   }, []);
 
@@ -115,103 +119,149 @@ export function Navigation() {
     return () => window.removeEventListener("auth:token", onAuth);
   }, [fetchUserRole]);
 
-  const visibleLinks = links.filter((link) =>
-    navLinkVisible(link.visibility, navRole)
-  );
+  // Close the mobile menu whenever the route changes.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
-  const disabledStyle = ({ available }: { available: boolean }) => {
-    const tabClickable: CSSProperties = {};
-    if (available) {
-      tabClickable.cursor = "pointer";
-    } else {
-      tabClickable.cursor = "not-allowed";
-      tabClickable.opacity = 0.5;
-    }
-    return tabClickable;
+  const visibleLinks = links.filter((link) =>
+    navLinkVisible(link.visibility, navRole),
+  );
+  const signedIn = navRole !== null;
+
+  const disabledStyle = ({
+    available,
+  }: {
+    available: boolean;
+  }): CSSProperties =>
+    available ? { cursor: "pointer" } : { cursor: "not-allowed", opacity: 0.5 };
+
+  const unlockLink = (href: string, label: string) => {
+    setLinks((prev) =>
+      prev.map((l) => (l.href === href ? { ...l, available: true } : l)),
+    );
+    toast.success(t("nav.unlocked", { label }));
+  };
+
+  /** Pill-shaped nav item: filled with the accent when it is the current page. */
+  const renderLink = (link: NavLink, className: string) => {
+    const active = pathname === link.href;
+    const label = t(link.labelKey);
+    return (
+      <Link
+        key={link.href}
+        href={link.href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "press flex items-center justify-center rounded-full",
+          active
+            ? "bg-primary font-bold text-primary-foreground"
+            : "font-medium text-muted-foreground hover:bg-ink/5 hover:text-foreground",
+          link.available ? "" : "bg-caution-stripes",
+          className,
+        )}
+        style={disabledStyle(link)}
+        aria-disabled={!link.available}
+        onClick={(e) => {
+          if (!link.available) {
+            e.preventDefault();
+            e.stopPropagation();
+            toast.info(t("nav.featureNotAvailable"));
+          }
+        }}
+        onDoubleClick={(e) => {
+          if (!link.available) {
+            e.preventDefault();
+            e.stopPropagation();
+            unlockLink(link.href, label);
+          }
+        }}
+      >
+        {label}
+      </Link>
+    );
   };
 
   return (
-    <>
-      {isOrdersPage && (
-        <div
-          className="fixed inset-x-0 top-0 z-40 h-4"
-          onMouseEnter={() => setShowOnOrders(true)}
-          onMouseLeave={() => setShowOnOrders(false)}
-          aria-hidden="true"
-        />
-      )}
-      <nav
-        className={cn(
-          "border-b bg-background transition-transform duration-200",
-          isOrdersPage && "fixed inset-x-0 top-0 z-50",
-          isOrdersPage && !showOnOrders && "-translate-y-full",
-          isOrdersPage && showOnOrders && "translate-y-0"
-        )}
-        onMouseEnter={() => {
-          if (isOrdersPage) setShowOnOrders(true);
-        }}
-        onMouseLeave={() => {
-          if (isOrdersPage) setShowOnOrders(false);
-        }}
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Link href="/" className="flex items-center gap-2 text-xl font-bold">
-                <CafeIcon size={32} />
-                Church Cafe
-              </Link>
-              <span className="ml-2 text-sm font-medium text-muted-foreground">
-                {pathname !== "/" && (
-                  <>
-                    / {links.find((l) => l.href === pathname)?.label ?? pathname.replace(/^\//, "").charAt(0).toUpperCase() + pathname.slice(2)}
-                  </>
-                )}
-              </span>
-            </div>
+    <header className="sticky top-0 z-20 flex-none border-b border-line bg-background/90 backdrop-blur-[10px]">
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2.5 text-[17px] font-extrabold tracking-[-0.01em]"
+        >
+          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-[11px] bg-primary text-primary-foreground">
+            <CafeIcon size={16} />
+          </span>
+          Church Cafe
+        </Link>
 
-            <div className="flex items-center gap-4">
-              {visibleLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "text-sm font-medium transition-colors hover:text-primary rounded-md px-2 py-1",
-                    pathname === link.href
-                      ? "text-primary"
-                      : "text-muted-foreground",
-                    link.available ? "" : "bg-caution-stripes"
-                  )}
-                  style={disabledStyle(link)}
-                  aria-disabled={!link.available}
-                  onClick={(e) => {
-                    if (!link.available) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toast.info("This feature is not available yet.");
-                    }
-                  }}
-                  onDoubleClick={(e) => {
-                    if (!link.available) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setLinks((prev) =>
-                        prev.map((l) =>
-                          l.href === link.href ? { ...l, available: true } : l
-                        )
-                      );
-                      toast.success(`${link.label} unlocked`);
-                    }
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <ModeToggle />
-            </div>
-          </div>
+        {/* <span className="flex-1" /> */}
+        <nav className="hidden gap-1 rounded-full border border-line bg-surface p-1 md:flex">
+          {visibleLinks.map((link) =>
+            renderLink(link, "min-h-10 px-4 text-sm"),
+          )}
+        </nav>
+
+        <span className="flex-1" />
+
+        {signedIn && (
+          <span
+            className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex"
+            title={
+              isConnected ? t("nav.liveTooltip") : t("nav.offlineTooltip")
+            }
+          >
+            <span
+              className={cn(
+                "h-[7px] w-[7px] rounded-full",
+                isConnected ? "bg-primary" : "bg-muted-foreground/50",
+              )}
+            />
+            {isConnected ? t("nav.live") : t("nav.offline")}
+          </span>
+        )}
+
+        <ThemeMenu />
+
+        {signedIn && (
+          <Link
+            href="/profile"
+            className="hidden items-center gap-2.5 text-[13px] text-muted-foreground hover:text-foreground sm:flex"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ac-soft text-xs font-bold text-ac-dark">
+              {initialsFromName(navName)}
+            </span>
+            <span className="max-w-[10ch] truncate">
+              {navName?.split(" ")[0] ?? t("nav.account")}
+            </span>
+          </Link>
+        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="md:hidden"
+          aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
+          aria-expanded={mobileOpen}
+          onClick={() => setMobileOpen((open) => !open)}
+        >
+          {mobileOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
+        </Button>
+      </div>
+
+      {/* Mobile menu panel */}
+      {mobileOpen && (
+        <div className="flex flex-col gap-1 border-t border-line px-4 py-2 md:hidden">
+          {visibleLinks.map((link) =>
+            renderLink(link, "min-h-12 justify-start px-4 text-base"),
+          )}
         </div>
-      </nav>
-    </>
+      )}
+    </header>
   );
 }

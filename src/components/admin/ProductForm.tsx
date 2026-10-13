@@ -25,11 +25,18 @@ import { useAppStore } from "@/store";
 import { Drink, DrinkOption } from "@/types";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 import {
   mapDefinitionToDrinkOption,
   type DrinkOptionDefinitionApi,
 } from "@/lib/drinkOptions";
 import { CafeIcon } from "@/components/CafeIcon";
+import {
+  categoryName as categoryLabelSingular,
+  subtypeLabel,
+  t as translate,
+  useTranslation,
+} from "@/i18n";
 import {
   DEFAULT_PRODUCT_IMAGE,
   isDefaultProductImageUrl,
@@ -52,13 +59,23 @@ interface ProductFormProps {
   onSuccess?: () => void;
 }
 
-const formSchema = z.object({
-  category: z.string().min(1, "Category is required"),
-  subtype: z.string().optional(),
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  price: z.string().min(1, "Price is required"),
-});
+/**
+ * Built lazily so the messages are read in the language on screen: a schema
+ * evaluated at module load would freeze whichever language was active when the
+ * bundle was first touched.
+ */
+const buildFormSchema = () =>
+  z.object({
+    category: z.string().min(1, translate("manage.productForm.categoryRequired")),
+    subtype: z.string().optional(),
+    name: z.string().min(1, translate("manage.productForm.nameRequired")),
+    nameLt: z.string().optional(),
+    nameRu: z.string().optional(),
+    description: z.string().optional(),
+    price: z.string().min(1, translate("manage.productForm.priceRequired")),
+  });
+
+const formSchema = buildFormSchema();
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -107,10 +124,9 @@ export function ProductForm({
   defaultCategory,
   onSuccess,
 }: ProductFormProps) {
-  const createDrinkApi = useAppStore((state) => state.createDrinkApi);
-  const updateDrinkApi = useAppStore((state) => state.updateDrinkApi);
-  const createDessertApi = useAppStore((state) => state.createDessertApi);
-  const updateDessertApi = useAppStore((state) => state.updateDessertApi);
+  const { t } = useTranslation();
+  const createProductApi = useAppStore((state) => state.createProductApi);
+  const updateProductApi = useAppStore((state) => state.updateProductApi);
   const uploadProductImage = useAppStore((state) => state.uploadProductImage);
 
   const isEditing = !!product;
@@ -127,11 +143,13 @@ export function ProductForm({
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(buildFormSchema()),
     defaultValues: {
       category: initialCategory,
       subtype: "",
       name: product?.name || "",
+      nameLt: product?.nameLt || "",
+      nameRu: product?.nameRu || "",
       description: product?.description || "",
       price: product?.price != null ? String(product.price) : "",
     },
@@ -146,6 +164,8 @@ export function ProductForm({
       category: resolveInitialCategory(product, defaultCategory),
       subtype: resolveInitialSubtype(product, drinkSubtypes),
       name: product?.name || "",
+      nameLt: product?.nameLt || "",
+      nameRu: product?.nameRu || "",
       description: product?.description || "",
       price: product?.price != null ? String(product.price) : "",
     });
@@ -154,7 +174,9 @@ export function ProductForm({
 
   useEffect(() => {
     if (!apiUrl) return;
-    fetchCategories(apiUrl)
+    // `force`: the module-scope cache can predate a category migration, and a
+    // stale list makes saving into a newly seeded category fail.
+    fetchCategories(apiUrl, true)
       .then((rows) => setDrinkSubtypes(getDrinkSubtypes(rows)))
       .catch(() => setDrinkSubtypes([]));
   }, [apiUrl]);
@@ -172,8 +194,7 @@ export function ProductForm({
 
   useEffect(() => {
     if (!apiUrl) return;
-    fetch(`${apiUrl}/api/drink-options`)
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<DrinkOptionDefinitionApi[]>("/api/drink-options", { auth: false })
       .then((data) => setCatalog(Array.isArray(data) ? data : []))
       .catch(() => setCatalog([]));
   }, [apiUrl]);
@@ -217,7 +238,7 @@ export function ProductForm({
   async function onSubmit(values: FormValues) {
     const price = parseFloat(values.price.toString());
     if (Number.isNaN(price)) {
-      toast.error("Invalid price");
+      toast.error(t("manage.productForm.invalidPrice"));
       return;
     }
 
@@ -227,7 +248,7 @@ export function ProductForm({
       PRODUCT_CATEGORY.DRINK
     );
     if (isDrinkCategory && !values.subtype) {
-      toast.error("Select a drink subtype");
+      toast.error(t("manage.productForm.selectSubtypeFirst"));
       return;
     }
     const subtypeId = values.subtype
@@ -238,6 +259,8 @@ export function ProductForm({
 
     const payload: Omit<Drink, "id"> = {
       name: values.name,
+      nameLt: values.nameLt || undefined,
+      nameRu: values.nameRu || undefined,
       description: values.description ?? "",
       price,
       imageUrl: product?.imageUrl ?? DEFAULT_PRODUCT_IMAGE,
@@ -247,28 +270,18 @@ export function ProductForm({
       categoryId: subtypeRow?.id,
     };
 
+    // One path for every category. Drink, Dessert, Meal and Other differ only in
+    // which `categories` row they resolve to, which the store works out.
     try {
       if (product) {
-        if (isProductCategory(selectedCategory, PRODUCT_CATEGORY.DRINK)) {
-          await updateDrinkApi(product.id, payload);
-        } else if (
-          isProductCategory(selectedCategory, PRODUCT_CATEGORY.DESSERT)
-        ) {
-          await updateDessertApi(product.id, {
-            ...payload,
-            availableOptions: [],
-          });
-        } else {
-          toast.error("Meal editing is not available yet.");
-          return;
-        }
+        await updateProductApi(product.id, payload);
         if (imageFile) {
           await uploadProductImage(product.id, imageFile);
           setImageFile(null);
         }
-        toast.success("Item updated");
-      } else if (isProductCategory(selectedCategory, PRODUCT_CATEGORY.DRINK)) {
-        const created = await createDrinkApi(payload);
+        toast.success(t("manage.productForm.itemUpdated"));
+      } else {
+        const created = await createProductApi(payload);
         if (imageFile) {
           await uploadProductImage(created.id, imageFile);
           setImageFile(null);
@@ -276,46 +289,37 @@ export function ProductForm({
         form.reset({
           category: selectedCategory,
           subtype:
-            drinkSubtypes.length > 0 ? String(drinkSubtypes[0].id) : "",
+            isDrinkCategory && drinkSubtypes.length > 0
+              ? String(drinkSubtypes[0].id)
+              : "",
           name: "",
+          nameLt: "",
+          nameRu: "",
           description: "",
           price: "",
         });
         setSelectedDefIds([]);
-        toast.success("Drink created");
-      } else if (
-        isProductCategory(selectedCategory, PRODUCT_CATEGORY.DESSERT)
-      ) {
-        const created = await createDessertApi({
-          ...payload,
-          availableOptions: [],
-        });
-        if (imageFile) {
-          await uploadProductImage(created.id, imageFile);
-          setImageFile(null);
-        }
-        form.reset({
-          category: selectedCategory,
-          name: "",
-          description: "",
-          price: "",
-        });
-        toast.success("Dessert created");
-      } else {
-        toast.error("Meal creation is not available yet.");
-        return;
+        toast.success(
+          t("manage.productForm.itemCreated", {
+            category: categoryLabelSingular(selectedCategory, t),
+          })
+        );
       }
       onSuccess?.();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to save menu item";
+        err instanceof Error ? err.message : t("manage.productForm.saveFailed");
       toast.error(message);
     }
   }
 
   const submitLabel = isEditing
-    ? "Update item"
-    : `Add ${category || "item"}`;
+    ? t("manage.productForm.updateItem")
+    : category
+      ? t("manage.productForm.addCategory", {
+          category: categoryLabelSingular(category, t),
+        })
+      : t("manage.productForm.addItem");
 
   return (
     <Form {...form}>
@@ -325,7 +329,7 @@ export function ProductForm({
           name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>{t("manage.productForm.category")}</FormLabel>
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
@@ -333,20 +337,22 @@ export function ProductForm({
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue
+                      placeholder={t("manage.productForm.selectCategory")}
+                    />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   {ADMIN_CREATABLE_CATEGORIES.map((name) => (
                     <SelectItem key={name} value={name}>
-                      {name}
+                      {categoryLabelSingular(name, t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {isEditing ? (
                 <FormDescription className="text-xs">
-                  Category cannot be changed when editing.
+                  {t("manage.productForm.categoryLocked")}
                 </FormDescription>
               ) : null}
             </FormItem>
@@ -367,7 +373,9 @@ export function ProductForm({
             )}
           </div>
           <div className="space-y-2 flex-1 min-w-0">
-            <FormLabel htmlFor="product-image">Photo</FormLabel>
+            <FormLabel htmlFor="product-image">
+              {t("manage.productForm.photo")}
+            </FormLabel>
             <Input
               id="product-image"
               type="file"
@@ -379,8 +387,7 @@ export function ProductForm({
               }}
             />
             <p className="text-xs text-muted-foreground">
-              JPEG, PNG, GIF, or WebP · max 5 MB. Saved after you submit the
-              form.
+              {t("manage.productForm.photoHint")}
             </p>
           </div>
         </div>
@@ -390,7 +397,36 @@ export function ProductForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>{t("common.name")}</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="nameLt"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("manage.productForm.nameLt")}</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormDescription className="text-xs">
+                {t("manage.productForm.translationHint")}
+              </FormDescription>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="nameRu"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("manage.productForm.nameRu")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -403,7 +439,7 @@ export function ProductForm({
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{t("common.description")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -416,7 +452,7 @@ export function ProductForm({
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Price</FormLabel>
+              <FormLabel>{t("common.price")}</FormLabel>
               <FormControl>
                 <Input type="number" step="0.01" {...field} />
               </FormControl>
@@ -430,7 +466,7 @@ export function ProductForm({
             name="subtype"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Drink subtype</FormLabel>
+                <FormLabel>{t("manage.productForm.drinkSubtype")}</FormLabel>
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
@@ -441,8 +477,8 @@ export function ProductForm({
                       <SelectValue
                         placeholder={
                           drinkSubtypes.length
-                            ? "Select subtype"
-                            : "No subtypes — run DB migration"
+                            ? t("manage.productForm.selectSubtype")
+                            : t("manage.productForm.noSubtypes")
                         }
                       />
                     </SelectTrigger>
@@ -450,13 +486,13 @@ export function ProductForm({
                   <SelectContent>
                     {drinkSubtypes.map((st) => (
                       <SelectItem key={st.id} value={String(st.id)}>
-                        {st.name}
+                        {subtypeLabel(st.name, t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <FormDescription className="text-xs">
-                  e.g. Coffee, Other drinks, Season drinks
+                  {t("manage.productForm.subtypeHint")}
                 </FormDescription>
               </FormItem>
             )}
@@ -466,20 +502,20 @@ export function ProductForm({
         {isDrink ? (
           <div className="space-y-3">
             <div>
-              <FormLabel>Options for this drink</FormLabel>
+              <FormLabel>
+                {t("manage.productForm.optionsForDrink")}
+              </FormLabel>
               <FormDescription className="text-xs">
-                Create reusable options in the catalog above, then tick the ones
-                this drink should offer.
+                {t("manage.productForm.optionsHint")}
               </FormDescription>
             </div>
             {!apiUrl ? (
               <p className="text-sm text-muted-foreground">
-                API URL not configured; options cannot be loaded.
+                {t("manage.productForm.optionsUnavailable")}
               </p>
             ) : catalog.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No catalog options yet. Add some in &quot;Reusable drink
-                options&quot; first.
+                {t("manage.productForm.noCatalogOptions")}
               </p>
             ) : (
               <div className="space-y-2 rounded-lg border p-3">
@@ -497,9 +533,14 @@ export function ProductForm({
                       {def.name}
                       <span className="text-muted-foreground font-normal">
                         {" "}
-                        ({def.type === "checkbox" ? "checkbox" : "picklist"}
+                        (
+                        {def.type === "checkbox"
+                          ? t("manage.productForm.typeCheckbox")
+                          : t("manage.productForm.typePicklist")}
                         {def.type === "select" && def.values.length
-                          ? ` · ${def.values.length} choices`
+                          ? ` · ${t("manage.productForm.choiceCount", {
+                              count: def.values.length,
+                            })}`
                           : ""}
                         )
                       </span>
