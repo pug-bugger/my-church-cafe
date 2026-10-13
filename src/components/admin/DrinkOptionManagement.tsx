@@ -21,12 +21,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type {
   DrinkOptionDefinitionApi,
   DrinkOptionValueApi,
 } from "@/lib/drinkOptions";
 import { toast } from "sonner";
-import { PlusIcon, Trash2, X } from "lucide-react";
+import { Pencil, PlusIcon, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useTranslation } from "@/i18n";
 import { formatPrice } from "@/lib/format";
@@ -45,6 +53,16 @@ type ValueToDelete = {
   value: DrinkOptionValueApi;
   definition: DrinkOptionDefinitionApi;
 };
+
+/** An option's name or one choice's label, being renamed. */
+type RenameTarget = {
+  kind: "option" | "choice";
+  id: number;
+  current: string;
+};
+
+/** Matches the `VARCHAR(100)` of both columns, which the server also enforces. */
+const NAME_MAX_LENGTH = 100;
 
 /**
  * Parse a price typed into an admin field. Returns null when it isn't a usable
@@ -90,6 +108,9 @@ export function DrinkOptionManagement() {
   >({});
   const [savingPriceId, setSavingPriceId] = useState<string | null>(null);
   const [savingDefaultId, setSavingDefaultId] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -283,6 +304,57 @@ export function DrinkOptionManagement() {
       );
     } finally {
       setSavingDefaultId(null);
+    }
+  }
+
+  function openRename(target: RenameTarget) {
+    setRenameDraft(target.current);
+    setRenameTarget(target);
+  }
+
+  /**
+   * Rename an option or one of its choices. Options are shared, so this changes
+   * the wording on every product offering it; past orders keep their own copy.
+   */
+  async function saveRename(e: React.FormEvent) {
+    e.preventDefault();
+    if (!renameTarget) return;
+    const next = renameDraft.trim();
+    if (!next) {
+      toast.error(
+        t(
+          renameTarget.kind === "option"
+            ? "manage.option.nameRequired"
+            : "manage.option.enterLabel",
+        ),
+      );
+      return;
+    }
+    if (next === renameTarget.current) {
+      setRenameTarget(null);
+      return;
+    }
+    setRenaming(true);
+    try {
+      await apiFetch(
+        renameTarget.kind === "option"
+          ? `/api/drink-options/${renameTarget.id}`
+          : `/api/drink-options/values/${renameTarget.id}`,
+        {
+          method: "PUT",
+          body: renameTarget.kind === "option" ? { name: next } : { label: next },
+          auth: true,
+        },
+      );
+      toast.success(t("manage.option.renamed"));
+      setRenameTarget(null);
+      await load();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : t("manage.option.actionFailed"),
+      );
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -536,7 +608,27 @@ export function DrinkOptionManagement() {
                   className="rounded-lg border p-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{def.name}</p>
+                    <div className="flex items-center gap-1">
+                      <p className="font-medium break-words">{def.name}</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        aria-label={t("manage.option.renameNamed", {
+                          name: def.name,
+                        })}
+                        onClick={() =>
+                          openRename({
+                            kind: "option",
+                            id: def.id,
+                            current: def.name,
+                          })
+                        }
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                     <p className="text-xs text-muted-foreground font-mono">
                       {def.option_key} · {def.type}
                     </p>
@@ -611,7 +703,27 @@ export function DrinkOptionManagement() {
                             key={v.id}
                             className="flex items-center gap-2 flex-wrap"
                           >
-                            <span>{v.label}</span>
+                            <span className="inline-flex items-center gap-0.5">
+                              {v.label}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                aria-label={t("manage.option.renameNamed", {
+                                  name: v.label,
+                                })}
+                                onClick={() =>
+                                  openRename({
+                                    kind: "choice",
+                                    id: v.id,
+                                    current: v.label,
+                                  })
+                                }
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            </span>
                             <Input
                               type="number"
                               step="0.01"
@@ -817,6 +929,48 @@ export function DrinkOptionManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={!!renameTarget}
+        onOpenChange={(open) => !open && setRenameTarget(null)}
+      >
+        <DialogContent className="max-w-md">
+          <form onSubmit={saveRename} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>
+                {renameTarget?.kind === "choice"
+                  ? t("manage.option.renameChoiceTitle")
+                  : t("manage.option.renameOptionTitle")}
+              </DialogTitle>
+              <DialogDescription>
+                {t("manage.option.renameHint")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="opt-rename">{t("manage.option.newName")}</Label>
+              <Input
+                id="opt-rename"
+                autoFocus
+                maxLength={NAME_MAX_LENGTH}
+                value={renameDraft}
+                onChange={(e) => setRenameDraft(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRenameTarget(null)}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button type="submit" disabled={renaming}>
+                {renaming ? t("common.saving") : t("common.save")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Removing a choice is as permanent as removing the option itself, so it
           asks the same way rather than going on the first click. */}

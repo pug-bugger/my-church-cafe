@@ -947,6 +947,36 @@
       "en": "Remove this row",
       "lt": "Pašalinti šią eilutę",
       "ru": "Удалить эту строку"
+    },
+    "renameNamed": {
+      "en": "Rename {name}",
+      "lt": "Pervadinti: {name}",
+      "ru": "Переименовать: {name}"
+    },
+    "renameOptionTitle": {
+      "en": "Rename option",
+      "lt": "Pervadinti opciją",
+      "ru": "Переименовать опцию"
+    },
+    "renameChoiceTitle": {
+      "en": "Rename choice",
+      "lt": "Pervadinti pasirinkimą",
+      "ru": "Переименовать вариант"
+    },
+    "renameHint": {
+      "en": "Every product offering it changes at once. Past orders keep the name they were taken with.",
+      "lt": "Pasikeis visose prekėse, kurios ją siūlo. Ankstesni užsakymai išlaiko pavadinimą, su kuriuo buvo priimti.",
+      "ru": "Изменится сразу во всех товарах, где она есть. В прошлых заказах останется прежнее название."
+    },
+    "newName": {
+      "en": "New name",
+      "lt": "Naujas pavadinimas",
+      "ru": "Новое название"
+    },
+    "renamed": {
+      "en": "Renamed",
+      "lt": "Pervadinta",
+      "ru": "Переименовано"
     }
   },
   "user": {
