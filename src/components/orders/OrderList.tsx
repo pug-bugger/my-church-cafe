@@ -18,12 +18,11 @@ import { cn } from "@/lib/utils";
 import { usePresentationMode } from "@/hooks/usePresentationMode";
 import { PresentButton } from "@/components/PresentButton";
 
-// Guests have no realtime socket connection (that requires a JWT), so the
-// board polls instead while unauthenticated. Signed-in screens still poll,
-// more slowly, as a safety net: a wall-mounted TV whose socket has silently
-// dropped would otherwise never update again.
-const GUEST_POLL_INTERVAL_MS = 5000;
-const SIGNED_IN_POLL_INTERVAL_MS = 30000;
+// Guests have no realtime socket connection (that requires a JWT), and a
+// signed-in wall-mounted TV can't be trusted to keep one either — the Samsung
+// (Tizen) browser drops it silently. So every board polls on the same short
+// interval, and socket events just make an update land sooner.
+const POLL_INTERVAL_MS = 5000;
 
 /** Matches Tailwind's `md:` — where the two boards sit side by side. */
 const SIDE_BY_SIDE_QUERY = "(min-width: 768px)";
@@ -202,12 +201,10 @@ export function OrderList() {
   const orders = useAppStore((state) => state.orders);
   const setOrders = useAppStore((state) => state.setOrders);
   const { ordersRefreshKey } = useWebSocket();
-  const [isGuest, setIsGuest] = useState(false);
   const { rootRef, presenting, togglePresenting } = usePresentationMode();
 
   const fetchOrders = useCallback(async () => {
     const token = getAuthToken();
-    setIsGuest(!token);
     try {
       const path = token
         ? "/api/orders"
@@ -228,12 +225,9 @@ export function OrderList() {
   }, [fetchOrders, ordersRefreshKey]);
 
   useEffect(() => {
-    const interval = setInterval(
-      fetchOrders,
-      isGuest ? GUEST_POLL_INTERVAL_MS : SIGNED_IN_POLL_INTERVAL_MS,
-    );
+    const interval = setInterval(fetchOrders, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [isGuest, fetchOrders]);
+  }, [fetchOrders]);
 
   // Catch up straight away when the screen wakes or the tab comes back,
   // rather than waiting out the rest of the interval.
