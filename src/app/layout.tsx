@@ -4,6 +4,7 @@ import "./globals.css";
 import { WebSocketProvider } from "@/context/WebSocketContext";
 import { Toaster } from "@/components/ui/sonner";
 import { Navigation } from "@/components/Navigation";
+import { SessionKeeper } from "@/components/SessionKeeper";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider, languageInitScript } from "@/i18n";
 import { ProductLanguageProvider } from "@/context/ProductLanguageContext";
@@ -52,6 +53,7 @@ export default function RootLayout({
                 </main>
               </div>
               <Toaster />
+              <SessionKeeper />
             </WebSocketProvider>
             </ProductLanguageProvider>
           </LanguageProvider>

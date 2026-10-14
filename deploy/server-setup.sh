@@ -118,7 +118,7 @@ DB_PASSWORD=$DB_PASSWORD
 DB_NAME=$DB_NAME
 
 JWT_SECRET=$JWT_SECRET
-JWT_EXPIRES_IN=7d
+SESSION_IDLE_DAYS=60
 
 # Both processes are served from one origin, so this is the only allowed one.
 CORS_ORIGIN=https://$DOMAIN

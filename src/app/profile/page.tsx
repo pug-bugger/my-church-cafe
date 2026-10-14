@@ -36,6 +36,7 @@ import {
 } from "@/i18n";
 import { formatDate as formatLocaleDate, formatPrice, initialsFromName } from "@/lib/format";
 import {
+  AUTH_EVENT,
   getAuthToken,
   getStoredUser,
   setAuthSession,
@@ -478,6 +479,10 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetchToken();
+    // The session can change under this page: renewed by SessionKeeper, or
+    // ended because the app went unopened too long.
+    window.addEventListener(AUTH_EVENT, fetchToken);
+    return () => window.removeEventListener(AUTH_EVENT, fetchToken);
   }, [fetchToken]);
 
   useEffect(() => {
