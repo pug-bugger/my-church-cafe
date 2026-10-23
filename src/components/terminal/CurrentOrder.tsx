@@ -181,7 +181,8 @@ export function CurrentOrder() {
               if (!drink) return null;
               const summary = describeSelectedOptions(
                 drink.availableOptions,
-                item.selectedOptions
+                item.selectedOptions,
+                primaryLang
               );
               const detail = [summary, item.comment]
                 .filter(Boolean)

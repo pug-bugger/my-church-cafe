@@ -968,10 +968,15 @@
       "lt": "Pasikeis visose prekėse, kurios ją siūlo. Ankstesni užsakymai išlaiko pavadinimą, su kuriuo buvo priimti.",
       "ru": "Изменится сразу во всех товарах, где она есть. В прошлых заказах останется прежнее название."
     },
-    "newName": {
-      "en": "New name",
-      "lt": "Naujas pavadinimas",
-      "ru": "Новое название"
+    "englishName": {
+      "en": "English name",
+      "lt": "Pavadinimas angliškai",
+      "ru": "Название на английском"
+    },
+    "translationsHint": {
+      "en": "Orders keep the English name and the kitchen ticket always prints it. The translations are optional and shown on devices whose product language is set to them.",
+      "lt": "Užsakymuose išsaugomas angliškas pavadinimas, ir virtuvės čekyje visada spausdinamas jis. Vertimai neprivalomi — jie rodomi įrenginiuose, kurių produktų kalba nustatyta šia kalba.",
+      "ru": "В заказах сохраняется английское название, и на кухонном чеке всегда печатается оно. Переводы необязательны — они показываются на устройствах, где выбран этот язык продуктов."
     },
     "renamed": {
       "en": "Renamed",

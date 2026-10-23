@@ -27,9 +27,11 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import {
+  definitionName,
   mapDefinitionToDrinkOption,
   type DrinkOptionDefinitionApi,
 } from "@/lib/drinkOptions";
+import { useProductLanguage } from "@/context/ProductLanguageContext";
 import { CafeIcon } from "@/components/CafeIcon";
 import {
   categoryName as categoryLabelSingular,
@@ -125,6 +127,7 @@ export function ProductForm({
   onSuccess,
 }: ProductFormProps) {
   const { t } = useTranslation();
+  const { primaryLang } = useProductLanguage();
   const createProductApi = useAppStore((state) => state.createProductApi);
   const updateProductApi = useAppStore((state) => state.updateProductApi);
   const uploadProductImage = useAppStore((state) => state.uploadProductImage);
@@ -530,7 +533,7 @@ export function ProductForm({
                       htmlFor={`def-${def.id}`}
                       className="text-sm font-medium leading-none cursor-pointer"
                     >
-                      {def.name}
+                      {definitionName(def, primaryLang)}
                       <span className="text-muted-foreground font-normal">
                         {" "}
                         (

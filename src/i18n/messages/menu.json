@@ -63,5 +63,31 @@
     "en": "sold out today",
     "lt": "šiandien išparduota",
     "ru": "сегодня нет"
+  },
+  "columns": {
+    "en": "Columns",
+    "lt": "Stulpeliai",
+    "ru": "Колонки"
+  },
+  "columnsAuto": {
+    "en": "Auto",
+    "lt": "Auto",
+    "ru": "Авто"
+  },
+  "columnsCount": {
+    "en": {
+      "one": "{count} column",
+      "other": "{count} columns"
+    },
+    "lt": {
+      "one": "{count} stulpelis",
+      "few": "{count} stulpeliai",
+      "other": "{count} stulpelių"
+    },
+    "ru": {
+      "one": "{count} колонка",
+      "few": "{count} колонки",
+      "many": "{count} колонок"
+    }
   }
 }

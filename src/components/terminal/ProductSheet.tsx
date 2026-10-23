@@ -10,8 +10,12 @@ import type { Drink, DrinkOption, OrderItem } from "@/types";
 import { cn, generateId } from "@/lib/utils";
 import { useTranslation, type TranslateFn } from "@/i18n";
 import { formatPrice } from "@/lib/format";
-import { lineUnitPrice } from "@/lib/drinkOptions";
-import { useProductDisplayName } from "@/context/ProductLanguageContext";
+import { choiceLabel, lineUnitPrice, optionName } from "@/lib/drinkOptions";
+import {
+  useProductDisplayName,
+  useProductLanguage,
+} from "@/context/ProductLanguageContext";
+import type { LocaleId } from "@/i18n/locales";
 import { EyeClockIcon } from "@/components/icons/EyeClockIcon";
 import { isCheckboxAvailable, isValueAvailable } from "@/lib/availability";
 
@@ -83,7 +87,16 @@ type Choice = {
   target?: { definitionId: string; valueId?: number };
 };
 
-function choicesFor(option: DrinkOption, t: TranslateFn): Choice[] {
+/**
+ * `label` is what the pill shows, in the device's product language; `value` is
+ * what the order carries — always the English label, so the kitchen ticket
+ * prints English whatever the terminal was showing.
+ */
+function choicesFor(
+  option: DrinkOption,
+  t: TranslateFn,
+  lang: LocaleId
+): Choice[] {
   if (option.type === "checkbox") {
     // The only two choices the app words itself; every other label is an
     // option value an admin typed, and stays as typed.
@@ -104,7 +117,7 @@ function choicesFor(option: DrinkOption, t: TranslateFn): Choice[] {
     ];
   }
   return option.values.map((v) => ({
-    label: v.label,
+    label: choiceLabel(v, lang),
     value: v.label,
     extraPrice: v.extraPrice,
     available: isValueAvailable(v),
@@ -120,6 +133,7 @@ function targetKey(target: { definitionId: string; valueId?: number }): string {
 
 export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
   const { t } = useTranslation();
+  const { primaryLang } = useProductLanguage();
   const addDraftItem = useAppStore((state) => state.addDraftItem);
   const updateDraftItem = useAppStore((state) => state.updateDraftItem);
   const setOptionAvailableApi = useAppStore(
@@ -166,7 +180,7 @@ export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
       let changed = false;
       const next = { ...prev };
       for (const option of options) {
-        const current = choicesFor(option, t).find(
+        const current = choicesFor(option, t, primaryLang).find(
           (c) => c.value === prev[option.id]
         );
         if (current && !current.available) {
@@ -176,12 +190,12 @@ export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
       }
       return changed ? next : prev;
     });
-  }, [options, t]);
+  }, [options, t, primaryLang]);
 
   if (!product) return null;
 
   const canManage = options.some((option) =>
-    choicesFor(option, t).some((choice) => choice.target)
+    choicesFor(option, t, primaryLang).some((choice) => choice.target)
   );
 
   const toggleChoice = async (choice: Choice) => {
@@ -191,8 +205,12 @@ export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
     const name =
       choice.target.valueId != null
         ? choice.label
-        : options.find((o) => o.id === choice.target?.definitionId)?.name ??
-          choice.label;
+        : (() => {
+            const option = options.find(
+              (o) => o.id === choice.target?.definitionId
+            );
+            return option ? optionName(option, primaryLang) : choice.label;
+          })();
     setPending((prev) => new Set(prev).add(key));
     try {
       await setOptionAvailableApi(choice.target, available);
@@ -312,10 +330,10 @@ export function ProductSheet({ product, editing, onClose }: ProductSheetProps) {
             {options.map((option) => (
               <div key={option.id}>
                 <div className="mb-2.5 text-[13px] font-semibold text-muted-foreground">
-                  {option.name}
+                  {optionName(option, primaryLang)}
                 </div>
                 <div className="flex flex-wrap gap-2.5">
-                  {choicesFor(option, t).map((choice) => {
+                  {choicesFor(option, t, primaryLang).map((choice) => {
                     // While managing, the pills show sale state, not the pick.
                     const selected =
                       !managing && picks[option.id] === choice.value;

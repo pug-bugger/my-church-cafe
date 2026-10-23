@@ -28,6 +28,8 @@ import {
 } from "@/i18n";
 import { formatPrice } from "@/lib/format";
 import { getLocalizedName, getSecondaryNames } from "@/lib/productName";
+import { optionName } from "@/lib/drinkOptions";
+import type { LocaleId } from "@/i18n/locales";
 import { useProductLanguage } from "@/context/ProductLanguageContext";
 import { drinkSubtypeLabel } from "@/lib/drinkSubtypeGroups";
 import { useDrinkSubtypeOrder } from "@/hooks/useDrinkSubtypeOrder";
@@ -98,9 +100,12 @@ function statusOf(
   };
 }
 
-/** Option names are admin-typed rows, so they are listed as they were typed. */
-function optionsLabel(product: Drink): string {
-  const names = product.availableOptions.map((o) => o.name);
+/**
+ * Option names are admin-typed rows, so they are listed as they were typed —
+ * in the device's product language when the admin gave one.
+ */
+function optionsLabel(product: Drink, lang: LocaleId): string {
+  const names = product.availableOptions.map((o) => optionName(o, lang));
   return names.length ? names.join(", ") : "—";
 }
 
@@ -492,7 +497,7 @@ export function ProductTable() {
                       {formatPrice(product.price)}
                     </td>
                     <td className="p-3.5 text-xs text-muted-foreground">
-                      {optionsLabel(product)}
+                      {optionsLabel(product, primaryLang)}
                     </td>
                     <td className="p-3.5">
                       <span

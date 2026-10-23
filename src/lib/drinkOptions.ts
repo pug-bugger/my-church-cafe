@@ -1,8 +1,12 @@
-import type { DrinkOption } from "@/types";
+import type { DrinkOption, DrinkOptionValue } from "@/types";
+import type { LocaleId } from "@/i18n/locales";
+import { getLocalizedName } from "@/lib/productName";
 
 export type DrinkOptionValueApi = {
   id: number;
   label: string;
+  label_lt?: string | null;
+  label_ru?: string | null;
   extra_price: number;
   /** The choice this option opens on; at most one per definition. */
   is_default?: boolean;
@@ -13,6 +17,8 @@ export type DrinkOptionValueApi = {
 export type DrinkOptionDefinitionApi = {
   id: number;
   name: string;
+  name_lt?: string | null;
+  name_ru?: string | null;
   option_key: string;
   type: "checkbox" | "select";
   checkbox_extra_price: number;
@@ -30,6 +36,8 @@ export function mapDefinitionToDrinkOption(
   return {
     id: String(d.id),
     name: d.name,
+    nameLt: d.name_lt || undefined,
+    nameRu: d.name_ru || undefined,
     type: d.type === "checkbox" ? "checkbox" : "custom",
     // The surcharge travels with the label: the terminal has to show it, and
     // the draft total has to include it. (It used to be dropped here, which is
@@ -37,6 +45,8 @@ export function mapDefinitionToDrinkOption(
     values: (d.values ?? []).map((v) => ({
       id: v.id,
       label: v.label,
+      labelLt: v.label_lt || undefined,
+      labelRu: v.label_ru || undefined,
       extraPrice: Number(v.extra_price ?? 0),
       unavailableUntil: v.unavailable_until ?? null,
     })),
@@ -61,23 +71,54 @@ export function mapProductApiToDrinkOptions(
   );
 }
 
+/** An option's name in the device's product language, falling back to English. */
+export function optionName(option: DrinkOption, lang: LocaleId): string {
+  return getLocalizedName(option, lang);
+}
+
+/** Same, for an option definition straight from the API (the Manage screens). */
+export function definitionName(
+  def: Pick<DrinkOptionDefinitionApi, "name" | "name_lt" | "name_ru">,
+  lang: LocaleId,
+): string {
+  return getLocalizedName(
+    { name: def.name, nameLt: def.name_lt ?? undefined, nameRu: def.name_ru ?? undefined },
+    lang,
+  );
+}
+
+/**
+ * One choice's label in the device's product language. Display only: the
+ * selection itself always holds the English `label`, which is what the order
+ * sends and the kitchen ticket prints.
+ */
+export function choiceLabel(value: DrinkOptionValue, lang: LocaleId): string {
+  return getLocalizedName(
+    { name: value.label, nameLt: value.labelLt, nameRu: value.labelRu },
+    lang,
+  );
+}
+
 /**
  * One-line summary of the chosen options, e.g. `"Oat Milk · Large · Take away"`.
  * Select-style options contribute their value; checkbox options contribute
  * their name only when switched on. Mirrors the design canvas' `optionText`.
+ * With `lang`, names and labels are shown in that product language.
  */
 export function describeSelectedOptions(
   options: DrinkOption[],
-  selected: Record<string, string>
+  selected: Record<string, string>,
+  lang: LocaleId = "en"
 ): string {
   const parts: string[] = [];
   for (const option of options) {
     const value = selected[option.id];
     if (!value) continue;
     if (option.type === "checkbox") {
-      if (value === "true") parts.push(option.name);
+      if (value === "true") parts.push(optionName(option, lang));
     } else if (value !== "false") {
-      parts.push(value);
+      const choice = option.values.find((v) => v.label === value);
+      parts.push(choice ? choiceLabel(choice, lang) : value);
     }
   }
   return parts.join(" · ");

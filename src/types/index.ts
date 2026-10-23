@@ -2,7 +2,13 @@
 export type DrinkOptionValue = {
   /** `drink_option_values.id` — what a "sold out" toggle is sent against. */
   id?: number;
+  /**
+   * The canonical English label — what the order sends and the kitchen ticket
+   * prints. `labelLt` / `labelRu` are display-only translations.
+   */
   label: string;
+  labelLt?: string;
+  labelRu?: string;
   /** Surcharge in euros; 0 for most choices. */
   extraPrice: number;
   /** Sold out until this moment (ISO); absent or null when it can be picked. */
@@ -11,7 +17,10 @@ export type DrinkOptionValue = {
 
 export type DrinkOption = {
   id: string;
+  /** Canonical English name, as printed on the ticket; translations below. */
   name: string;
+  nameLt?: string;
+  nameRu?: string;
   type: 'sugar' | 'temperature' | 'size' | 'custom' | 'checkbox';
   /** Choices for select-style options; empty for checkbox-only options */
   values: DrinkOptionValue[];

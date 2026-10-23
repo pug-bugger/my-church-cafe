@@ -39,14 +39,27 @@ import { apiFetch } from "@/lib/api";
 import { useTranslation } from "@/i18n";
 import { formatPrice } from "@/lib/format";
 
-type NewValueRow = { label: string; extra_price: string; is_default?: boolean };
+type NewValueRow = {
+  label: string;
+  label_lt: string;
+  label_ru: string;
+  extra_price: string;
+  is_default?: boolean;
+};
 
 /** The empty add-a-choice form. A function so every reset gets a fresh object. */
 const emptyValueRow = (): NewValueRow => ({
   label: "",
+  label_lt: "",
+  label_ru: "",
   extra_price: "0",
   is_default: false,
 });
+
+/** Lithuanian and Russian text, as typed into the admin fields. */
+type Translations = { lt: string; ru: string };
+
+const noTranslations = (): Translations => ({ lt: "", ru: "" });
 
 /** A choice queued for removal, with the option it belongs to (for the prompt). */
 type ValueToDelete = {
@@ -54,12 +67,22 @@ type ValueToDelete = {
   definition: DrinkOptionDefinitionApi;
 };
 
-/** An option's name or one choice's label, being renamed. */
+/**
+ * An option's name or one choice's label, being renamed. The English text is
+ * the one orders keep and the kitchen ticket prints; the translations are only
+ * shown on screen.
+ */
 type RenameTarget = {
   kind: "option" | "choice";
   id: number;
   current: string;
+  currentTranslations: Translations;
 };
+
+/** "LT · RU" under a name in the catalogue, or nothing when neither is set. */
+function translationsLine(lt?: string | null, ru?: string | null): string {
+  return [lt, ru].filter(Boolean).join(" · ");
+}
 
 /** Matches the `VARCHAR(100)` of both columns, which the server also enforces. */
 const NAME_MAX_LENGTH = 100;
@@ -75,11 +98,60 @@ function parsePrice(raw: string): number | null {
   return n;
 }
 
+/**
+ * The optional Lithuanian and Russian names under an English one. Display only:
+ * orders keep the English text, and the kitchen ticket prints it.
+ */
+function TranslationFields({
+  idPrefix,
+  value,
+  onChange,
+}: {
+  idPrefix: string;
+  value: Translations;
+  onChange: (next: Translations) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-lt`} className="text-xs">
+            {t("manage.productForm.nameLt")}
+          </Label>
+          <Input
+            id={`${idPrefix}-lt`}
+            maxLength={NAME_MAX_LENGTH}
+            value={value.lt}
+            onChange={(e) => onChange({ ...value, lt: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-ru`} className="text-xs">
+            {t("manage.productForm.nameRu")}
+          </Label>
+          <Input
+            id={`${idPrefix}-ru`}
+            maxLength={NAME_MAX_LENGTH}
+            value={value.ru}
+            onChange={(e) => onChange({ ...value, ru: e.target.value })}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {t("manage.option.translationsHint")}
+      </p>
+    </div>
+  );
+}
+
 export function DrinkOptionManagement() {
   const { t } = useTranslation();
   const [list, setList] = useState<DrinkOptionDefinitionApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
+  const [nameTranslations, setNameTranslations] =
+    useState<Translations>(noTranslations());
   const [type, setType] = useState<"checkbox" | "select">("select");
   const [checkboxExtra, setCheckboxExtra] = useState("0");
   const [checkboxDefault, setCheckboxDefault] = useState(false);
@@ -110,6 +182,8 @@ export function DrinkOptionManagement() {
   const [savingDefaultId, setSavingDefaultId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [renameTranslations, setRenameTranslations] =
+    useState<Translations>(noTranslations());
   const [renaming, setRenaming] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -165,6 +239,8 @@ export function DrinkOptionManagement() {
     try {
       const body: Record<string, unknown> = {
         name: name.trim(),
+        name_lt: nameTranslations.lt.trim(),
+        name_ru: nameTranslations.ru.trim(),
         type,
         checkbox_extra_price:
           type === "checkbox" ? Number(checkboxExtra) || 0 : 0,
@@ -175,6 +251,8 @@ export function DrinkOptionManagement() {
           .filter((r) => r.label.trim())
           .map((r, i) => ({
             label: r.label.trim(),
+            label_lt: r.label_lt.trim(),
+            label_ru: r.label_ru.trim(),
             extra_price: Number(r.extra_price) || 0,
             is_default: Boolean(r.is_default),
             sort_order: i,
@@ -187,6 +265,7 @@ export function DrinkOptionManagement() {
       });
       toast.success(t("manage.option.created"));
       setName("");
+      setNameTranslations(noTranslations());
       setCheckboxExtra("0");
       setCheckboxDefault(false);
       setValueRows([emptyValueRow()]);
@@ -225,6 +304,8 @@ export function DrinkOptionManagement() {
         method: "POST",
         body: {
           label: newValue.label.trim(),
+          label_lt: newValue.label_lt.trim(),
+          label_ru: newValue.label_ru.trim(),
           extra_price: Number(newValue.extra_price) || 0,
           is_default: Boolean(newValue.is_default),
         },
@@ -309,6 +390,7 @@ export function DrinkOptionManagement() {
 
   function openRename(target: RenameTarget) {
     setRenameDraft(target.current);
+    setRenameTranslations(target.currentTranslations);
     setRenameTarget(target);
   }
 
@@ -330,7 +412,10 @@ export function DrinkOptionManagement() {
       );
       return;
     }
-    if (next === renameTarget.current) {
+    const lt = renameTranslations.lt.trim();
+    const ru = renameTranslations.ru.trim();
+    const was = renameTarget.currentTranslations;
+    if (next === renameTarget.current && lt === was.lt && ru === was.ru) {
       setRenameTarget(null);
       return;
     }
@@ -342,7 +427,12 @@ export function DrinkOptionManagement() {
           : `/api/drink-options/values/${renameTarget.id}`,
         {
           method: "PUT",
-          body: renameTarget.kind === "option" ? { name: next } : { label: next },
+          // A blank translation is sent as "" — the server stores that as
+          // "none", and the screens fall back to the English text.
+          body:
+            renameTarget.kind === "option"
+              ? { name: next, name_lt: lt, name_ru: ru }
+              : { label: next, label_lt: lt, label_ru: ru },
           auth: true,
         },
       );
@@ -454,6 +544,11 @@ export function DrinkOptionManagement() {
               placeholder={t("manage.option.labelPlaceholder")}
             />
           </div>
+          <TranslationFields
+            idPrefix="opt-name"
+            value={nameTranslations}
+            onChange={setNameTranslations}
+          />
           <div className="space-y-2">
             <Label>{t("manage.option.type")}</Label>
             <Select
@@ -514,63 +609,89 @@ export function DrinkOptionManagement() {
                 {t("manage.option.defaultChoiceHint")}
               </p>
               {valueRows.map((row, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <Input
-                    placeholder={t("manage.option.choiceLabelPlaceholder")}
-                    value={row.label}
-                    onChange={(e) => {
-                      const next = [...valueRows];
-                      next[i] = { ...next[i], label: e.target.value };
-                      setValueRows(next);
-                    }}
-                  />
-                  <Input
-                    className="w-28"
-                    type="number"
-                    step="0.01"
-                    placeholder={t("manage.option.extraPlaceholder")}
-                    value={row.extra_price}
-                    onChange={(e) => {
-                      const next = [...valueRows];
-                      next[i] = {
-                        ...next[i],
-                        extra_price: e.target.value,
-                      };
-                      setValueRows(next);
-                    }}
-                  />
-                  {/* An option has at most one default, so ticking a row
-                      unticks the rest — the same rule the server enforces —
-                      but unlike a radio group this can be cleared again. */}
-                  <label className="flex flex-none items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(row.is_default)}
-                      onChange={(e) =>
-                        setValueRows(
-                          valueRows.map((r, j) => ({
-                            ...r,
-                            is_default: e.target.checked && i === j,
-                          })),
-                        )
-                      }
-                      className="h-4 w-4 accent-[rgb(var(--ac))]"
+                <div key={i} className="space-y-2 rounded-lg border p-2">
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      placeholder={t("manage.option.choiceLabelPlaceholder")}
+                      value={row.label}
+                      onChange={(e) => {
+                        const next = [...valueRows];
+                        next[i] = { ...next[i], label: e.target.value };
+                        setValueRows(next);
+                      }}
                     />
-                    {t("manage.option.defaultChoice")}
-                  </label>
-                  {valueRows.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("manage.option.removeRow")}
-                      onClick={() =>
-                        setValueRows(valueRows.filter((_, j) => j !== i))
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                    <Input
+                      className="w-28"
+                      type="number"
+                      step="0.01"
+                      placeholder={t("manage.option.extraPlaceholder")}
+                      value={row.extra_price}
+                      onChange={(e) => {
+                        const next = [...valueRows];
+                        next[i] = {
+                          ...next[i],
+                          extra_price: e.target.value,
+                        };
+                        setValueRows(next);
+                      }}
+                    />
+                    {/* An option has at most one default, so ticking a row
+                        unticks the rest — the same rule the server enforces —
+                        but unlike a radio group this can be cleared again. */}
+                    <label className="flex flex-none items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(row.is_default)}
+                        onChange={(e) =>
+                          setValueRows(
+                            valueRows.map((r, j) => ({
+                              ...r,
+                              is_default: e.target.checked && i === j,
+                            })),
+                          )
+                        }
+                        className="h-4 w-4 accent-[rgb(var(--ac))]"
+                      />
+                      {t("manage.option.defaultChoice")}
+                    </label>
+                    {valueRows.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t("manage.option.removeRow")}
+                        onClick={() =>
+                          setValueRows(valueRows.filter((_, j) => j !== i))
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Input
+                      placeholder={t("manage.productForm.nameLt")}
+                      aria-label={t("manage.productForm.nameLt")}
+                      maxLength={NAME_MAX_LENGTH}
+                      value={row.label_lt}
+                      onChange={(e) => {
+                        const next = [...valueRows];
+                        next[i] = { ...next[i], label_lt: e.target.value };
+                        setValueRows(next);
+                      }}
+                    />
+                    <Input
+                      placeholder={t("manage.productForm.nameRu")}
+                      aria-label={t("manage.productForm.nameRu")}
+                      maxLength={NAME_MAX_LENGTH}
+                      value={row.label_ru}
+                      onChange={(e) => {
+                        const next = [...valueRows];
+                        next[i] = { ...next[i], label_ru: e.target.value };
+                        setValueRows(next);
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
               <Button
@@ -623,12 +744,21 @@ export function DrinkOptionManagement() {
                             kind: "option",
                             id: def.id,
                             current: def.name,
+                            currentTranslations: {
+                              lt: def.name_lt ?? "",
+                              ru: def.name_ru ?? "",
+                            },
                           })
                         }
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                     </div>
+                    {translationsLine(def.name_lt, def.name_ru) ? (
+                      <p className="text-sm text-muted-foreground break-words">
+                        {translationsLine(def.name_lt, def.name_ru)}
+                      </p>
+                    ) : null}
                     <p className="text-xs text-muted-foreground font-mono">
                       {def.option_key} · {def.type}
                     </p>
@@ -705,6 +835,11 @@ export function DrinkOptionManagement() {
                           >
                             <span className="inline-flex items-center gap-0.5">
                               {v.label}
+                              {translationsLine(v.label_lt, v.label_ru) ? (
+                                <span className="ml-1 text-xs text-muted-foreground">
+                                  {translationsLine(v.label_lt, v.label_ru)}
+                                </span>
+                              ) : null}
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -718,6 +853,10 @@ export function DrinkOptionManagement() {
                                     kind: "choice",
                                     id: v.id,
                                     current: v.label,
+                                    currentTranslations: {
+                                      lt: v.label_lt ?? "",
+                                      ru: v.label_ru ?? "",
+                                    },
                                   })
                                 }
                               >
@@ -838,6 +977,32 @@ export function DrinkOptionManagement() {
                                   }))
                                 }
                               />
+                              <Input
+                                placeholder={t("manage.productForm.nameLt")}
+                                aria-label={t("manage.productForm.nameLt")}
+                                className="max-w-[12rem]"
+                                maxLength={NAME_MAX_LENGTH}
+                                value={newValue.label_lt}
+                                onChange={(e) =>
+                                  setNewValue((prev) => ({
+                                    ...prev,
+                                    label_lt: e.target.value,
+                                  }))
+                                }
+                              />
+                              <Input
+                                placeholder={t("manage.productForm.nameRu")}
+                                aria-label={t("manage.productForm.nameRu")}
+                                className="max-w-[12rem]"
+                                maxLength={NAME_MAX_LENGTH}
+                                value={newValue.label_ru}
+                                onChange={(e) =>
+                                  setNewValue((prev) => ({
+                                    ...prev,
+                                    label_ru: e.target.value,
+                                  }))
+                                }
+                              />
                               <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                                 <input
                                   type="checkbox"
@@ -947,7 +1112,9 @@ export function DrinkOptionManagement() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
-              <Label htmlFor="opt-rename">{t("manage.option.newName")}</Label>
+              <Label htmlFor="opt-rename">
+                {t("manage.option.englishName")}
+              </Label>
               <Input
                 id="opt-rename"
                 autoFocus
@@ -956,6 +1123,11 @@ export function DrinkOptionManagement() {
                 onChange={(e) => setRenameDraft(e.target.value)}
               />
             </div>
+            <TranslationFields
+              idPrefix="opt-rename"
+              value={renameTranslations}
+              onChange={setRenameTranslations}
+            />
             <DialogFooter className="gap-2">
               <Button
                 type="button"
