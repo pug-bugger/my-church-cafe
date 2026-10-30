@@ -23,6 +23,7 @@ import {
   GoogleSignInButton,
   useGoogleSignInEnabled,
 } from "@/components/auth/GoogleSignInButton";
+import { useKreoSignInEnabled } from "@/components/auth/useKreoSignInEnabled";
 import { VersionFooter } from "@/components/profile/VersionFooter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/imageUrl";
@@ -442,6 +443,10 @@ export default function ProfilePage() {
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
   const googleEnabled = useGoogleSignInEnabled();
+  const kreoEnabled = useKreoSignInEnabled();
+  // The sign-in form posts the same email and password either to this cafe's
+  // own accounts or, in Kreo mode, on to Kreo through the backend.
+  const [kreoMode, setKreoMode] = useState(false);
 
   const fetchToken = useCallback(() => {
     const token = getAuthToken();
@@ -613,6 +618,19 @@ export default function ProfilePage() {
     }
     setLoading(true);
     try {
+      if (kreoMode) {
+        // Signs in the linked account, links one whose email matches, or
+        // creates one (201) — the server decides, as for Google.
+        const data = await apiFetch<LoginResponse & { created?: boolean }>(
+          "/api/auth/kreo",
+          { method: "POST", body: { email, password }, auth: false }
+        );
+        applySession(data);
+        toast.success(
+          data.created ? t("auth.kreo.welcome") : t("auth.kreo.signedIn")
+        );
+        return;
+      }
       const data = await apiFetch<LoginResponse>("/api/auth/login", {
         method: "POST",
         body: { email, password },
@@ -623,7 +641,8 @@ export default function ProfilePage() {
       applySession(data);
       toast.success(t("auth.loggedIn"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.unableToLogin"));
+      const fallback = kreoMode ? t("auth.kreo.failed") : t("auth.unableToLogin");
+      setError(err instanceof Error ? err.message : fallback);
     } finally {
       setLoading(false);
     }
@@ -896,7 +915,14 @@ export default function ProfilePage() {
     return (
       <div className="mx-auto flex w-full max-w-[680px] flex-col gap-5 px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-[480px] rounded-card border border-line bg-surface p-6">
-          <h1 className="mb-5 text-xl font-extrabold">{t("auth.signIn")}</h1>
+          <h1 className="mb-5 text-xl font-extrabold">
+            {kreoMode ? t("auth.kreo.title") : t("auth.signIn")}
+          </h1>
+          {kreoMode && (
+            <p className="-mt-3 mb-5 text-sm text-muted-foreground">
+              {t("auth.kreo.hint")}
+            </p>
+          )}
           {!apiUrl && (
             <Alert variant="destructive" className="mb-4">
               <AlertDescription>{t("auth.configureApiHint")}</AlertDescription>
@@ -938,22 +964,53 @@ export default function ProfilePage() {
               {loading ? t("auth.signingIn") : t("auth.signIn")}
             </button>
           </form>
-          {googleEnabled && (
-            <>
-              <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <span className="h-px flex-1 bg-line" />
-                {t("auth.google.or")}
-                <span className="h-px flex-1 bg-line" />
-              </div>
-              <div
-                className={loading ? "pointer-events-none opacity-60" : undefined}
-              >
-                <GoogleSignInButton
-                  text="continue_with"
-                  onCredential={(c) => void handleGoogleCredential(c)}
-                />
-              </div>
-            </>
+          {kreoMode ? (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setKreoMode(false);
+                setError(null);
+              }}
+              className="mt-4 w-full text-center text-sm font-semibold text-primary hover:underline disabled:opacity-60"
+            >
+              {t("auth.kreo.back")}
+            </button>
+          ) : (
+            (googleEnabled || kreoEnabled) && (
+              <>
+                <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="h-px flex-1 bg-line" />
+                  {t("auth.google.or")}
+                  <span className="h-px flex-1 bg-line" />
+                </div>
+                <div
+                  className={cn(
+                    "flex flex-col gap-3",
+                    loading && "pointer-events-none opacity-60"
+                  )}
+                >
+                  {googleEnabled && (
+                    <GoogleSignInButton
+                      text="continue_with"
+                      onCredential={(c) => void handleGoogleCredential(c)}
+                    />
+                  )}
+                  {kreoEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setKreoMode(true);
+                        setError(null);
+                      }}
+                      className="press min-h-11 rounded-ctl border border-line bg-surface text-[15px] font-semibold hover:bg-ink/5"
+                    >
+                      {t("auth.kreo.continue")}
+                    </button>
+                  )}
+                </div>
+              </>
+            )
           )}
         </div>
 
