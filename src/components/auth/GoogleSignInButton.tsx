@@ -156,8 +156,15 @@ export function GoogleSignInButton({
 
   return (
     <div className={className}>
-      {/* Fixed height so the card doesn't jump when Google's iframe lands. */}
-      <div ref={holder} className="flex min-h-[44px] w-full justify-center" />
+      {/* Fixed height so the card doesn't jump when Google's iframe lands.
+          `color-scheme: light` because next-themes puts `dark` on <html>,
+          and an iframe whose color-scheme differs from its own document's
+          (Google's is light) gets an opaque white canvas — a white box
+          around the pill in dark mode. Matching them keeps it transparent. */}
+      <div
+        ref={holder}
+        className="flex min-h-[44px] w-full justify-center [color-scheme:light]"
+      />
       {failed && (
         <p className="mt-2 text-sm text-muted-foreground">
           {t("auth.google.unavailable")}
