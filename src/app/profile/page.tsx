@@ -6,6 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -433,6 +444,7 @@ export default function ProfilePage() {
   const [nameDraft, setNameDraft] = useState("");
   const [emailDraft, setEmailDraft] = useState("");
   const [savingAccount, setSavingAccount] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [topProductsRange, setTopProductsRange] = useState<DateRange>({
     from: null,
     to: null,
@@ -692,6 +704,24 @@ export default function ProfilePage() {
     clearAuthSession();
     toast.success(t("auth.loggedOut"));
   };
+
+  async function handleDeleteAccount() {
+    if (!user || !getAuthToken()) return;
+    setDeletingAccount(true);
+    try {
+      await apiFetch("/api/users/me", { method: "DELETE", auth: true });
+      clearAuthSession();
+      toast.success(t("profile.account.delete.deleted"));
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t("profile.account.delete.couldNotDelete")
+      );
+    } finally {
+      setDeletingAccount(false);
+    }
+  }
 
   async function handleSaveAccount() {
     if (!apiUrl || !user || !getAuthToken()) return;
@@ -1181,6 +1211,47 @@ export default function ProfilePage() {
 
               <GoogleAccountCard />
               {showStaffOrderDashboard && <PrinterStatusCard />}
+
+              <div className="rounded-card border border-line bg-surface p-6">
+                <h2 className="text-base font-extrabold">
+                  {t("profile.account.delete.title")}
+                </h2>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  {t("profile.account.delete.hint")}
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={deletingAccount}
+                      className="press mt-4 min-h-[46px] rounded-ctl bg-warn-soft px-5 text-[15px] font-bold text-warn hover:bg-warn-soft/80 disabled:opacity-60"
+                    >
+                      {deletingAccount
+                        ? t("profile.account.delete.deleting")
+                        : t("profile.account.delete.button")}
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t("profile.account.delete.confirmTitle")}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("profile.account.delete.confirmBody")}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => void handleDeleteAccount()}
+                      >
+                        {t("profile.account.delete.button")}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           )}
 
