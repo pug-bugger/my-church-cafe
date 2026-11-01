@@ -203,6 +203,48 @@
         "lt": "Ši paskyra dar neturi slaptažodžio, todėl Google yra vienintelis būdas prisijungti ir jo atsieti negalima.",
         "ru": "У этого аккаунта ещё нет пароля, поэтому Google — единственный способ входа, и его нельзя отключить."
       }
+    },
+    "delete": {
+      "title": {
+        "en": "Delete account",
+        "lt": "Ištrinti paskyrą",
+        "ru": "Удалить аккаунт"
+      },
+      "hint": {
+        "en": "Permanently deletes your account, profile photo, customer card and linked sign-ins. Past orders stay in the cafe's records without your name attached.",
+        "lt": "Visam laikui ištrina jūsų paskyrą, profilio nuotrauką, kliento kortelę ir susietus prisijungimus. Ankstesni užsakymai lieka kavinės įrašuose, bet be jūsų vardo.",
+        "ru": "Безвозвратно удаляет ваш аккаунт, фото профиля, карту клиента и привязанные способы входа. Прошлые заказы остаются в записях кафе, но без вашего имени."
+      },
+      "button": {
+        "en": "Delete account",
+        "lt": "Ištrinti paskyrą",
+        "ru": "Удалить аккаунт"
+      },
+      "confirmTitle": {
+        "en": "Delete your account?",
+        "lt": "Ištrinti paskyrą?",
+        "ru": "Удалить аккаунт?"
+      },
+      "confirmBody": {
+        "en": "This can't be undone. You will be signed out on every device.",
+        "lt": "Šio veiksmo atšaukti negalima. Būsite atjungti visuose įrenginiuose.",
+        "ru": "Это действие нельзя отменить. Вы выйдете из аккаунта на всех устройствах."
+      },
+      "deleting": {
+        "en": "Deleting…",
+        "lt": "Trinama…",
+        "ru": "Удаление…"
+      },
+      "deleted": {
+        "en": "Your account has been deleted",
+        "lt": "Jūsų paskyra ištrinta",
+        "ru": "Ваш аккаунт удалён"
+      },
+      "couldNotDelete": {
+        "en": "Could not delete the account",
+        "lt": "Nepavyko ištrinti paskyros",
+        "ru": "Не удалось удалить аккаунт"
+      }
     }
   },
   "role": {
