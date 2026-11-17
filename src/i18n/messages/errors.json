@@ -128,5 +128,10 @@
     "en": "Can’t reach {url}: {cause}",
     "lt": "Nepavyksta pasiekti {url}: {cause}",
     "ru": "Не удаётся связаться с {url}: {cause}"
+  },
+  "updateOrder": {
+    "en": "Could not save the order changes.",
+    "lt": "Nepavyko išsaugoti užsakymo pakeitimų.",
+    "ru": "Не удалось сохранить изменения заказа."
   }
 }

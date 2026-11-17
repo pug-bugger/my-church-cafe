@@ -229,5 +229,11 @@
     "en": "{label} — sold out until tomorrow",
     "lt": "{label} — išparduota iki rytojaus",
     "ru": "{label} — нет в наличии до завтра"
-  }
+  },
+  "editingOrder": { "en": "Editing order {name}", "lt": "Redaguojamas užsakymas {name}", "ru": "Изменение заказа {name}" },
+  "editingOrderHint": { "en": "Save to replace it in the queue — the bar gets a new ticket.", "lt": "Išsaugokite, kad jis būtų pakeistas eilėje — barui bus atspausdintas naujas čekis.", "ru": "Сохраните, чтобы заменить его в очереди — на бар напечатается новый чек." },
+  "discardChanges": { "en": "Discard changes", "lt": "Atmesti pakeitimus", "ru": "Отменить изменения" },
+  "saveChanges": { "en": "Save changes", "lt": "Išsaugoti pakeitimus", "ru": "Сохранить изменения" },
+  "saving": { "en": "Saving…", "lt": "Saugoma…", "ru": "Сохранение…" },
+  "orderUpdated": { "en": "Order updated", "lt": "Užsakymas atnaujintas", "ru": "Заказ изменён" }
 }

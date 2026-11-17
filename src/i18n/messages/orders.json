@@ -106,6 +106,31 @@
       "en": "\"{name}\" comes off the order and the total is worked out again. Removing the last item cancels the order.",
       "lt": "„{name}“ bus pašalinta iš užsakymo, o suma perskaičiuota. Pašalinus paskutinę prekę, užsakymas atšaukiamas.",
       "ru": "«{name}» будет убрана из заказа, сумма пересчитается. Если убрать последнюю позицию, заказ отменяется."
+    },
+    "editOrder": {
+      "en": "Edit order",
+      "lt": "Redaguoti užsakymą",
+      "ru": "Изменить заказ"
+    },
+    "editReplaceTitle": {
+      "en": "Replace the order in the terminal?",
+      "lt": "Pakeisti užsakymą terminale?",
+      "ru": "Заменить заказ в терминале?"
+    },
+    "editReplaceBody": {
+      "en": "The terminal already holds an unsent order. Editing {name} will discard it.",
+      "lt": "Terminale jau yra neišsiųstas užsakymas. Redaguojant {name} jis bus išmestas.",
+      "ru": "В терминале уже собран неотправленный заказ. При изменении {name} он будет удалён."
+    },
+    "editReplaceConfirm": {
+      "en": "Discard and edit",
+      "lt": "Išmesti ir redaguoti",
+      "ru": "Удалить и изменить"
+    },
+    "editMissingProduct": {
+      "en": "This order has a product that is no longer on the menu, so it can’t be edited.",
+      "lt": "Šiame užsakyme yra prekė, kurios nebėra meniu, todėl jo redaguoti negalima.",
+      "ru": "В заказе есть товар, которого больше нет в меню, поэтому его нельзя изменить."
     }
   },
   "toast": {
@@ -124,11 +149,6 @@
       "lt": "Užsakymas ištrintas",
       "ru": "Заказ удалён"
     }
-  },
-  "subtitleStaff": {
-    "en": "The bar’s working queue",
-    "lt": "Baro darbo eilė",
-    "ru": "Рабочая очередь бара"
   },
   "subtitleGuest": {
     "en": "Ready for pickup",

@@ -30,6 +30,29 @@ export function initialsFromName(name?: string | null): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/** `"#12"` — the day's running number, as printed at the head of the ticket. */
+export function orderNumberLabel(order: {
+  order_number?: number;
+  id: number;
+}): string {
+  return `#${order.order_number ?? order.id}`;
+}
+
+/**
+ * `"#12 Anna"`, or just `"#12"` — what staff call an order. The same headline
+ * the kitchen ticket prints, so a card can be matched to its paper by number
+ * even when two customers share a name.
+ */
+export function orderTitle(order: {
+  customer_name?: string | null;
+  order_number?: number;
+  id: number;
+}): string {
+  const name = order.customer_name?.trim();
+  const number = orderNumberLabel(order);
+  return name ? `${number} ${name}` : number;
+}
+
 /** How long ago something happened, in the canvas' wording: `"just now"` / `"7 min"`. */
 export function relativeAge(iso: string | null | undefined): string {
   if (!iso) return "";

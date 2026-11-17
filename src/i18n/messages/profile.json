@@ -450,5 +450,17 @@
       "lt": "Nepavyko įkelti naudotojų sąrašo",
       "ru": "Не удалось загрузить список пользователей"
     }
+  },
+  "guest": {
+    "title": {
+      "en": "Sign in to Church Cafe",
+      "lt": "Prisijunkite prie Church Cafe",
+      "ru": "Войдите в Church Cafe"
+    },
+    "body": {
+      "en": "The menu and the pickup board are open to everyone. Sign in for your cafe card, so your order is linked to you and you get a notification when it's ready.",
+      "lt": "Meniu ir atsiėmimo ekranas prieinami visiems. Prisijunkite, kad gautumėte kavinės kortelę: užsakymas bus susietas su jumis, o kai jis bus paruoštas, gausite pranešimą.",
+      "ru": "Меню и табло выдачи доступны всем. Войдите, чтобы получить карту кафе: заказ будет привязан к вам, а когда он будет готов, придёт уведомление."
+    }
   }
 }

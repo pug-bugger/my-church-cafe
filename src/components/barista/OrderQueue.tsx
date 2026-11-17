@@ -15,20 +15,31 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { OrderStatus, ServerOrder, ServerOrderItem } from "@/types";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useTranslation, type TranslateFn } from "@/i18n";
 import { getAuthToken } from "@/lib/auth";
-import { relativeAge } from "@/lib/format";
+import { orderNumberLabel, orderTitle, relativeAge } from "@/lib/format";
 import { describeServerOptions } from "@/lib/drinkOptions";
+import { draftFromOrder } from "@/lib/editOrder";
 
 /** Ages are rendered as "7 min"; re-render occasionally so they stay honest. */
 const AGE_TICK_MS = 20000;
 
-function orderTitle(order: ServerOrder): string {
+/**
+ * "#12 Anna": the number in the accent colour, so a card can be matched to its
+ * ticket — which leads with the same number — at a glance.
+ */
+function OrderHeadline({ order }: { order: ServerOrder }) {
   const name = order.customer_name?.trim();
-  return name || `#${order.order_number ?? order.id}`;
+  return (
+    <>
+      <span className="num text-primary">{orderNumberLabel(order)}</span>
+      {name ? <> {name}</> : null}
+    </>
+  );
 }
 
 /** Desserts are handed over from the counter, not made on the bar. */
@@ -41,6 +52,7 @@ type OrderCardProps = {
   busy: boolean;
   onAdvance: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
   onRemoveItem?: (item: ServerOrderItem) => void;
   removingKey: string | null;
   t: TranslateFn;
@@ -51,6 +63,7 @@ function OrderCard({
   busy,
   onAdvance,
   onDelete,
+  onEdit,
   onRemoveItem,
   removingKey,
   t,
@@ -60,7 +73,7 @@ function OrderCard({
     <article className="enter rounded-card border border-line bg-surface p-[18px] shadow-card">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-[21px] font-extrabold tracking-[-0.015em]">
-          {orderTitle(order)}
+          <OrderHeadline order={order} />
         </span>
         <span className="text-xs font-semibold text-muted-foreground">
           {relativeAge(order.created_at)}
@@ -124,6 +137,18 @@ function OrderCard({
         >
           {t("orders.queue.readyForPickup")}
         </button>
+        {onEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={busy}
+            aria-label={t("orders.queue.editOrder")}
+            title={t("orders.queue.editOrder")}
+            className="press flex min-h-[52px] w-[52px] flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5 disabled:opacity-50"
+          >
+            <Pencil className="h-[18px] w-[18px]" />
+          </button>
+        ) : null}
         {onDelete ? (
           <button
             type="button"
@@ -160,6 +185,12 @@ export function OrderQueue() {
   const updateOrderStatus = useAppStore((state) => state.updateOrderStatus);
   const removeOrderItem = useAppStore((state) => state.removeOrderItem);
   const removeOrder = useAppStore((state) => state.removeOrder);
+  const products = useAppStore((state) => state.products);
+  const loadProducts = useAppStore((state) => state.loadProducts);
+  const startEditingOrder = useAppStore((state) => state.startEditingOrder);
+  const router = useRouter();
+  /** Asked before an unsent draft in the terminal is thrown away for an edit. */
+  const [orderToEdit, setOrderToEdit] = useState<ServerOrder | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<number | null>(null);
   // Deleting an order, or taking a line off one, is not undoable and the
@@ -214,6 +245,44 @@ export function OrderQueue() {
         err instanceof Error ? err.message : t("errors.updateStatus");
       toast.error(message);
     }
+  };
+
+  /**
+   * Reopen the order in the terminal: its lines become the draft, and the
+   * terminal saves over this order instead of sending a new one.
+   */
+  const editOrder = async (order: ServerOrder) => {
+    setOrderToEdit(null);
+    let catalogue = products;
+    if (catalogue.length === 0) {
+      await loadProducts();
+      catalogue = useAppStore.getState().products;
+    }
+    const lines = draftFromOrder(order, catalogue);
+    if (!lines) {
+      toast.error(t("orders.queue.editMissingProduct"));
+      return;
+    }
+    startEditingOrder(
+      {
+        id: order.id,
+        title: orderTitle(order),
+        customerName: order.customer_name?.trim() ?? "",
+        comment: order.comment?.trim() ?? "",
+      },
+      lines
+    );
+    router.push("/terminal");
+  };
+
+  const requestEdit = (order: ServerOrder) => {
+    const { draftItems, editingOrder } = useAppStore.getState();
+    const unsent = draftItems.length > 0 || editingOrder !== null;
+    if (unsent && editingOrder?.id !== order.id) {
+      setOrderToEdit(order);
+      return;
+    }
+    void editOrder(order);
   };
 
   const handleRemoveItem = async (orderId: number, item: ServerOrderItem) => {
@@ -296,6 +365,8 @@ export function OrderQueue() {
                   ? () => setOrderToDelete(order)
                   : undefined
               }
+              // Editable while still in the queue — what the server allows.
+              onEdit={() => requestEdit(order)}
               onRemoveItem={(item) =>
                 setItemToRemove({ orderId: order.id, item })
               }
@@ -324,7 +395,10 @@ export function OrderQueue() {
               title={t("orders.queue.handoverTooltip")}
               className="press enter flex min-h-[54px] items-center gap-2.5 rounded-full border border-ac bg-ac-soft px-5 text-[19px] font-extrabold text-ac-dark hover:bg-ac-mid/40"
             >
-              {orderTitle(order)}
+              <span>
+                <span className="num">{orderNumberLabel(order)}</span>
+                {order.customer_name?.trim() ? ` ${order.customer_name.trim()}` : ""}
+              </span>
               <span className="text-xs font-semibold opacity-70">
                 {relativeAge(order.created_at)}
               </span>
@@ -363,6 +437,32 @@ export function OrderQueue() {
               }
             >
               {t("orders.queue.cancelOrder")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!orderToEdit}
+        onOpenChange={(open) => !open && setOrderToEdit(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("orders.queue.editReplaceTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("orders.queue.editReplaceBody", {
+                name: orderToEdit ? orderTitle(orderToEdit) : "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => orderToEdit && void editOrder(orderToEdit)}
+            >
+              {t("orders.queue.editReplaceConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
