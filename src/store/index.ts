@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Drink, OrderItem, ServerOrder, OrderStatus } from '@/types';
+import { Drink, EditingOrder, OrderItem, ServerOrder, OrderStatus } from '@/types';
 import { defaultDrinks } from '@/data/defaultDrinks';
 import { mapProductApiToDrinkOptions } from '@/lib/drinkOptions';
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
@@ -125,6 +125,11 @@ interface AppState {
   productsLoading: boolean;
   orders: ServerOrder[];
   draftItems: OrderItem[];
+  /**
+   * Set while the draft is a placed order reopened to be changed: the
+   * terminal then saves over that order instead of sending a new one.
+   */
+  editingOrder: EditingOrder | null;
   loadProducts: () => Promise<void>;
   createProductApi: (product: Omit<Drink, "id">) => Promise<Drink>;
   updateProductApi: (id: string, product: Omit<Drink, "id">) => Promise<void>;
@@ -167,7 +172,24 @@ interface AppState {
     changes: Pick<OrderItem, "quantity" | "selectedOptions" | "comment">
   ) => void;
   removeDraftItem: (itemId: string) => void;
+  /** Empty the draft — and, if it was an order being edited, stop editing it. */
   clearDraft: () => void;
+  /** Replace the draft with a placed order's lines, to be changed and saved back. */
+  startEditingOrder: (order: EditingOrder, items: OrderItem[]) => void;
+  /**
+   * Save the draft over the order being edited (`PUT /api/orders/:id`). The
+   * server prices it; the draft is cleared once it has.
+   */
+  saveEditedOrderApi: (input: {
+    items: {
+      productId: number;
+      quantity: number;
+      selectedOptions: Record<string, string>;
+      comment: string | null;
+    }[];
+    customerName: string | null;
+    comment: string | null;
+  }) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -175,6 +197,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   productsLoading: false,
   orders: [],
   draftItems: [],
+  editingOrder: null,
 
   loadProducts: async () => {
     set(() => ({ productsLoading: true }));
@@ -436,8 +459,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   })),
 
   clearDraft: () => set(() => ({
-    draftItems: []
+    draftItems: [],
+    editingOrder: null,
   })),
+
+  startEditingOrder: (order, items) => set(() => ({
+    draftItems: items,
+    editingOrder: order,
+  })),
+
+  saveEditedOrderApi: async ({ items, customerName, comment }) => {
+    const editing = get().editingOrder;
+    if (!editing) return;
+    await apiFetch(`/api/orders/${editing.id}`, {
+      method: 'PUT',
+      auth: true,
+      authError: t('errors.loginRequiredToOrder'),
+      body: {
+        order: {
+          order_items: items,
+          customer_name: customerName,
+          comment,
+        },
+      },
+    });
+    set(() => ({ draftItems: [], editingOrder: null }));
+  },
 
   updateOrderStatus: (orderId, status) => set((state) => ({
     orders: state.orders.map((order) =>

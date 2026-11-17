@@ -88,6 +88,8 @@ export type OrderStatus =
 /** One saved drink option on a line item (from API: order_item_options). */
 export type ServerOrderItemOption = {
   id: number;
+  /** The question this answers; null on rows whose definition was deleted. */
+  option_definition_id?: number | null;
   option_definition_name: string | null;
   option_value_name: string | null;
 };
@@ -95,7 +97,9 @@ export type ServerOrderItemOption = {
 export type ServerOrderItem = {
   id: number;
   order_id: number;
-  product_item_id: number | null;
+  /** `products.id`. Sent by the list endpoints; what reopening a line keys on. */
+  product_id?: number | null;
+  product_item_id?: number | null;
   quantity: number;
   price: number | null;
   product_item_name: string | null;
@@ -126,4 +130,13 @@ export type ServerOrder = {
   comment?: string | null;
   customer_name?: string | null;
   items: ServerOrderItem[];
+};
+
+/** A placed order reopened in the terminal to be changed. */
+export type EditingOrder = {
+  id: number;
+  /** "#12 Anna" — what the terminal's banner calls it. */
+  title: string;
+  customerName: string;
+  comment: string;
 };

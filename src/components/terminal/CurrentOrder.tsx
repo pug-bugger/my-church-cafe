@@ -4,7 +4,8 @@ import { useAppStore } from "@/store";
 import { Input } from "@/components/ui/input";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Pencil, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Pencil, PencilLine, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useTranslation } from "@/i18n";
 import { formatPrice } from "@/lib/format";
@@ -27,6 +28,9 @@ export function CurrentOrder() {
   const orderableProducts = useAppStore((state) => state.products);
   const removeDraftItem = useAppStore((state) => state.removeDraftItem);
   const clearDraft = useAppStore((state) => state.clearDraft);
+  const editingOrder = useAppStore((state) => state.editingOrder);
+  const saveEditedOrderApi = useAppStore((state) => state.saveEditedOrderApi);
+  const router = useRouter();
   const [products, setProducts] = useState<
     { id: number; name: string | null }[]
   >([]);
@@ -34,7 +38,7 @@ export function CurrentOrder() {
   const [orderComment, setOrderComment] = useState("");
   const [customerName, setCustomerName] = useState("");
   /** The draft line open in the edit sheet, if any. */
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
 
   const apiUrl = useMemo(() => process.env.NEXT_PUBLIC_API_URL, []);
 
@@ -55,12 +59,23 @@ export function CurrentOrder() {
 
   const itemCount = draftItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Clearing the draft clears what was typed about it — except while an order
+  // is being edited, where taking every line off must not lose its name.
   useEffect(() => {
-    if (draftItems.length === 0) {
+    if (draftItems.length === 0 && !editingOrder) {
       setOrderComment("");
       setCustomerName("");
     }
-  }, [draftItems.length]);
+  }, [draftItems.length, editingOrder]);
+
+  // An order reopened for editing brings its name and note with it.
+  const editingId = editingOrder?.id;
+  useEffect(() => {
+    if (editingId == null) return;
+    const order = useAppStore.getState().editingOrder;
+    setCustomerName(order?.customerName ?? "");
+    setOrderComment(order?.comment ?? "");
+  }, [editingId]);
 
   useEffect(() => {
     if (!apiUrl) return;
@@ -122,6 +137,26 @@ export function CurrentOrder() {
     }
 
     setIsSubmitting(true);
+    if (editingOrder) {
+      try {
+        await saveEditedOrderApi({
+          items: orderItemsPayload.map((item) => ({
+            ...item,
+            productId: Number(item.productId),
+          })),
+          customerName: customerName.trim() || null,
+          comment: orderComment.trim() || null,
+        });
+        toast.success(t("terminal.orderUpdated"));
+        // Back to the queue the edit was started from.
+        router.push("/barista");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t("errors.updateOrder"));
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
     try {
       await apiFetch("/api/orders", {
         method: "POST",
@@ -147,15 +182,32 @@ export function CurrentOrder() {
   };
 
   const isEmpty = draftItems.length === 0;
-  const editingItem = editingId
-    ? draftItems.find((item) => item.id === editingId) ?? null
+  const editingItem = editingLineId
+    ? draftItems.find((item) => item.id === editingLineId) ?? null
     : null;
   const editingProduct = editingItem
     ? getProductById(editingItem.drinkId) ?? null
     : null;
 
   return (
-    <aside className="flex max-h-[calc(100dvh-8.5rem)] flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card">
+    <aside
+      className={`flex max-h-[calc(100dvh-8.5rem)] flex-col overflow-hidden rounded-card border bg-surface shadow-card ${
+        editingOrder ? "border-warn" : "border-line"
+      }`}
+    >
+      {editingOrder ? (
+        <div className="flex items-start gap-3 bg-warn-soft px-5 py-3 text-warn">
+          <PencilLine className="mt-0.5 h-5 w-5 flex-none" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-extrabold">
+              {t("terminal.editingOrder", { name: editingOrder.title })}
+            </div>
+            <div className="text-[13px] leading-snug opacity-90">
+              {t("terminal.editingOrderHint")}
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="px-5 pb-3 pt-5">
         <div className="flex items-baseline justify-between gap-2.5">
           <h3 className="text-lg font-extrabold tracking-[-0.01em]">
@@ -211,7 +263,7 @@ export function CurrentOrder() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setEditingId(item.id)}
+                    onClick={() => setEditingLineId(item.id)}
                     aria-label={t("terminal.editNamed", { name: drink.name })}
                     title={t("terminal.editItem")}
                     className="press -mr-2 flex h-11 w-11 flex-none items-center justify-center rounded-[14px] text-muted-foreground hover:bg-ink/5"
@@ -256,9 +308,16 @@ export function CurrentOrder() {
           <button
             type="button"
             onClick={clearDraft}
-            disabled={isEmpty}
-            aria-label={t("terminal.clearOrder")}
-            title={t("terminal.clearOrderTooltip")}
+            // While editing it is the way out, so it stays usable with no lines.
+            disabled={isEmpty && !editingOrder}
+            aria-label={
+              editingOrder ? t("terminal.discardChanges") : t("terminal.clearOrder")
+            }
+            title={
+              editingOrder
+                ? t("terminal.discardChanges")
+                : t("terminal.clearOrderTooltip")
+            }
             className="press flex min-h-14 w-14 flex-none items-center justify-center rounded-ctl border border-line bg-surface text-muted-foreground hover:bg-ink/5 disabled:pointer-events-none disabled:opacity-50"
           >
             <Trash2 className="h-5 w-5" />
@@ -269,7 +328,13 @@ export function CurrentOrder() {
             disabled={isEmpty || isSubmitting}
             className="press min-h-14 flex-1 rounded-ctl bg-primary text-[17px] font-bold text-primary-foreground hover:bg-ac-dark disabled:pointer-events-none disabled:bg-ac-mid"
           >
-            {isSubmitting ? t("terminal.sending") : t("terminal.sendToBarista")}
+            {editingOrder
+              ? isSubmitting
+                ? t("terminal.saving")
+                : t("terminal.saveChanges")
+              : isSubmitting
+                ? t("terminal.sending")
+                : t("terminal.sendToBarista")}
           </button>
         </div>
       </div>
@@ -277,7 +342,7 @@ export function CurrentOrder() {
       <ProductSheet
         product={editingProduct}
         editing={editingItem}
-        onClose={() => setEditingId(null)}
+        onClose={() => setEditingLineId(null)}
       />
     </aside>
   );
